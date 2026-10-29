@@ -1,0 +1,65 @@
+---
+import Base from '../layouts/Base.astro';
+import ProjectCard from '../components/ProjectCard.astro';
+import repos from '../data/repos.json';
+
+const langs = [...new Set(repos.map((r) => r.lang).filter(Boolean))].sort();
+---
+<Base title="项目">
+  <h1>项目</h1>
+  <p class="muted">共 {repos.length} 个公开仓库，来自 GitHub API，构建时自动同步。</p>
+
+  <div class="filters">
+    <input id="q" type="search" placeholder="搜索名称、描述、话题…" autocomplete="off" />
+    <div class="chips" id="langs">
+      <button class="chip on" data-lang="">全部</button>
+      {langs.map((l) => <button class="chip" data-lang={l}>{l}</button>)}
+    </div>
+  </div>
+
+  <div class:list={['grid', repos.length === 1 && 'single']} id="list">
+    {repos.map((r) => (
+      <div
+        class="cell"
+        data-name={r.name}
+        data-desc={r.desc ?? ''}
+        data-topics={(r.topics ?? []).join(' ')}
+        data-lang={r.lang ?? ''}
+      >
+        <ProjectCard repo={r} />
+      </div>
+    ))}
+  </div>
+
+  <p class="muted" id="empty" hidden>没有匹配的项目。</p>
+
+  <script is:inline>
+    const q = document.getElementById('q');
+    const list = document.getElementById('list');
+    const empty = document.getElementById('empty');
+    const chips = document.getElementById('langs');
+    let lang = '';
+
+    function apply() {
+      const kw = q.value.trim().toLowerCase();
+      let shown = 0;
+      for (const el of list.children) {
+        const hay = (el.dataset.name + ' ' + el.dataset.desc + ' ' + el.dataset.topics).toLowerCase();
+        const ok = (!kw || hay.includes(kw)) && (!lang || el.dataset.lang === lang);
+        el.hidden = !ok;
+        if (ok) shown += 1;
+      }
+      empty.hidden = shown > 0;
+    }
+
+    q.addEventListener('input', apply);
+    chips.addEventListener('click', (e) => {
+      const btn = e.target.closest('.chip');
+      if (!btn) return;
+      for (const c of chips.children) c.classList.remove('on');
+      btn.classList.add('on');
+      lang = btn.dataset.lang;
+      apply();
+    });
+  </script>
+</Base>

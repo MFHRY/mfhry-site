@@ -1,0 +1,44 @@
+---
+const { repo } = Astro.props;
+
+const LANG_COLORS = {
+  JavaScript: '#f1e05a',
+  TypeScript: '#3178c6',
+  Python: '#3572A5',
+  Go: '#00ADD8',
+  Rust: '#dea584',
+  Java: '#b07219',
+  Kotlin: '#A97BFF',
+  'C++': '#f34b7d',
+  C: '#555555',
+  'C#': '#178600',
+  HTML: '#e34c26',
+  CSS: '#563d7c',
+  SCSS: '#c6538c',
+  Shell: '#89e051',
+  Vue: '#41b883',
+  Svelte: '#ff3e00',
+  Ruby: '#701516',
+  PHP: '#4F5D95',
+  Swift: '#F05138',
+  Dart: '#00B4AB',
+  Lua: '#000080',
+  Dockerfile: '#384d54',
+  Makefile: '#427819',
+};
+
+const color = LANG_COLORS[repo.lang] ?? 'currentColor';
+const updated = repo.updated ? String(repo.updated).slice(0, 10) : '';
+---
+<a class="card" href={repo.url} target="_blank" rel="noreferrer noopener">
+  <div class="card-head">
+    <h3>{repo.name}</h3>
+    <span class="stars" title="Stars">★ {repo.stars}</span>
+  </div>
+  <p class="desc">{repo.desc || '暂无描述'}</p>
+  {repo.readme && repo.readme !== repo.desc && <p class="excerpt">{repo.readme}</p>}
+  <div class="meta">
+    <span class="lang"><i style={{ background: color }}></i>{repo.lang || 'Other'}</span>
+    {updated && <span>{updated}</span>}
+  </div>
+</a>

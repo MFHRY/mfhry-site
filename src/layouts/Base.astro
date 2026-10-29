@@ -1,0 +1,39 @@
+---
+import '../styles/global.css';
+import site from '../data/site.json';
+
+const { title = '首页' } = Astro.props;
+const path = Astro.url.pathname;
+const year = new Date().getFullYear();
+---
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={site.tagline} />
+    <meta name="generator" content={Astro.generator} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>{title} · {site.name}</title>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container bar">
+        <a class="brand" href="/">{site.name}</a>
+        <nav>
+          <a href="/" class:list={[{ on: path === '/' }]}>首页</a>
+          <a href="/projects" class:list={[{ on: path.startsWith('/projects') }]}>项目</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container">
+      <slot />
+    </main>
+
+    <footer class="container site-footer">
+      <span>© {year} {site.name}</span>
+      <span>Astro · Cloudflare Pages</span>
+    </footer>
+  </body>
+</html>

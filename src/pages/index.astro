@@ -1,0 +1,49 @@
+---
+import Base from '../layouts/Base.astro';
+import ProjectCard from '../components/ProjectCard.astro';
+import site from '../data/site.json';
+import repos from '../data/repos.json';
+import posts from '../data/posts.json';
+
+const featured = site.featured?.length
+  ? site.featured.map((n) => repos.find((r) => r.name === n)).filter(Boolean)
+  : repos.slice(0, 6);
+
+const latest = posts.slice(0, 3);
+---
+<Base title="首页">
+  <section class="hero">
+    <img class="avatar" src={site.avatar} alt={site.name} width="88" height="88" />
+    <div>
+      <h1>{site.name}</h1>
+      <p class="tagline">{site.tagline}</p>
+      <p class="bio">{site.bio}</p>
+      <ul class="links">
+        {site.links.map((l) => (
+          <li><a href={l.url} target="_blank" rel="noreferrer">{l.label}</a></li>
+        ))}
+      </ul>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="block-head">
+      <h2>精选项目</h2>
+      <a href="/projects">全部 {repos.length} 个 →</a>
+    </div>
+    <div class:list={['grid', featured.length === 1 && 'single']}>
+      {featured.map((r) => <ProjectCard repo={r} />)}
+    </div>
+  </section>
+
+  {latest.length > 0 && (
+    <section class="block">
+      <div class="block-head"><h2>最近更新</h2></div>
+      <ul class="posts">
+        {latest.map((p) => (
+          <li><a href={p.url ?? '#'}>{p.title}</a><span>{p.date ?? ''}</span></li>
+        ))}
+      </ul>
+    </section>
+  )}
+</Base>

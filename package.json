@@ -1,0 +1,25 @@
+{
+  "name": "mfhry-site",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@11.28.5",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "fetch": "node scripts/pull-github.mjs && node scripts/pull-content.mjs",
+    "pages:create": "wrangler pages project create mfhry-site --production-branch main",
+    "deploy": "wrangler pages deploy dist --project-name=mfhry-site --branch main"
+  },
+  "dependencies": {
+    "astro": "^5.0.0"
+  },
+  "devDependencies": {
+    "pg": "^8.13.0",
+    "wrangler": "^4.0.0"
+  }
+}

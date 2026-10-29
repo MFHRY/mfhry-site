@@ -1,0 +1,15 @@
+[
+  {
+    "name": "mcai",
+    "desc": "一个接入mc的ai",
+    "url": "https://github.com/MFHRY/mcai",
+    "homepage": "",
+    "stars": 0,
+    "forks": 0,
+    "lang": "Java",
+    "topics": [],
+    "license": "CC0-1.0",
+    "updated": "2026-10-21T14:38:09Z",
+    "readme": "mcAI 在 Minecraft 里和 AI 聊天，还能按键让它看你屏幕。 一个客户端模组：在聊天栏用 !ai 提问、按 H 截取当前画面交给多模态模型识别，并附带思考过程显示、耗时统计和 Token 用量记录。 提供两个加载器版本，功能基本一致： 版本线 Minecraft 加载器 Java 前置 --- --- --- --- --- --- Fabric 版 1.25.x 1.21.1 Fabric Loader 0.19.5+ 21 Fabric API Forge "
+  }
+]
