@@ -103,6 +103,51 @@ img {
   color: var(--fg);
 }
 
+/* 登录状态：Base 里由 /api/me 填充 */
+.auth {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 18px;
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 13px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.auth:hover {
+  color: var(--fg);
+  border-color: var(--accent);
+}
+
+.auth.on {
+  color: var(--fg);
+  background: var(--accent-soft);
+}
+
+.auth img {
+  border-radius: 50%;
+  display: block;
+}
+
+@media (max-width: 860px) {
+  .site-header nav {
+    gap: 14px;
+    font-size: 14px;
+  }
+
+  .auth {
+    margin-left: 10px;
+    padding: 4px 9px;
+  }
+
+  .auth span {
+    display: none;
+  }
+}
+
 /* main */
 main {
   padding: 48px 0 24px;

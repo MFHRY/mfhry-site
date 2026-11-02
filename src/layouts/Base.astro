@@ -31,6 +31,9 @@ const year = new Date().getFullYear();
           <a href="/records" class:list={[{ on: path.startsWith('/records') }]}>记录</a>
           <a href="/wall" class:list={[{ on: path.startsWith('/wall') }]}>墙</a>
         </nav>
+        <a class="auth" id="auth" href="/login/" title="用 GitHub 登录">
+          <span>登录</span>
+        </a>
       </div>
     </header>
 
@@ -42,5 +45,24 @@ const year = new Date().getFullYear();
       <span>© {year} {site.name}</span>
       <span>Astro · Cloudflare Pages</span>
     </footer>
+
+    <script>
+      // 登录状态是客户端拿的：静态页面上换一个头像/「登录」按钮
+      const el = document.getElementById('auth');
+      fetch('/api/me', { headers: { accept: 'application/json' } })
+        .then((r) => r.json())
+        .then((d) => {
+          if (!el) return;
+          if (d && d.user) {
+            el.href = '/login/';
+            el.title = '已登录：' + d.user.login;
+            el.innerHTML =
+              (d.user.avatar ? `<img src="${d.user.avatar}" alt="" width="22" height="22" />` : '') +
+              `<span>${d.user.login}</span>`;
+            el.classList.add('on');
+          }
+        })
+        .catch(() => {});
+    </script>
   </body>
 </html>

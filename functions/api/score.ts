@@ -1,7 +1,9 @@
-// 小游戏排行榜：按 IP 记一条最好成绩，返回时报国家 / 地区。
-// GET  /api/score?game=tetris&limit=20
-// POST /api/score  {game, score, name?}
+// 小游戏排行榜
+// GET    /api/score?game=tetris&limit=20     榜单（含国家/地区/你的名次）
+// POST   /api/score  {game, score, name?}   交成绩（登录按账号、匿名按 IP）
+// DELETE /api/score?id=123                  管理员删掉一条
 import { flagOf, regionName, countryName } from '../lib/geo';
+import { currentUser, type SessionUser } from '../lib/session';
 
 const json = (data: any, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -24,13 +26,13 @@ const GAMES: Record<string, { asc: boolean; max: number; label: string; unit: st
 };
 
 // 榜单里默认遮掉 IP 最后一段：既看得出是不同的人，又不至于把完整地址公开。
-// 想显示完整 IP 就把这里改成 false。
 const MASK_IP = true;
 
 const ipOf = (req: Request) =>
   req.headers.get('CF-Connecting-IP') || req.headers.get('x-forwarded-for') || 'unknown';
 
-function maskIp(ip: string) {
+function maskIp(ip: string | null) {
+  if (!ip) return '';
   if (!MASK_IP) return ip;
   if (ip.includes('.')) return ip.replace(/\.\d+$/, '.x');
   return ip.length > 14 ? ip.slice(0, 14) + '…' : ip;
@@ -47,11 +49,17 @@ const cleanName = (v: any) =>
 
 function pack(row: any, rank: number) {
   const cc = row.country || null;
+  const logged = !!row.user_login;
   return {
+    id: row.id,
     rank,
-    name: row.name || null,
     score: row.score,
-    ip: maskIp(row.ip || ''),
+    // 登录用户显示 GitHub 账号，匿名才露（打码后的）IP
+    user: logged
+      ? { login: row.user_login, name: row.user_name || null, avatar: row.user_avatar || null }
+      : null,
+    name: logged ? null : row.name || null,
+    ip: logged ? '' : maskIp(row.ip),
     country: cc,
     flag: flagOf(cc),
     countryName: countryName(cc),
@@ -61,6 +69,10 @@ function pack(row: any, rank: number) {
     at: row.updated_at || null,
   };
 }
+
+const SELECT = `SELECT s.id, s.score, s.ip, s.name, s.country, s.region, s.city, s.updated_at,
+                       u.login AS user_login, u.name AS user_name, u.avatar AS user_avatar
+                  FROM scores s LEFT JOIN users u ON u.id = s.user_id`;
 
 export const onRequestGet = async (ctx: any) => {
   const { env, request } = ctx;
@@ -72,34 +84,51 @@ export const onRequestGet = async (ctx: any) => {
 
   const order = meta.asc ? 'ASC' : 'DESC';
   const rows = await env.DB.prepare(
-    `SELECT name, score, ip, country, region, city, updated_at FROM scores
-     WHERE game = ? ORDER BY score ${order}, updated_at ASC LIMIT ?`
+    `${SELECT} WHERE s.game = ? ORDER BY s.score ${order}, s.updated_at ASC LIMIT ?`
   )
     .bind(game, limit)
     .all();
 
   const entries = (rows.results || []).map((r: any, i: number) => pack(r, i + 1));
 
-  // 顺手告诉调用者「你自己排第几」
   let me: any = null;
-  const ip = ipOf(request);
-  if (ip && ip !== 'unknown') {
-    const mine = await env.DB.prepare('SELECT name, score, ip, country, region, city, updated_at FROM scores WHERE game = ? AND ip = ?')
-      .bind(game, ip)
+  const user = await currentUser(env, request).catch(() => null);
+  if (user) {
+    const mine: any = await env.DB.prepare(`${SELECT} WHERE s.game = ? AND s.user_id = ?`)
+      .bind(game, user.id)
       .first();
-    if (mine) {
-      const cmp = meta.asc ? '<' : '>';
-      const better = await env.DB.prepare(`SELECT COUNT(*) AS c FROM scores WHERE game = ? AND score ${cmp} ?`)
-        .bind(game, mine.score)
+    if (mine) me = pack(mine, await rankOf(env, game, meta, mine.score));
+  } else {
+    const ip = ipOf(request);
+    if (ip && ip !== 'unknown') {
+      const mine: any = await env.DB.prepare(`${SELECT} WHERE s.game = ? AND s.ip = ? AND s.user_id IS NULL`)
+        .bind(game, ip)
         .first();
-      me = pack(mine, Number(better?.c || 0) + 1);
+      if (mine) me = pack(mine, await rankOf(env, game, meta, mine.score));
     }
   }
 
   const total = await env.DB.prepare('SELECT COUNT(*) AS c FROM scores WHERE game = ?').bind(game).first();
 
-  return json({ game, label: meta.label, unit: meta.unit, asc: meta.asc, total: Number(total?.c || 0), entries, me });
+  return json({
+    game,
+    label: meta.label,
+    unit: meta.unit,
+    asc: meta.asc,
+    total: Number(total?.c || 0),
+    entries,
+    me,
+    user: user ? { login: user.login, name: user.name, avatar: user.avatar, admin: user.admin } : null,
+  });
 };
+
+async function rankOf(env: any, game: string, meta: { asc: boolean }, score: number) {
+  const cmp = meta.asc ? '<' : '>';
+  const better = await env.DB.prepare(`SELECT COUNT(*) AS c FROM scores WHERE game = ? AND score ${cmp} ?`)
+    .bind(game, score)
+    .first();
+  return Number(better?.c || 0) + 1;
+}
 
 export const onRequestPost = async (ctx: any) => {
   const { env, request } = ctx;
@@ -119,56 +148,70 @@ export const onRequestPost = async (ctx: any) => {
   if (meta.asc && score === 0) return json({ error: '分数不合适' }, 400);
 
   const ip = ipOf(request);
-  if (!ip || ip === 'unknown') return json({ error: '拿不到 IP' }, 400);
+  const user: SessionUser | null = await currentUser(env, request).catch(() => null);
+  if (!user && (!ip || ip === 'unknown')) return json({ error: '拿不到 IP' }, 400);
 
   const cf: any = (request as any).cf || {};
   const name = cleanName(body?.name) || null;
   const ts = nowSql();
 
-  const row: any = await env.DB.prepare('SELECT id, score, name, updated_at FROM scores WHERE game = ? AND ip = ?')
-    .bind(game, ip)
-    .first();
+  // 登录的人按账号去重，匿名按 IP 去重
+  const row: any = user
+    ? await env.DB.prepare('SELECT id, score, name, updated_at FROM scores WHERE game = ? AND user_id = ?')
+        .bind(game, user.id)
+        .first()
+    : await env.DB.prepare('SELECT id, score, name, updated_at FROM scores WHERE game = ? AND ip = ? AND user_id IS NULL')
+        .bind(game, ip)
+        .first();
 
-  // 同一个 IP 同一个游戏，10 秒内只能提交一次
   if (row && row.updated_at && Date.now() - Date.parse(row.updated_at.replace(' ', 'T') + 'Z') < 10 * 1000) {
     return json({ ok: true, stored: false, reason: '慢一点，10 秒后再传', best: row.score });
   }
 
-  const better = meta.asc ? (v: number) => v < row.score : (v: number) => v > row.score;
+  const isBetter = (v: number) => (meta.asc ? v < row.score : v > row.score);
 
   if (row) {
-    if (!better(score)) {
-      if (name && name !== row.name) {
-        await env.DB.prepare('UPDATE scores SET name = ? WHERE id = ?').bind(name, row.id).run();
-      }
+    if (!isBetter(score)) {
       return json({ ok: true, stored: false, best: row.score });
     }
     await env.DB.prepare(
       'UPDATE scores SET score = ?, name = ?, country = ?, region = ?, city = ?, colo = ?, updated_at = ? WHERE id = ?'
     )
+      .bind(score, name || row.name, cf.country || null, cf.region || null, cf.city || null, cf.colo || null, ts, row.id)
+      .run();
+  } else {
+    await env.DB.prepare(
+      `INSERT INTO scores (game, ip, user_id, name, score, country, region, city, colo, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    )
       .bind(
+        game,
+        user ? null : ip,
+        user ? user.id : null,
+        name,
         score,
-        name || row.name,
         cf.country || null,
         cf.region || null,
         cf.city || null,
         cf.colo || null,
         ts,
-        row.id
+        ts
       )
-      .run();
-  } else {
-    await env.DB.prepare(
-      'INSERT INTO scores (game, ip, name, score, country, region, city, colo, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-    )
-      .bind(game, ip, name, score, cf.country || null, cf.region || null, cf.city || null, cf.colo || null, ts, ts)
       .run();
   }
 
-  const cmp = meta.asc ? '<' : '>';
-  const better2 = await env.DB.prepare(`SELECT COUNT(*) AS c FROM scores WHERE game = ? AND score ${cmp} ?`)
-    .bind(game, score)
-    .first();
+  return json({ ok: true, stored: true, best: score, rank: await rankOf(env, game, meta, score), user: user?.login || null });
+};
 
-  return json({ ok: true, stored: true, best: score, rank: Number(better2?.c || 0) + 1 });
+export const onRequestDelete = async (ctx: any) => {
+  const { env, request } = ctx;
+  const user = await currentUser(env, request).catch(() => null);
+  if (!user || !user.admin) return json({ error: '只有管理员能删' }, 403);
+
+  const url = new URL(request.url);
+  const id = Number(url.searchParams.get('id'));
+  if (!Number.isFinite(id) || id <= 0) return json({ error: 'id 不对' }, 400);
+
+  await env.DB.prepare('DELETE FROM scores WHERE id = ?').bind(id).run();
+  return json({ ok: true, deleted: id });
 };
