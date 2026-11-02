@@ -119,6 +119,15 @@
     if (isSolved()) shuffle();
   }
 
+  function startTimer() {
+    clearInterval(timer);
+    timer = setInterval(() => {
+      if (solved) return;
+      seconds++;
+      $time.textContent = seconds;
+    }, 1000);
+  }
+
   function reset() {
     clearInterval(timer);
     values = SOLVED.slice();
@@ -129,11 +138,7 @@
     ov.classList.remove('on');
     shuffle();
     place();
-    timer = setInterval(() => {
-      if (solved) return;
-      seconds++;
-      $time.textContent = seconds;
-    }, 1000);
+    startTimer();
   }
 
   function move(i) {
@@ -178,6 +183,12 @@
 
   document.getElementById('reset').addEventListener('click', reset);
   document.getElementById('again').addEventListener('click', reset);
+
+  // 切走标签页时停表
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) clearInterval(timer);
+    else if (!solved) startTimer();
+  });
 
   build();
   reset();

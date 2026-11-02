@@ -49,7 +49,8 @@
   const $best = document.getElementById('best');
   const ov = document.getElementById('ov'), ovt = document.getElementById('ovt'), btn = document.getElementById('btn');
 
-  let cell = 22, snake, dir, nextDir, food, score, best = +(localStorage.getItem('mfhry_snake_best') || 0), timer = null, speed = 150;
+  // dir / nextDir 一开始就给定，否则开局前按方向键会读到 undefined 直接抛错
+  let cell = 22, snake, dir = { x: 1, y: 0 }, nextDir = { x: 1, y: 0 }, food, score, best = +(localStorage.getItem('mfhry_snake_best') || 0), timer = null, speed = 150;
   $best.textContent = best;
 
   function fit() {
@@ -153,6 +154,16 @@
 
   btn.addEventListener('click', start);
   window.addEventListener('resize', () => { fit(); if (snake) draw(); });
+
+  // 切走标签页时把定时器停掉，否则回来蛇已经撞墙了。
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      clearInterval(timer);
+      timer = null;
+    } else if (!timer && !ov.classList.contains('on') && snake) {
+      timer = setInterval(tick, speed);
+    }
+  });
 
   fit();
   ctx.fillStyle = '#121820';

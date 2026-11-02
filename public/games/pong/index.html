@@ -32,6 +32,7 @@
   <div class="top">
     <h1>乒乓</h1>
     <div class="stat">先到 <b>7</b> 分获胜</div>
+    <div class="stat">胜 <b id="win">0</b> · 负 <b id="lose">0</b></div>
   </div>
   <div class="stage">
     <canvas id="cv"></canvas>
@@ -54,6 +55,11 @@
 
   let scoreP = 0, scoreA = 0, running = false, serveTimer = null, keys = {}, raf = null;
   let speed = 4.4, scale = 1;
+  let winCount = +(localStorage.getItem('mfhry_pong_win') || 0);
+  let loseCount = +(localStorage.getItem('mfhry_pong_lose') || 0);
+  const $win = document.getElementById('win'), $lose = document.getElementById('lose');
+  $win.textContent = winCount;
+  $lose.textContent = loseCount;
 
   function fit() {
     const w = cv.parentElement.clientWidth;
@@ -91,6 +97,15 @@
     cancelAnimationFrame(raf); raf = null;
     if (scoreP >= WIN || scoreA >= WIN) {
       running = false;
+      if (scoreP >= WIN) {
+        winCount++;
+        localStorage.setItem('mfhry_pong_win', winCount);
+      } else {
+        loseCount++;
+        localStorage.setItem('mfhry_pong_lose', loseCount);
+      }
+      $win.textContent = winCount;
+      $lose.textContent = loseCount;
       ovt.textContent = scoreP >= WIN ? '你赢了 ' + scoreP + ':' + scoreA : '输了 ' + scoreP + ':' + scoreA;
       btn.textContent = '再来一局';
       ov.classList.add('on');

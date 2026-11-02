@@ -20,9 +20,68 @@ const playable = games.filter((g) => g.status === 'play').length;
             <h3>{g.title}{g.note && <span class="badge">{g.note}</span>}</h3>
             <p>{g.desc}</p>
             <span class="play">{g.status === 'play' ? '开始玩 →' : '准备中'}</span>
+            <span class="best" data-slug={g.slug} hidden></span>
           </div>
         </a>
       </div>
     ))}
   </div>
+
+  <p class="muted" style="margin-top:14px;font-size:13px">
+    成绩只存在这台设备的浏览器里（localStorage），换设备就重新开始。
+  </p>
+
+  <script>
+    // 每个游戏把自己的最好成绩写在 localStorage 里，这里读出来贴在卡片上。
+    // 键名是历史遗留的，不统一，所以用表映射；没玩过的就不显示。
+    const BEST: Record<string, { keys: string[]; label: string; unit?: string }> = {
+      'gold-miner': { keys: ['goldminer_best'], label: '最高' },
+      '2048': { keys: ['mfhry_2048_best'], label: '最高' },
+      snake: { keys: ['mfhry_snake_best'], label: '最高' },
+      breakout: { keys: ['mfhry_brick_best'], label: '最高' },
+      tetris: { keys: ['mfhry_tetris_best'], label: '最高' },
+      flappy: { keys: ['mfhry_flappy_best'], label: '最高' },
+      invaders: { keys: ['mfhry_invaders_best'], label: '最高' },
+      minesweeper: { keys: ['mfhry_mines_best'], label: '最快', unit: '秒' },
+      memory: { keys: ['mfhry_memory_best'], label: '最少', unit: '步' },
+      puzzle15: { keys: ['mfhry_puzzle_best'], label: '最少', unit: '步' },
+      gomoku: { keys: ['mfhry_gomoku_win'], label: '胜', unit: '场' },
+      pong: { keys: ['mfhry_pong_win'], label: '胜', unit: '场' },
+    };
+
+    const read = (key: string) => {
+      try {
+        const raw = localStorage.getItem(key);
+        const n = raw === null ? NaN : Number(raw);
+        return Number.isFinite(n) && n > 0 ? n : null;
+      } catch {
+        return null;
+      }
+    };
+
+    document.querySelectorAll<HTMLElement>('.best[data-slug]').forEach((el) => {
+      const meta = BEST[el.dataset.slug || ''];
+      if (!meta) return;
+      for (const key of meta.keys) {
+        const value = read(key);
+        if (value === null) continue;
+        el.textContent = `${meta.label} ${value}${meta.unit ?? ''}`;
+        el.hidden = false;
+        break;
+      }
+    });
+  </script>
+
+  <style>
+    .best {
+      display: inline-block;
+      margin-left: 8px;
+      padding: 1px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      color: var(--accent, #7fd1b0);
+      border: 1px solid rgba(127, 209, 176, 0.35);
+      vertical-align: middle;
+    }
+  </style>
 </Base>

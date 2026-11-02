@@ -263,6 +263,12 @@
   document.getElementById('reset').addEventListener('click', reset);
   document.getElementById('again').addEventListener('click', reset);
 
+  // 切走标签页时停表，回来接着计；不然挂后台计时员还在跑。
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) clearInterval(timer);
+    else if (!dead && !won && seconds > 0) startTimer();
+  });
+
   reset();
 })();
 </script>
