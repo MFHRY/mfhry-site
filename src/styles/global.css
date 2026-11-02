@@ -103,49 +103,12 @@ img {
   color: var(--fg);
 }
 
-/* 登录状态：Base 里由 /api/me 填充 */
-.auth {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: 18px;
-  padding: 5px 12px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  font-size: 13px;
-  color: var(--muted);
-  white-space: nowrap;
-}
-
-.auth:hover {
-  color: var(--fg);
-  border-color: var(--accent);
-}
-
-.auth.on {
-  color: var(--fg);
-  background: var(--accent-soft);
-}
-
-.auth img {
-  border-radius: 50%;
-  display: block;
-}
-
 @media (max-width: 860px) {
   .site-header nav {
     gap: 14px;
     font-size: 14px;
   }
 
-  .auth {
-    margin-left: 10px;
-    padding: 4px 9px;
-  }
-
-  .auth span {
-    display: none;
-  }
 }
 
 /* main */
@@ -891,60 +854,6 @@ a.game:hover {
 .ntitle-input { font-size: 16px; font-weight: 600; }
 
 /* 墙上以登录身份发布 */
-.acctbar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: -2px 0 10px;
-  font-size: 13px;
-  color: var(--muted);
-}
-
-.acctbar button {
-  font: inherit;
-  font-size: 12px;
-  padding: 3px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
-}
-
-.acctbar button:hover { color: var(--accent); border-color: var(--accent); }
-
-.nick.acct {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--fg);
-}
-
-.nick.acct img.nav { border-radius: 50%; display: block; }
-
-.nick.acct .ini {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  font-size: 11px;
-  background: var(--accent-soft);
-  color: var(--fg);
-}
-
-.nick.acct .vfy {
-  font-size: 10px;
-  color: var(--accent);
-  border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
-  border-radius: 50%;
-  width: 14px;
-  height: 14px;
-  display: inline-grid;
-  place-items: center;
-  line-height: 1;
-}
-
 /* news gallery + video */
 .ngallery {
   display: grid;

@@ -41,6 +41,11 @@ const playable = games.filter((g) => g.status === 'play').length;
     const BEST: Record<string, { keys: string[]; label: string; unit?: string }> = {
       'gold-miner': { keys: ['goldminer_best'], label: '最高' },
       '2048': { keys: ['mfhry_2048_best'], label: '最高' },
+      whack: { keys: ['mfhry_whack_best'], label: '最高' },
+      jump: { keys: ['mfhry_jump_best'], label: '最高' },
+      maze: { keys: ['mfhry_maze_best'], label: '最快', unit: '秒' },
+      rhythm: { keys: ['mfhry_rhythm_best'], label: '最高' },
+      reversi: { keys: ['mfhry_reversi_win'], label: '胜', unit: '场' },
       snake: { keys: ['mfhry_snake_best'], label: '最高' },
       breakout: { keys: ['mfhry_brick_best'], label: '最高' },
       tetris: { keys: ['mfhry_tetris_best'], label: '最高' },

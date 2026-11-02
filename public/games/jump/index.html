@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>跳一跳 · mfhry.store</title>
+<style>
+  :root{--bg:#0b0e11;--cell:#1c232b;--fg:#eaecef;--muted:#8b939c;--accent:#7fd1b0}
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{background:var(--bg);color:var(--fg);font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+  .wrap{width:min(94vw,520px)}
+  .top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px}
+  h1{font-size:22px}
+  .stats{display:flex;gap:10px}
+  .stat{background:var(--cell);border-radius:10px;padding:6px 14px;text-align:center;min-width:74px}
+  .stat span{display:block;font-size:10px;color:var(--muted);letter-spacing:.08em}
+  .stat b{font-size:17px}
+  .stage{position:relative;background:#151b21;border-radius:14px;overflow:hidden;touch-action:none}
+  canvas{display:block;width:100%;height:auto}
+  .overlay{position:absolute;inset:0;background:rgba(0,0,0,.74);display:none;flex-direction:column;
+    align-items:center;justify-content:center;gap:14px;z-index:5;text-align:center;padding:16px}
+  .overlay.on{display:flex}
+  .overlay h2{font-size:22px}
+  .overlay p{color:var(--muted);font-size:13px;line-height:1.7}
+  button{font:inherit;font-size:14px;padding:9px 22px;border-radius:10px;border:1px solid var(--accent);
+    background:transparent;color:var(--fg);cursor:pointer}
+  button:hover{background:rgba(127,209,176,.12)}
+  .back{display:inline-block;margin-top:14px;font-size:12px;color:var(--muted);text-decoration:none}
+  .back:hover{color:var(--fg)}
+  .hint{margin-top:10px;font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>跳一跳</h1>
+    <div class="stats">
+      <div class="stat"><span>SCORE</span><b id="score">0</b></div>
+      <div class="stat"><span>BEST</span><b id="best">0</b></div>
+    </div>
+  </div>
+  <div class="stage" id="stage">
+    <canvas id="cv" width="520" height="400"></canvas>
+    <div class="overlay on" id="ov">
+      <h2 id="ovt">跳一跳</h2>
+      <p id="ovp">按住蓄力，松手起跳<br>落到下一块平台上就得分，掉下去就结束</p>
+      <button id="btn">开始</button>
+    </div>
+  </div>
+  <div class="hint">按住不放蓄力（鼠标 / 空格），松手跳</div>
+  <a class="back" href="/games/">← 返回小游戏</a>
+</div>
+<script src="/games/score.js"></script>
+<script>
+(() => {
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+  const ov = document.getElementById('ov');
+  const ovt = document.getElementById('ovt');
+  const ovp = document.getElementById('ovp');
+  const btn = document.getElementById('btn');
+  const $score = document.getElementById('score');
+  const $best = document.getElementById('best');
+
+  const W = cv.width, H = cv.height;
+  const GROUND = H - 74;           // 平台顶面
+  const PLAT_H = 14;
+  const MIN_D = 34, MAX_D = 250;
+
+  let best = +(localStorage.getItem('mfhry_jump_best') || 0);
+  $best.textContent = best;
+
+  let plats = [], idx = 0, camX = 0, score = 0;
+  let mode = 'idle';               // idle | charge | fly | dead
+  let power = 0, chargeStart = 0, fly = null, falling = null;
+
+  const rnd = (a, b) => a + Math.random() * (b - a);
+
+  function newPlat(prev) {
+    const gap = rnd(52, idx < 3 ? 110 : 160);
+    const w = rnd(56, 104);
+    const x = prev ? prev.x + prev.w + gap : 40;
+    const y = GROUND - rnd(0, 26);
+    return { x, w, y };
+  }
+
+  function reset() {
+    plats = [{ x: 40, w: 110, y: GROUND }];
+    for (let i = 0; i < 8; i++) plats.push(newPlat(plats[plats.length - 1]));
+    idx = 0; camX = 0; score = 0; power = 0; fly = null; falling = null; mode = 'idle';
+    $score.textContent = '0';
+  }
+
+  function playerPos() {
+    const p = plats[idx];
+    return { x: p.x + p.w / 2, y: p.y };
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    // 背景
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#111820');
+    g.addColorStop(1, '#0b0e11');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.save();
+    ctx.translate(-camX, 0);
+
+    // 平台
+    plats.forEach((p, i) => {
+      ctx.fillStyle = i === idx ? '#3f6f5e' : '#25303a';
+      ctx.beginPath();
+      ctx.roundRect(p.x, p.y, p.w, PLAT_H + (H - p.y), 8);
+      ctx.fill();
+      ctx.fillStyle = i === idx ? 'rgba(127,209,176,.55)' : 'rgba(255,255,255,.08)';
+      ctx.fillRect(p.x, p.y, p.w, 3);
+    });
+
+    // 小人
+    let pos;
+    if (fly) pos = { x: fly.x, y: fly.y, s: 1 + Math.sin(Math.PI * fly.t) * 0.08 };
+    else if (falling) pos = { x: falling.x, y: falling.y, s: 1 };
+    else {
+      const pp = playerPos();
+      pos = { x: pp.x, y: pp.y - 11, s: 1 + (mode === 'charge' ? power * 0.16 : 0) };
+    }
+    const r = 11 * pos.s;
+    ctx.fillStyle = mode === 'dead' ? '#7a4a4a' : '#7fd1b0';
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y - r, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#0b0e11';
+    ctx.beginPath();
+    ctx.arc(pos.x - 4, pos.y - r - 2, 1.8, 0, Math.PI * 2);
+    ctx.arc(pos.x + 4, pos.y - r - 2, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // 蓄力条
+    if (mode === 'charge') {
+      const w = 180;
+      ctx.fillStyle = 'rgba(255,255,255,.12)';
+      ctx.beginPath(); ctx.roundRect(W / 2 - w / 2, 24, w, 10, 5); ctx.fill();
+      ctx.fillStyle = power > 0.85 ? '#e0a35c' : '#7fd1b0';
+      ctx.beginPath(); ctx.roundRect(W / 2 - w / 2, 24, w * power, 10, 5); ctx.fill();
+    }
+  }
+
+  function camera() {
+    const p = plats[idx];
+    const target = p.x - 110;
+    camX += (Math.max(0, target) - camX) * 0.18;
+  }
+
+  function tick(now) {
+    if (mode === 'charge') {
+      power = Math.min(1, (now - chargeStart) / 900);
+    }
+    if (fly) {
+      fly.t += fly.dt;
+      if (fly.t >= 1) {
+        fly.t = 1;
+        land();
+      } else {
+        fly.x = fly.from + (fly.to - fly.from) * fly.t;
+        fly.y = fly.y0 - Math.sin(Math.PI * fly.t) * fly.h;
+      }
+    }
+    if (falling) {
+      falling.vy += 0.9;
+      falling.y += falling.vy;
+      if (falling.y > H + 60) endGame();
+    }
+    camera();
+    draw();
+    requestAnimationFrame(tick);
+  }
+
+  function startCharge() {
+    if (mode !== 'idle' || ov.classList.contains('on')) return;
+    mode = 'charge';
+    power = 0;
+    chargeStart = performance.now();
+  }
+
+  function release() {
+    if (mode !== 'charge') return;
+    const dist = MIN_D + power * (MAX_D - MIN_D);
+    const pp = playerPos();
+    const from = pp.x;
+    const to = from + dist;
+    fly = { from, to, x: from, y: pp.y - 11, y0: pp.y - 11, h: 42 + dist * 0.42, t: 0, dt: 0.03 + dist / 6000 };
+    mode = 'fly';
+    power = 0;
+  }
+
+  function land() {
+    const p = plats[idx + 1];
+    const to = fly.to;
+    const fallFrom = fly.y;
+    if (p && to >= p.x && to <= p.x + p.w) {
+      idx++;
+      score++;
+      $score.textContent = score;
+      fly = null;
+      mode = 'idle';
+      while (plats.length < idx + 9) plats.push(newPlat(plats[plats.length - 1]));
+    } else {
+      fly = null;
+      mode = 'dead';
+      falling = { x: to, y: fallFrom, vy: 2 };
+    }
+  }
+
+  function endGame() {
+    mode = 'idle';
+    falling = null;
+    if (score > best) {
+      best = score;
+      localStorage.setItem('mfhry_jump_best', String(best));
+      $best.textContent = best;
+    }
+    if (score > 0) window.mfhryScore && window.mfhryScore('jump', score);
+    ovt.textContent = '掉下去了';
+    ovp.innerHTML = '跳过了 <b>' + score + '</b> 块平台' + (score >= best ? '，新纪录 🎉' : '，最高 ' + best);
+    btn.textContent = '再来一局';
+    ov.classList.add('on');
+  }
+
+  function start() {
+    reset();
+    ov.classList.remove('on');
+    mode = 'idle';
+  }
+
+  const stage = document.getElementById('stage');
+  stage.addEventListener('pointerdown', (e) => { e.preventDefault(); startCharge(); });
+  stage.addEventListener('pointerup', (e) => { e.preventDefault(); release(); });
+  stage.addEventListener('pointercancel', () => { if (mode === 'charge') release(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') { e.preventDefault(); if (!ov.classList.contains('on')) startCharge(); }
+  });
+  document.addEventListener('keyup', (e) => {
+    if (e.code === 'Space') { e.preventDefault(); release(); }
+  });
+  btn.addEventListener('click', start);
+
+  reset();
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>

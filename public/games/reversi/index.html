@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>黑白棋 · mfhry.store</title>
+<style>
+  :root{--bg:#0b0e11;--cell:#1c232b;--fg:#eaecef;--muted:#8b939c;--accent:#7fd1b0;--board:#1f6b52}
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{background:var(--bg);color:var(--fg);font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+  .wrap{width:min(94vw,470px)}
+  .top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px}
+  h1{font-size:22px}
+  .stats{display:flex;gap:10px}
+  .stat{background:var(--cell);border-radius:10px;padding:6px 14px;text-align:center;min-width:64px}
+  .stat span{display:block;font-size:10px;color:var(--muted);letter-spacing:.08em}
+  .stat b{font-size:17px}
+  .board{position:relative;display:grid;grid-template-columns:repeat(8,1fr);gap:3px;
+    background:#0e2b22;border-radius:12px;padding:6px;aspect-ratio:1}
+  .sq{position:relative;background:var(--board);border-radius:4px;display:flex;align-items:center;
+    justify-content:center;cursor:pointer}
+  .sq.dim{filter:brightness(.94)}
+  .disc{width:82%;height:82%;border-radius:50%;transition:transform .12s ease}
+  .disc.b{background:radial-gradient(circle at 34% 30%,#4a5560,#0b0e11);box-shadow:0 1px 3px rgba(0,0,0,.5)}
+  .disc.w{background:radial-gradient(circle at 34% 30%,#ffffff,#c3cbd3);box-shadow:0 1px 3px rgba(0,0,0,.5)}
+  .dot{width:26%;height:26%;border-radius:50%;background:rgba(255,255,255,.42)}
+  .sq.last{outline:2px solid rgba(127,209,176,.9);outline-offset:-2px}
+  .status{margin-top:12px;display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--muted)}
+  button{font:inherit;font-size:13px;padding:7px 16px;border-radius:10px;border:1px solid var(--accent);
+    background:transparent;color:var(--fg);cursor:pointer}
+  button:hover{background:rgba(127,209,176,.12)}
+  .back{display:inline-block;margin-top:14px;font-size:12px;color:var(--muted);text-decoration:none}
+  .back:hover{color:var(--fg)}
+  .banner{position:absolute;inset:6px;background:rgba(0,0,0,.78);border-radius:10px;display:none;
+    flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:5;text-align:center;padding:16px}
+  .banner.on{display:flex}
+  .banner h2{font-size:20px}
+  .banner p{font-size:13px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>黑白棋</h1>
+    <div class="stats">
+      <div class="stat"><span>你 ●</span><b id="sb">2</b></div>
+      <div class="stat"><span>电脑 ○</span><b id="sw">2</b></div>
+      <div class="stat"><span>胜场</span><b id="win">0</b></div>
+    </div>
+  </div>
+  <div class="board" id="board">
+    <div class="banner" id="banner"><h2 id="bt">黑白棋</h2><p id="bp"></p><button id="again">再来一局</button></div>
+  </div>
+  <div class="status">
+    <span id="msg">你先手（黑棋）</span>
+    <button id="reset">重新开始</button>
+  </div>
+  <a class="back" href="/games/">← 返回小游戏</a>
+</div>
+<script>
+(() => {
+  const N = 8;
+  const B = 1, W = 2;
+  const boardEl = document.getElementById('board');
+  const banner = document.getElementById('banner');
+  const bt = document.getElementById('bt'), bp = document.getElementById('bp');
+  const msg = document.getElementById('msg');
+  const $sb = document.getElementById('sb'), $sw = document.getElementById('sw'), $win = document.getElementById('win');
+  let wins = +(localStorage.getItem('mfhry_reversi_win') || 0);
+  $win.textContent = wins;
+
+  let grid = [], turn = B, busy = false, last = -1;
+  const sq = [];
+
+  for (let i = 0; i < N * N; i++) {
+    const d = document.createElement('div');
+    d.className = 'sq';
+    d.dataset.i = i;
+    d.addEventListener('click', () => play(i));
+    boardEl.appendChild(d);
+    sq.push(d);
+  }
+
+  const opp = (c) => (c === B ? W : B);
+
+  function fresh() {
+    grid = new Array(N * N).fill(0);
+    const a = (N / 2 - 1) * N + (N / 2 - 1);
+    grid[a] = W; grid[a + 1] = B; grid[a + N] = B; grid[a + N + 1] = W;
+    turn = B; busy = false; last = -1;
+    banner.classList.remove('on');
+    msg.textContent = '你先手（黑棋）';
+    draw();
+  }
+
+  function flips(g, i, color) {
+    const x = i % N, y = Math.floor(i / N);
+    if (g[i]) return [];
+    const out = [];
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (!dx && !dy) continue;
+        let cx = x + dx, cy = y + dy;
+        const line = [];
+        while (cx >= 0 && cx < N && cy >= 0 && cy < N && g[cy * N + cx] === opp(color)) {
+          line.push(cy * N + cx);
+          cx += dx; cy += dy;
+        }
+        if (line.length && cx >= 0 && cx < N && cy >= 0 && cy < N && g[cy * N + cx] === color) {
+          out.push(...line);
+        }
+      }
+    }
+    return out;
+  }
+
+  function moves(g, color) {
+    const list = [];
+    for (let i = 0; i < N * N; i++) if (flips(g, i, color).length) list.push(i);
+    return list;
+  }
+
+  function counts() {
+    let b = 0, w = 0;
+    for (const v of grid) { if (v === B) b++; else if (v === W) w++; }
+    return { b, w };
+  }
+
+  function draw() {
+    const valid = (!busy && turn === B) ? moves(grid, B) : [];
+    for (let i = 0; i < N * N; i++) {
+      const d = sq[i];
+      d.innerHTML = '';
+      d.classList.toggle('last', i === last);
+      const v = grid[i];
+      if (v) {
+        const disc = document.createElement('div');
+        disc.className = 'disc ' + (v === B ? 'b' : 'w');
+        d.appendChild(disc);
+      } else if (valid.includes(i)) {
+        const dot = document.createElement('div');
+        dot.className = 'dot';
+        d.appendChild(dot);
+      }
+    }
+    const c = counts();
+    $sb.textContent = c.b;
+    $sw.textContent = c.w;
+  }
+
+  function place(i, color) {
+    const f = flips(grid, i, color);
+    grid[i] = color;
+    for (const j of f) grid[j] = color;
+    last = i;
+  }
+
+  function play(i) {
+    if (busy || turn !== B) return;
+    if (!flips(grid, i, B).length) return;
+    place(i, B);
+    turn = W;
+    draw();
+    if (!finishIfDone()) {
+      busy = true;
+      msg.textContent = '电脑思考中…';
+      setTimeout(aiMove, 260);
+    }
+  }
+
+  function aiMove() {
+    const list = moves(grid, W);
+    if (!list.length) {
+      // 没得下就过
+      if (!moves(grid, B).length) return finish();
+      turn = B; busy = false;
+      msg.textContent = '电脑没棋可下，轮到你了';
+      draw();
+      return;
+    }
+    // 简单启发：角 > 边 > 翻得多，再带点随机
+    const weight = (i) => {
+      const x = i % N, y = Math.floor(i / N);
+      const corner = (x === 0 || x === N - 1) && (y === 0 || y === N - 1);
+      const edge = x === 0 || x === N - 1 || y === 0 || y === N - 1;
+      return (corner ? 60 : edge ? 8 : 0) + flips(grid, i, W).length * 2 + Math.random() * 3;
+    };
+    let best = list[0], bestScore = -Infinity;
+    for (const i of list) {
+      const s = weight(i);
+      if (s > bestScore) { bestScore = s; best = i; }
+    }
+    place(best, W);
+    turn = B;
+    busy = false;
+    draw();
+    if (!finishIfDone()) {
+      const my = moves(grid, B);
+      msg.textContent = my.length ? '轮到你了' : '你没棋可下';
+      if (!my.length) {
+        busy = true;
+        setTimeout(() => { turn = W; aiMove(); }, 400);
+      }
+    }
+  }
+
+  function finishIfDone() {
+    if (moves(grid, B).length || moves(grid, W).length) return false;
+    finish();
+    return true;
+  }
+
+  function finish() {
+    const c = counts();
+    busy = true;
+    const win = c.b > c.w, drawGame = c.b === c.w;
+    if (win) {
+      wins++;
+      localStorage.setItem('mfhry_reversi_win', String(wins));
+      $win.textContent = wins;
+    }
+    bt.textContent = win ? '你赢了 🎉' : drawGame ? '平局' : '电脑赢了';
+    bp.innerHTML = '黑 ' + c.b + ' : ' + c.w + ' 白';
+    banner.classList.add('on');
+    msg.textContent = win ? '再来一局？' : '别急，角不好抢';
+  }
+
+  document.getElementById('reset').addEventListener('click', fresh);
+  document.getElementById('again').addEventListener('click', fresh);
+  fresh();
+})();
+</script>
+</body>
+</html>

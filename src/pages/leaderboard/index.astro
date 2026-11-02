@@ -5,7 +5,6 @@ import Base from '../../layouts/Base.astro';
   <h1>小游戏排行榜</h1>
   <p class="muted">
     每个 IP 只留一条最好成绩，右边是你的名次。地区由 Cloudflare 边缘节点判断，可能不太准。
-    <span id="loginHint">登录后显示 GitHub 头像和用户名，而不是 IP。</span>
   </p>
 
   <div class="tabbar">
@@ -39,22 +38,12 @@ import Base from '../../layouts/Base.astro';
 </Base>
 
 <script>
-  type GhUser = {
-    provider: string;
-    login: string;
-    name: string | null;
-    avatar: string | null;
-    display: string;
-    verified?: boolean;
-  };
-
   type Entry = {
     id: number;
     rank: number;
     name: string | null;
     score: number;
     ip: string;
-    user: GhUser | null;
     flag: string;
     country: string | null;
     countryName: string;
@@ -71,6 +60,10 @@ import Base from '../../layouts/Base.astro';
     ['flappy', '像素鸟'],
     ['invaders', '太空侵略者'],
     ['breakout', '打砖块'],
+    ['whack', '打地鼠'],
+    ['jump', '跳一跳'],
+    ['maze', '走迷宫'],
+    ['rhythm', '音游'],
     ['gold-miner', '黄金矿工'],
     ['minesweeper', '扫雷'],
     ['memory', '记忆翻牌'],
@@ -126,30 +119,14 @@ import Base from '../../layouts/Base.astro';
     }
   }
 
-  function rowHtml(e: Entry, unit: string, mine: boolean, admin = false) {
+  function rowHtml(e: Entry, unit: string, mine: boolean) {
     const where = [e.flag, e.countryName, e.regionName].filter(Boolean).join(' ');
     const medal = e.rank === 1 ? '🥇' : e.rank === 2 ? '🥈' : e.rank === 3 ? '🥉' : String(e.rank);
-    const who = e.user
-      ? e.user.provider === 'github'
-        ? `<span class="ghwho">${
-            e.user.avatar
-              ? `<img class="av" src="${esc(e.user.avatar)}" alt="" width="18" height="18" loading="lazy" />`
-              : ''
-          }<a class="gh" href="https://github.com/${esc(e.user.login)}" target="_blank" rel="noopener">${esc(
-            e.user.login
-          )}</a></span>`
-        : `<span class="ghwho"><span class="ini">${esc(
-            (e.user.display || e.user.login).slice(0, 1).toUpperCase()
-          )}</span><span class="em">${esc(e.user.display || e.user.login)}</span>${
-            e.user.verified ? '<span class="vfy" title="邮箱已验证">✓</span>' : ''
-          }</span>`
-      : `${esc(e.ip)}${e.name ? ` <em class="nm">${esc(e.name)}</em>` : ''}`;
+    const who = `${esc(e.ip)}${e.name ? ` <em class="nm">${esc(e.name)}</em>` : ''}`;
     return `<tr class="${mine ? 'mine' : ''}${e.rank <= 3 ? ' top' : ''}">
       <td class="rank">${medal}</td>
       <td class="where" title="${esc(where)}">${esc(where)}${mine ? ' <b class="you">你</b>' : ''}</td>
-      <td class="ipcol">${who}${
-        admin ? ` <button class="del" data-id="${e.id}" title="删掉这条">✕</button>` : ''
-      }</td>
+      <td class="ipcol">${who}</td>
       <td class="score">${e.score}<i>${esc(unit || '')}</i></td>
       <td class="when">${esc(when(e.at))}</td>
     </tr>`;
@@ -177,23 +154,20 @@ import Base from '../../layouts/Base.astro';
   function render(data: any) {
     const entries: Entry[] = data.entries || [];
     const unit = data.unit || '';
-    const myLogin = data.user?.login || '';
-    const admin = !!data.user?.admin;
 
-    // 登录了就按账号认自己，没登录才按（打码后的）IP 认
-    const isMine = (e: Entry) =>
-      myLogin ? e.user?.login === myLogin : !!data.me?.ip && e.ip === data.me.ip;
+    // 按（打码后的）IP 认自己
+    const isMine = (e: Entry) => !!data.me?.ip && e.ip === data.me.ip;
     const mineInList = entries.some(isMine);
 
     let html = '';
     if (!entries.length) {
       html = '<tr><td colspan="5" class="empty">还没有人上榜，去玩一局吧</td></tr>';
     } else {
-      html = entries.map((e) => rowHtml(e, unit, isMine(e), admin)).join('');
+      html = entries.map((e) => rowHtml(e, unit, isMine(e))).join('');
       // 名次掉出前 20 时，把你自己那行也贴出来，不然看着就像「没上榜」
       if (data.me && !mineInList) {
         html += '<tr class="gap"><td colspan="5">⋯ 你的名次在前 20 之外 ⋯</td></tr>';
-        html += rowHtml(data.me, unit, true, admin);
+        html += rowHtml(data.me, unit, true);
       }
     }
     $rows.innerHTML = html;
@@ -201,38 +175,14 @@ import Base from '../../layouts/Base.astro';
     if (data.me) {
       $me.hidden = false;
       const outside = mineInList ? '' : '（不在前 20，已单列在下面）';
-      const who = myLogin ? `以 <b>${esc(myLogin)}</b> 的身份` : '这个 IP ';
-      $me.innerHTML = `${who}在 <b>${esc(data.label)}</b> 排第 <b>${data.me.rank}</b> 名，成绩 ${
+      $me.innerHTML = `这个 IP 在 <b>${esc(data.label)}</b> 排第 <b>${data.me.rank}</b> 名，成绩 ${
         data.me.score
       }${esc(unit)}，共 ${data.total} 人上榜${outside}`;
     } else if (data.total) {
       $me.hidden = false;
-      $me.textContent = `共 ${data.total} 人上榜，${myLogin ? '你' : '这个 IP'} 还没交过成绩`;
+      $me.textContent = `共 ${data.total} 人上榜，这个 IP 还没交过成绩`;
     } else {
       $me.hidden = true;
-    }
-
-    // 没登录就给个入口
-    const $hint = document.getElementById('loginHint');
-    if ($hint) {
-      if (myLogin) {
-        $hint.innerHTML = `已以 <b>${esc(myLogin)}</b> 登录 · <a href="/login/">账号</a>`;
-      } else {
-        $hint.innerHTML =
-          '<a href="/login/?next=' + encodeURIComponent('/leaderboard/#' + current) + '">用 GitHub 登录</a>，榜上就显示头像和用户名，而不是 IP。';
-      }
-    }
-
-    // 管理员出现删按钮
-    if (admin) {
-      $rows.querySelectorAll<HTMLButtonElement>('.del').forEach((b) => {
-        b.onclick = async (ev) => {
-          ev.preventDefault();
-          if (!confirm('删掉这一条？')) return;
-          await fetch('/api/score?id=' + b.dataset.id, { method: 'DELETE' });
-          load();
-        };
-      });
     }
   }
 

@@ -1,0 +1,3 @@
+# 登录功能已下线，老链接别 404
+/login/*    /games/   302
+/login      /games/   302

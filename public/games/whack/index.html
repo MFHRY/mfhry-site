@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>打地鼠 · mfhry.store</title>
+<style>
+  :root{--bg:#0b0e11;--cell:#1c232b;--fg:#eaecef;--muted:#8b939c;--accent:#7fd1b0;--hole:#12181e}
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{background:var(--bg);color:var(--fg);font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+  .wrap{width:min(94vw,460px)}
+  .top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px}
+  h1{font-size:22px}
+  .stats{display:flex;gap:10px}
+  .stat{background:var(--cell);border-radius:10px;padding:6px 14px;text-align:center;min-width:74px}
+  .stat span{display:block;font-size:10px;color:var(--muted);letter-spacing:.08em}
+  .stat b{font-size:17px}
+  .field{position:relative;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;
+    background:#151b21;border-radius:14px;padding:10px;aspect-ratio:1}
+  .hole{position:relative;background:var(--hole);border-radius:50%/38%;overflow:hidden;
+    box-shadow:inset 0 8px 16px rgba(0,0,0,.6);cursor:pointer}
+  .hole .mole{position:absolute;left:50%;bottom:-100%;width:66%;height:80%;transform:translateX(-50%);
+    border-radius:50% 50% 44% 44%;background:radial-gradient(circle at 50% 32%,#b8865f,#8a5f3c);
+    transition:bottom .12s ease;display:flex;align-items:center;justify-content:center;font-size:22px}
+  .hole .mole.up{bottom:8%}
+  .hole.hit .mole{background:radial-gradient(circle at 50% 32%,#ffd9a0,#c88b4f)}
+  .hole:active{filter:brightness(1.15)}
+  .overlay{position:absolute;inset:0;background:rgba(0,0,0,.74);border-radius:14px;display:none;
+    flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:5;text-align:center;padding:16px}
+  .overlay.on{display:flex}
+  .overlay h2{font-size:22px}
+  .overlay p{color:var(--muted);font-size:13px;line-height:1.6}
+  button{font:inherit;font-size:14px;padding:9px 22px;border-radius:10px;border:1px solid var(--accent);
+    background:transparent;color:var(--fg);cursor:pointer}
+  button:hover{background:rgba(127,209,176,.12)}
+  .back{display:inline-block;margin-top:14px;font-size:12px;color:var(--muted);text-decoration:none}
+  .back:hover{color:var(--fg)}
+  .hint{margin-top:10px;font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>打地鼠</h1>
+    <div class="stats">
+      <div class="stat"><span>SCORE</span><b id="score">0</b></div>
+      <div class="stat"><span>TIME</span><b id="time">60</b></div>
+      <div class="stat"><span>BEST</span><b id="best">0</b></div>
+    </div>
+  </div>
+  <div class="field" id="field">
+    <div class="overlay" id="ov">
+      <h2 id="ovt">打地鼠</h2>
+      <p id="ovp">60 秒内敲到的地鼠越多越好<br>敲空一次扣 5 分</p>
+      <button id="btn">开始</button>
+    </div>
+  </div>
+  <div class="hint">点 / 摸地鼠洞；敲空扣 5 分</div>
+  <a class="back" href="/games/">← 返回小游戏</a>
+</div>
+<script src="/games/score.js"></script>
+<script>
+(() => {
+  const HOLES = 9, TOTAL = 60 * 1000, HIT = 10, MISS = 5;
+  const field = document.getElementById('field');
+  const ov = document.getElementById('ov');
+  const ovt = document.getElementById('ovt');
+  const ovp = document.getElementById('ovp');
+  const btn = document.getElementById('btn');
+  const $score = document.getElementById('score');
+  const $time = document.getElementById('time');
+  const $best = document.getElementById('best');
+
+  let score = 0, best = +(localStorage.getItem('mfhry_whack_best') || 0);
+  let running = false, active = -1, timer = 0, tick = 0, upAt = 0, upFor = 0, nextAt = 0;
+  const holes = [];
+  $best.textContent = best;
+
+  for (let i = 0; i < HOLES; i++) {
+    const hole = document.createElement('div');
+    hole.className = 'hole';
+    hole.innerHTML = '<div class="mole">🐹</div>';
+    hole.addEventListener('pointerdown', () => whack(i));
+    field.appendChild(hole);
+    holes.push(hole);
+  }
+
+  function moveUp() {
+    const i = Math.floor(Math.random() * HOLES);
+    if (i === active) return;
+    down();
+    active = i;
+    holes[i].querySelector('.mole').classList.add('up');
+    const t = Math.max(420, 1000 - (TOTAL - (performance.now() - startAt)) * 0.01);
+    upFor = t;
+    upAt = performance.now();
+  }
+
+  function down() {
+    if (active < 0) return;
+    const el = holes[active].querySelector('.mole');
+    el.classList.remove('up');
+    holes[active].classList.remove('hit');
+    active = -1;
+  }
+
+  function whack(i) {
+    if (!running) return;
+    if (i === active && performance.now() - upAt < upFor) {
+      score += HIT;
+      const h = holes[i];
+      h.classList.add('hit');
+      setTimeout(() => h.classList.remove('hit'), 120);
+      $score.textContent = score;
+      down();
+      nextAt = performance.now() + Math.max(180, 420 - score * 2);
+    } else {
+      score = Math.max(0, score - MISS);
+      $score.textContent = score;
+    }
+  }
+
+  let startAt = 0;
+
+  function loop(now) {
+    if (!running) return;
+    const left = Math.max(0, TOTAL - (now - startAt));
+    $time.textContent = Math.ceil(left / 1000);
+    if (left <= 0) return over();
+    if (active >= 0 && now - upAt > upFor) down();
+    if (active < 0 && now >= nextAt) { moveUp(); nextAt = Infinity; }
+    requestAnimationFrame(loop);
+  }
+
+  function start() {
+    score = 0; $score.textContent = '0';
+    startAt = performance.now();
+    running = true;
+    ov.classList.remove('on');
+    nextAt = startAt + 300;
+    requestAnimationFrame(loop);
+  }
+
+  function over() {
+    running = false;
+    down();
+    if (score > best) {
+      best = score;
+      localStorage.setItem('mfhry_whack_best', String(best));
+      $best.textContent = best;
+    }
+    if (score > 0) window.mfhryScore && window.mfhryScore('whack', score);
+    ovt.textContent = '时间到！';
+    ovp.innerHTML = '这局敲了 <b>' + score + '</b> 分' + (score >= best ? '，新纪录 🎉' : '，最高 ' + best);
+    btn.textContent = '再来一局';
+    ov.classList.add('on');
+  }
+
+  btn.addEventListener('click', start);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === ' ' && !running) { e.preventDefault(); start(); }
+  });
+})();
+</script>
+</body>
+</html>

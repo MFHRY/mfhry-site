@@ -36,22 +36,30 @@
     "status": "play"
   },
   {
-    "slug": "is7",
-    "title": "合成 IS-7",
-    "desc": "合并玩法：小坦克两两相撞合成更大的，一路合到 IS-7 重坦。需要联网加载。",
-    "tag": "休闲",
-    "emoji": "🪖",
-    "href": "/games/is7/",
-    "status": "play",
-    "note": "在线加载"
+    "slug": "rhythm",
+    "title": "音游",
+    "desc": "下落式音游：3 首内置 chiptune 现场合成，也能导入自己的音频自动打谱；键位、轨道数、难度都能改。",
+    "tag": "音乐",
+    "emoji": "🎵",
+    "href": "/games/rhythm/",
+    "status": "play"
   },
   {
-    "slug": "fx-sim",
-    "title": "FX 梭哈模拟器",
-    "desc": "多品种杠杆外汇模拟：选货币对、看 K 线、开多开空，体验保证金和爆仓的速度。",
-    "tag": "模拟",
-    "emoji": "💱",
-    "href": "/games/fx-sim/",
+    "slug": "whack",
+    "title": "打地鼠",
+    "desc": "60 秒内敲地鼠，敲中 +10、敲空扣 5，地鼠越冒越快。",
+    "tag": "休闲",
+    "emoji": "🐹",
+    "href": "/games/whack/",
+    "status": "play"
+  },
+  {
+    "slug": "jump",
+    "title": "跳一跳",
+    "desc": "按住蓄力、松手起跳，落点越准跳得越远；跳空就掉下去。",
+    "tag": "街机",
+    "emoji": "🐤",
+    "href": "/games/jump/",
     "status": "play"
   },
   {
@@ -64,12 +72,48 @@
     "status": "play"
   },
   {
+    "slug": "maze",
+    "title": "走迷宫",
+    "desc": "随机生成的三关迷宫，方向键或滑动走到底，总用时越短越好。",
+    "tag": "益智",
+    "emoji": "🧭",
+    "href": "/games/maze/",
+    "status": "play"
+  },
+  {
+    "slug": "reversi",
+    "title": "黑白棋",
+    "desc": "8×8 翻转棋，和会抢角的电脑对弈，能赢一把不容易。",
+    "tag": "棋类",
+    "emoji": "⚪",
+    "href": "/games/reversi/",
+    "status": "play"
+  },
+  {
     "slug": "minesweeper",
     "title": "扫雷",
     "desc": "9×9 经典扫雷：左键翻开、右键插旗，手机长按插旗，计时比速度。",
     "tag": "益智",
     "emoji": "💣",
     "href": "/games/minesweeper/",
+    "status": "play"
+  },
+  {
+    "slug": "memory",
+    "title": "记忆翻牌",
+    "desc": "4×4 翻牌配对，记住位置，用最少的步数翻完。",
+    "tag": "益智",
+    "emoji": "🃏",
+    "href": "/games/memory/",
+    "status": "play"
+  },
+  {
+    "slug": "puzzle15",
+    "title": "数字华容道",
+    "desc": "4×4 滑块拼图，把 1–15 按顺序推回原位，计步计时。",
+    "tag": "益智",
+    "emoji": "🔢",
+    "href": "/games/puzzle15/",
     "status": "play"
   },
   {
@@ -109,21 +153,22 @@
     "status": "play"
   },
   {
-    "slug": "memory",
-    "title": "记忆翻牌",
-    "desc": "4×4 翻牌配对，记住位置，用最少的步数翻完。",
-    "tag": "益智",
-    "emoji": "🃏",
-    "href": "/games/memory/",
-    "status": "play"
+    "slug": "is7",
+    "title": "合成 IS-7",
+    "desc": "合并玩法：小坦克两两相撞合成更大的，一路合到 IS-7 重坦。需要联网加载。",
+    "tag": "休闲",
+    "emoji": "🪖",
+    "href": "/games/is7/",
+    "status": "play",
+    "note": "在线加载"
   },
   {
-    "slug": "puzzle15",
-    "title": "数字华容道",
-    "desc": "4×4 滑块拼图，把 1–15 按顺序推回原位，计步计时。",
-    "tag": "益智",
-    "emoji": "🔢",
-    "href": "/games/puzzle15/",
+    "slug": "fx-sim",
+    "title": "FX 梭哈模拟器",
+    "desc": "多品种杠杆外汇模拟：选货币对、看 K 线、开多开空，体验保证金和爆仓的速度。",
+    "tag": "模拟",
+    "emoji": "💱",
+    "href": "/games/fx-sim/",
     "status": "play"
   },
   {

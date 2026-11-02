@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>走迷宫 · mfhry.store</title>
+<style>
+  :root{--bg:#0b0e11;--cell:#1c232b;--fg:#eaecef;--muted:#8b939c;--accent:#7fd1b0}
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{background:var(--bg);color:var(--fg);font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+  .wrap{width:min(94vw,470px)}
+  .top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px}
+  h1{font-size:22px}
+  .stats{display:flex;gap:10px}
+  .stat{background:var(--cell);border-radius:10px;padding:6px 14px;text-align:center;min-width:64px}
+  .stat span{display:block;font-size:10px;color:var(--muted);letter-spacing:.08em}
+  .stat b{font-size:17px}
+  .stage{position:relative;background:#151b21;border-radius:14px;overflow:hidden;touch-action:none}
+  canvas{display:block;width:100%;height:auto}
+  .overlay{position:absolute;inset:0;background:rgba(0,0,0,.76);display:none;flex-direction:column;
+    align-items:center;justify-content:center;gap:12px;z-index:5;text-align:center;padding:16px}
+  .overlay.on{display:flex}
+  .overlay h2{font-size:21px}
+  .overlay p{color:var(--muted);font-size:13px;line-height:1.7}
+  button{font:inherit;font-size:14px;padding:9px 22px;border-radius:10px;border:1px solid var(--accent);
+    background:transparent;color:var(--fg);cursor:pointer}
+  button:hover{background:rgba(127,209,176,.12)}
+  .back{display:inline-block;margin-top:14px;font-size:12px;color:var(--muted);text-decoration:none}
+  .back:hover{color:var(--fg)}
+  .hint{margin-top:10px;font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>走迷宫</h1>
+    <div class="stats">
+      <div class="stat"><span>关卡</span><b id="lv">1/3</b></div>
+      <div class="stat"><span>TIME</span><b id="time">0.0</b></div>
+      <div class="stat"><span>BEST</span><b id="best">—</b></div>
+    </div>
+  </div>
+  <div class="stage" id="stage">
+    <canvas id="cv" width="460" height="460"></canvas>
+    <div class="overlay on" id="ov">
+      <h2 id="ovt">走迷宫</h2>
+      <p id="ovp">三关，越往后越大<br>方向键 / WASD / 手指滑动，走到右下角出口</p>
+      <button id="btn">开始</button>
+    </div>
+  </div>
+  <div class="hint">计时从第一步开始，通关总时间越短越好</div>
+  <a class="back" href="/games/">← 返回小游戏</a>
+</div>
+<script src="/games/score.js"></script>
+<script>
+(() => {
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+  const ov = document.getElementById('ov');
+  const ovt = document.getElementById('ovt');
+  const ovp = document.getElementById('ovp');
+  const btn = document.getElementById('btn');
+  const $lv = document.getElementById('lv');
+  const $time = document.getElementById('time');
+  const $best = document.getElementById('best');
+
+  const SIZES = [9, 13, 17];
+  const W = cv.width, H = cv.height;
+
+  let best = +(localStorage.getItem('mfhry_maze_best') || 0);
+  if (best > 0) $best.textContent = best.toFixed(1);
+
+  let level = 0, grid = [], cell = 20, pad = 0, px = 0, py = 0, cols = 0, rows = 0;
+  let running = false, startedAt = 0, elapsed = 0, total = 0, finished = false;
+
+  function buildMaze(n) {
+    cols = n; rows = n;
+    cell = Math.floor((Math.min(W, H) - 20) / n);
+    pad = Math.floor((W - cell * n) / 2);
+    const N = cols * rows;
+    const seen = new Uint8Array(N);
+    const openR = new Uint8Array(N); // 通向右边
+    const openB = new Uint8Array(N); // 通向下边
+    const stack = [0];
+    seen[0] = 1;
+    const idx = (x, y) => y * cols + x;
+    while (stack.length) {
+      const cur = stack[stack.length - 1];
+      const x = cur % cols, y = Math.floor(cur / cols);
+      const nb = [];
+      if (y > 0 && !seen[idx(x, y - 1)]) nb.push(['u', idx(x, y - 1)]);
+      if (y < rows - 1 && !seen[idx(x, y + 1)]) nb.push(['d', idx(x, y + 1)]);
+      if (x > 0 && !seen[idx(x - 1, y)]) nb.push(['l', idx(x - 1, y)]);
+      if (x < cols - 1 && !seen[idx(x + 1, y)]) nb.push(['r', idx(x + 1, y)]);
+      if (!nb.length) { stack.pop(); continue; }
+      const [dir, to] = nb[Math.floor(Math.random() * nb.length)];
+      if (dir === 'r') openR[cur] = 1;
+      if (dir === 'l') openR[to] = 1;
+      if (dir === 'd') openB[cur] = 1;
+      if (dir === 'u') openB[to] = 1;
+      seen[to] = 1;
+      stack.push(to);
+    }
+    grid = { openR, openB };
+    px = 0; py = 0;
+  }
+
+  function canMove(dx, dy) {
+    const i = py * cols + px;
+    if (dx === 1) return px < cols - 1 && grid.openR[i];
+    if (dx === -1) return px > 0 && grid.openR[py * cols + px - 1];
+    if (dy === 1) return py < rows - 1 && grid.openB[i];
+    if (dy === -1) return py > 0 && grid.openB[(py - 1) * cols + px];
+    return false;
+  }
+
+  function move(dx, dy) {
+    if (!running || finished) return;
+    if (!startedAt) startedAt = performance.now();
+    if (!canMove(dx, dy)) return;
+    px += dx; py += dy;
+    draw();
+    if (px === cols - 1 && py === rows - 1) nextLevel();
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#101820';
+    ctx.fillRect(0, 0, W, H);
+    const wall = '#2b3a46', line = 2;
+    ctx.strokeStyle = wall;
+    ctx.lineWidth = line;
+    ctx.lineCap = 'round';
+    const X = (x) => pad + x * cell;
+    const Y = (y) => pad + y * cell;
+    // 外框
+    ctx.strokeRect(pad, pad, cell * cols, cell * rows);
+    for (let y = 0; y < rows; y++) {
+      for (let x = 0; x < cols; x++) {
+        const i = y * cols + x;
+        if (x < cols - 1 && !grid.openR[i]) {
+          ctx.beginPath(); ctx.moveTo(X(x + 1), Y(y)); ctx.lineTo(X(x + 1), Y(y + 1)); ctx.stroke();
+        }
+        if (y < rows - 1 && !grid.openB[i]) {
+          ctx.beginPath(); ctx.moveTo(X(x), Y(y + 1)); ctx.lineTo(X(x + 1), Y(y + 1)); ctx.stroke();
+        }
+      }
+    }
+    // 出口
+    ctx.fillStyle = 'rgba(127,209,176,.85)';
+    ctx.fillRect(X(cols - 1) + cell * 0.18, Y(rows - 1) + cell * 0.18, cell * 0.64, cell * 0.64);
+    // 小人
+    ctx.fillStyle = '#7fd1b0';
+    ctx.beginPath();
+    ctx.arc(X(px) + cell / 2, Y(py) + cell / 2, cell * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    // 起点
+    ctx.strokeStyle = 'rgba(127,209,176,.35)';
+    ctx.strokeRect(X(0) + 2, Y(0) + 2, cell - 4, cell - 4);
+  }
+
+  function nextLevel() {
+    elapsed = (performance.now() - startedAt) / 1000;
+    total += elapsed;
+    startedAt = 0;
+    if (level + 1 >= SIZES.length) return finish();
+    level++;
+    $lv.textContent = level + 1 + '/' + SIZES.length;
+    buildMaze(SIZES[level]);
+    draw();
+  }
+
+  function finish() {
+    finished = true;
+    running = false;
+    const secs = Math.round(total * 10) / 10;
+    const prevBest = best;
+    if (!best || secs < best) {
+      best = secs;
+      localStorage.setItem('mfhry_maze_best', String(best));
+      $best.textContent = best.toFixed(1);
+    }
+    window.mfhryScore && window.mfhryScore('maze', Math.max(1, Math.round(secs)));
+    ovt.textContent = '通关！';
+    ovp.innerHTML = '总用时 <b>' + secs.toFixed(1) + '</b> 秒' + (secs < prevBest || !prevBest ? '，新纪录 🎉' : '，最快 ' + prevBest.toFixed(1) + ' 秒');
+    btn.textContent = '再来一次';
+    ov.classList.add('on');
+  }
+
+  function start() {
+    level = 0; total = 0; finished = false; running = true; startedAt = 0;
+    $lv.textContent = '1/' + SIZES.length;
+    $time.textContent = '0.0';
+    ov.classList.remove('on');
+    buildMaze(SIZES[0]);
+    draw();
+  }
+
+  setInterval(() => {
+    if (startedAt) {
+      const secs = total + (performance.now() - startedAt) / 1000;
+      $time.textContent = secs.toFixed(1);
+    }
+  }, 100);
+
+  document.addEventListener('keydown', (e) => {
+    const k = e.key.toLowerCase();
+    if (k === 'arrowleft' || k === 'a') { e.preventDefault(); move(-1, 0); }
+    else if (k === 'arrowright' || k === 'd') { e.preventDefault(); move(1, 0); }
+    else if (k === 'arrowup' || k === 'w') { e.preventDefault(); move(0, -1); }
+    else if (k === 'arrowdown' || k === 's') { e.preventDefault(); move(0, 1); }
+  });
+
+  const stage = document.getElementById('stage');
+  let sx = 0, sy = 0;
+  stage.addEventListener('pointerdown', (e) => { sx = e.clientX; sy = e.clientY; });
+  stage.addEventListener('pointerup', (e) => {
+    const dx = e.clientX - sx, dy = e.clientY - sy;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 18) return;
+    if (Math.abs(dx) > Math.abs(dy)) move(dx > 0 ? 1 : -1, 0);
+    else move(0, dy > 0 ? 1 : -1);
+  });
+
+  btn.addEventListener('click', start);
+  buildMaze(SIZES[0]);
+  draw();
+})();
+</script>
+</body>
+</html>

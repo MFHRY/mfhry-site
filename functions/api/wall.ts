@@ -1,7 +1,8 @@
 // 匿名墙 API：GET 列表 / POST 发布（多图 + 视频链接 + IP 归属地 + X 链接）
-// 登录用户（GitHub / 邮箱）发的帖子会带上账号，显示昵称和头像
 import { fetchTweet, tweetId } from '../lib/tweet';
-import { currentUser, displayName, publicUser } from '../lib/session';
+
+// 老数据里用账号发的帖子显示「昵称 > 登录名」
+const displayName = (u: any) => u?.name || u?.login || '匿名';
 
 const MAX_BODY = 500;
 const MAX_IMAGE = 380 * 1024;
@@ -73,11 +74,8 @@ async function create(ctx: any) {
   const xUrl = String(p?.x ?? '').trim();
   const imgs: string[] = Array.isArray(p?.images) ? p.images.slice(0, MAX_IMAGES) : [];
 
-  // 登录了就记名，没登录照旧匿名
-  const user = await currentUser(env, request).catch(() => null);
-
   if (!body && !imgs.length && !video && !xUrl) return json({ error: '写点什么吧' }, 400);
-  const nickname = user ? displayName(user) : String(p?.nickname ?? '').replace(/[<>]/g, '').trim().slice(0, 20);
+  const nickname = String(p?.nickname ?? '').replace(/[<>]/g, '').trim().slice(0, 20);
   if (body.length > MAX_BODY) return json({ error: `最多 ${MAX_BODY} 字` }, 400);
   if (video.length > 300 || (video && !/^https?:\/\//i.test(video))) return json({ error: '视频链接不对' }, 400);
   if (xUrl && !tweetId(xUrl)) return json({ error: 'X 链接格式不对' }, 400);
@@ -129,7 +127,7 @@ async function create(ctx: any) {
       cf.city || null,
       cf.asn || null,
       cf.colo || null,
-      user ? user.id : null,
+      null,
       nowSql()
     )
     .run();
