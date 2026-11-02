@@ -1,0 +1,98 @@
+---
+import Base from '../layouts/Base.astro';
+import data from '../data/students.json';
+
+const classes = data.classes;
+const total = classes.reduce((n, c) => n + c.students.length, 0);
+const grades = [...new Set(classes.map((c) => c.grade))].sort().reverse();
+
+const flat = classes.flatMap((c) =>
+  c.students.map((name, i) => ({ name, code: c.code, grade: c.grade, i: i + 1, n: c.students.length }))
+);
+---
+<Base title="记录" noindex={true}>
+  <h1>记录</h1>
+  <p class="muted">{classes.length} 个班 · {total} 人 · <span id="shown">{total}</span> 人显示中</p>
+
+  <div class="filters">
+    <input id="q" type="search" placeholder="搜索姓名…" autocomplete="off" />
+
+    <div class="chips" id="grades">
+      <button class="chip on" data-grade="">全部</button>
+      {grades.map((g) => (
+        <button class="chip" data-grade={g}>{g} 级</button>
+      ))}
+    </div>
+
+    <select id="cls" class="class-select">
+      <option value="">全部班级</option>
+      {classes.map((c) => (
+        <option value={c.code}>{c.code} 班（{c.students.length} 人）</option>
+      ))}
+    </select>
+  </div>
+
+  <div class="roster" id="list">
+    {flat.map((s) => (
+      <div class="stu" data-name={s.name} data-code={s.code} data-grade={s.grade}>
+        <span class="idx">{s.i}</span>
+        <span class="nm">{s.name}</span>
+        <span class="cls">{s.code}</span>
+      </div>
+    ))}
+  </div>
+
+  <p class="muted" id="empty" hidden>没有匹配的人。</p>
+
+  <script is:inline>
+    const q = document.getElementById('q');
+    const list = document.getElementById('list');
+    const grades = document.getElementById('grades');
+    const cls = document.getElementById('cls');
+    const empty = document.getElementById('empty');
+    const shown = document.getElementById('shown');
+    const allOptions = [...cls.options].map((o) => ({ v: o.value, t: o.textContent }));
+    let grade = '';
+
+    function fillClasses() {
+      cls.innerHTML = '';
+      for (const o of allOptions) {
+        if (!o.v || !grade || o.v.startsWith(grade)) {
+          const el = document.createElement('option');
+          el.value = o.v;
+          el.textContent = o.t;
+          cls.appendChild(el);
+        }
+      }
+      cls.value = '';
+    }
+
+    function apply() {
+      const kw = q.value.trim();
+      const code = cls.value;
+      let n = 0;
+      for (const el of list.children) {
+        const ok =
+          (!kw || el.dataset.name.includes(kw)) &&
+          (!grade || el.dataset.grade === grade) &&
+          (!code || el.dataset.code === code);
+        el.hidden = !ok;
+        if (ok) n += 1;
+      }
+      shown.textContent = n;
+      empty.hidden = n > 0;
+    }
+
+    q.addEventListener('input', apply);
+    cls.addEventListener('change', apply);
+    grades.addEventListener('click', (e) => {
+      const b = e.target.closest('.chip');
+      if (!b) return;
+      for (const c of grades.children) c.classList.remove('on');
+      b.classList.add('on');
+      grade = b.dataset.grade;
+      fillClasses();
+      apply();
+    });
+  </script>
+</Base>

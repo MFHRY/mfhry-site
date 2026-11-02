@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>2048 · mfhry.store</title>
+<style>
+  :root{--bg:#0b0e11;--cell:#1c232b;--fg:#eaecef;--muted:#8b939c;--accent:#7fd1b0}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--fg);font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+  .wrap{width:min(94vw,460px)}
+  .top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px}
+  h1{font-size:22px}
+  .stats{display:flex;gap:10px}
+  .stat{background:var(--cell);border-radius:10px;padding:6px 14px;text-align:center;min-width:74px}
+  .stat span{display:block;font-size:10px;color:var(--muted);letter-spacing:.08em}
+  .stat b{font-size:17px}
+  .board{position:relative;background:#151b21;border-radius:14px;padding:8px;display:grid;
+    grid-template-columns:repeat(4,1fr);gap:8px;aspect-ratio:1}
+  .cell{background:rgba(255,255,255,.03);border-radius:8px}
+  .tile{position:absolute;display:flex;align-items:center;justify-content:center;border-radius:8px;
+    font-weight:700;transition:transform .08s ease,opacity .08s ease;will-change:transform}
+  .overlay{position:absolute;inset:0;background:rgba(0,0,0,.7);border-radius:14px;display:none;
+    flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:5}
+  .overlay.on{display:flex}
+  .overlay h2{font-size:22px}
+  button{font:inherit;font-size:14px;padding:9px 22px;border-radius:10px;border:1px solid var(--accent);
+    background:transparent;color:var(--fg);cursor:pointer}
+  button:hover{background:rgba(127,209,176,.12)}
+  .back{display:inline-block;margin-top:14px;font-size:12px;color:var(--muted);text-decoration:none}
+  .back:hover{color:var(--fg)}
+  .hint{margin-top:10px;font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>2048</h1>
+    <div class="stats">
+      <div class="stat"><span>SCORE</span><b id="score">0</b></div>
+      <div class="stat"><span>BEST</span><b id="best">0</b></div>
+    </div>
+  </div>
+  <div class="board" id="board">
+    <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+    <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+    <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+    <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+    <div class="overlay" id="ov"><h2 id="ovt">2048</h2><button id="btn">开始</button></div>
+  </div>
+  <div class="hint">方向键 / WASD 移动，手机可滑动</div>
+  <a class="back" href="/games/">← 返回小游戏</a>
+</div>
+<script>
+(() => {
+  const SIZE = 4, GAP = 8;
+  const board = document.getElementById('board');
+  const $score = document.getElementById('score');
+  const $best = document.getElementById('best');
+  const ov = document.getElementById('ov');
+  const ovt = document.getElementById('ovt');
+  const btn = document.getElementById('btn');
+
+  const COLORS = {
+    2: ['#2b3440', '#eaecef'], 4: ['#33404e', '#eaecef'], 8: ['#3f6f5e', '#fff'],
+    16: ['#4a8368', '#fff'], 32: ['#568f6f', '#fff'], 64: ['#5f9b76', '#fff'],
+    128: ['#6aa87f', '#fff'], 256: ['#75b588', '#fff'], 512: ['#80c291', '#fff'],
+    1024: ['#8bcf9a', '#0b0e11'], 2048: ['#96dca3', '#0b0e11'],
+  };
+
+  let grid, score, best = +(localStorage.getItem('mfhry_2048_best') || 0), playing = false;
+
+  $best.textContent = best;
+
+  const empty = () => grid.map((r, y) => r.map((v, x) => (v ? null : { y, x }))).flat().filter(Boolean);
+
+  function addTile() {
+    const spots = empty();
+    if (!spots.length) return;
+    const s = spots[Math.floor(Math.random() * spots.length)];
+    grid[s.y][s.x] = Math.random() < 0.9 ? 2 : 4;
+  }
+
+  function start() {
+    grid = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
+    score = 0; playing = true;
+    $score.textContent = 0;
+    ov.classList.remove('on');
+    addTile(); addTile();
+    render();
+  }
+
+  function slide(row) {
+    const vals = row.filter((v) => v);
+    const out = [];
+    for (let i = 0; i < vals.length; i++) {
+      if (vals[i] === vals[i + 1]) { out.push(vals[i] * 2); score += vals[i] * 2; i++; }
+      else out.push(vals[i]);
+    }
+    while (out.length < SIZE) out.push(0);
+    return out;
+  }
+
+  function move(dir) {
+    if (!playing) return;
+    const before = JSON.stringify(grid);
+    const rotate = (g) => g[0].map((_, i) => g.map((r) => r[i]).reverse());
+
+    if (dir === 'left') grid = grid.map(slide);
+    if (dir === 'right') { grid = grid.map((r) => r.slice().reverse()); grid = grid.map(slide).map((r) => r.reverse()); }
+    if (dir === 'up') { grid = rotate(rotate(rotate(grid))); grid = grid.map(slide); grid = rotate(grid); }
+    if (dir === 'down') { grid = rotate(grid); grid = grid.map(slide); grid = rotate(rotate(rotate(grid))); }
+
+    if (JSON.stringify(grid) !== before) {
+      addTile();
+      $score.textContent = score;
+      if (score > best) { best = score; $best.textContent = best; localStorage.setItem('mfhry_2048_best', best); }
+    }
+    render();
+    if (!canMove()) { playing = false; ovt.textContent = '结束 · 得分 ' + score; btn.textContent = '再来'; ov.classList.add('on'); }
+    else if (grid.flat().includes(2048) && playing) { playing = false; ovt.textContent = '2048！'; btn.textContent = '继续'; ov.classList.add('on'); }
+  }
+
+  const canMove = () => {
+    if (empty().length) return true;
+    for (let y = 0; y < SIZE; y++) for (let x = 0; x < SIZE; x++) {
+      const v = grid[y][x];
+      if ((x < SIZE - 1 && grid[y][x + 1] === v) || (y < SIZE - 1 && grid[y + 1][x] === v)) return true;
+    }
+    return false;
+  };
+
+  function render() {
+    [...board.querySelectorAll('.tile')].forEach((n) => n.remove());
+    const w = board.clientWidth;
+    const cell = (w - GAP * (SIZE + 1)) / SIZE;
+    for (let y = 0; y < SIZE; y++) for (let x = 0; x < SIZE; x++) {
+      const v = grid[y][x];
+      if (!v) continue;
+      const d = document.createElement('div');
+      d.className = 'tile';
+      d.textContent = v;
+      const [bg, fg] = COLORS[v] || ['#a2e8ae', '#0b0e11'];
+      d.style.cssText = `width:${cell}px;height:${cell}px;left:${GAP + x * (cell + GAP)}px;top:${GAP + y * (cell + GAP)}px;background:${bg};color:${fg};font-size:${v > 999 ? cell * 0.34 : cell * 0.44}px`;
+      board.appendChild(d);
+    }
+  }
+
+  window.addEventListener('keydown', (e) => {
+    const k = e.key.toLowerCase();
+    if (['arrowleft', 'a'].includes(k)) move('left');
+    else if (['arrowright', 'd'].includes(k)) move('right');
+    else if (['arrowup', 'w'].includes(k)) move('up');
+    else if (['arrowdown', 's'].includes(k)) move('down');
+    else return;
+    e.preventDefault();
+  });
+
+  let sx = 0, sy = 0;
+  board.addEventListener('touchstart', (e) => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
+  board.addEventListener('touchend', (e) => {
+    const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 30) return;
+    if (Math.abs(dx) > Math.abs(dy)) move(dx > 0 ? 'right' : 'left');
+    else move(dy > 0 ? 'down' : 'up');
+  });
+
+  btn.addEventListener('click', start);
+  window.addEventListener('resize', () => { if (grid) render(); });
+
+  ovt.textContent = '2048'; btn.textContent = '开始'; ov.classList.add('on');
+  grid = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
+})();
+</script>
+</body>
+</html>

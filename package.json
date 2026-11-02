@@ -11,7 +11,7 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "fetch": "node scripts/pull-github.mjs && node scripts/pull-content.mjs",
+    "fetch": "node scripts/pull-github.mjs && node scripts/pull-releases.mjs && node scripts/pull-content.mjs",
     "pages:create": "wrangler pages project create mfhry-site --production-branch main",
     "deploy": "wrangler pages deploy dist --project-name=mfhry-site --branch main"
   },

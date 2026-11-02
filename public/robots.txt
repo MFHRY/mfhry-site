@@ -1,2 +1,9 @@
 User-agent: *
 Allow: /
+Disallow: /records/
+Disallow: /records
+Disallow: /news/post/
+Disallow: /news/post
+Disallow: /api/
+
+Sitemap: https://mfhry.store/sitemap.xml

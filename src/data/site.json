@@ -3,10 +3,16 @@
   "handle": "mfhry",
   "tagline": "写点小东西，偶尔折腾硬件和游戏模组。",
   "bio": "这里放我做过的东西。大部分是自用工具，能跑起来就算成功。",
-  "avatar": "https://github.com/mfhry.png",
+  "avatar": "/avatar.webp",
   "links": [
-    { "label": "GitHub", "url": "https://github.com/mfhry" },
-    { "label": "邮箱", "url": "mailto:hi@mfhry.store" }
+    {
+      "label": "GitHub",
+      "url": "https://github.com/mfhry"
+    },
+    {
+      "label": "邮箱",
+      "url": "mailto:hi@mfhry.store"
+    }
   ],
   "featured": []
 }

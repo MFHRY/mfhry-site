@@ -1,0 +1,1310 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="day"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f8f4e9">
+  <meta name="author" content="Frank">
+  <title>鹈鹕的休息日 ·制作人：mfhry</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper:#f8f4e9; --ink:#263e3c; --muted:#7a8579; --line:#dcded0;
+      --sky:#f8f4e9; --sun:#f2c76b; --sun-halo:#f4e6b9; --cloud:#fffdf6;
+      --hill:#b9cbbb; --hill-back:#d9dfcb; --sea:#a6c9c0; --sea-deep:#8bb6ad;
+      --foam:#dce8d7; --sand:#ebdfbc; --road:#dfd3b4; --road-line:#f8f0d9;
+      --grass:#8caa87; --grass-light:#b4bd88; --bird:#fffdf3; --bird-shade:#e1e8d9;
+      --bird-line:#c5d4c7; --beak:#eeb364; --pouch:#efc789; --beak-edge:#b77b42;
+      --leg:#dc9954; --leg-far:#b98048; --bike:#da7756; --bike-light:#efad7b;
+      --teal:#427e76; --teal-dark:#2d655e; --metal:#9baaa0; --basket:#d4af76;
+      --shadow:#66775e; --panel:rgba(248,244,233,.88);
+    }
+    [data-theme="sunset"] {
+      --paper:#f6e6d9; --ink:#4e454c; --muted:#977d7a; --line:#dfc8ba;
+      --sky:#f6e6d9; --sun:#e69164; --sun-halo:#f0c7a5; --cloud:#f9eee2;
+      --hill:#aea9aa; --hill-back:#d5bdb6; --sea:#a8b9b5; --sea-deep:#8ea6a3;
+      --foam:#e5dcd0; --sand:#e5c7a5; --road:#d8b798; --road-line:#f4dbc2;
+      --grass:#9b9f80; --grass-light:#c5b68a; --bird:#fff5e8; --bird-shade:#e4d8cf;
+      --bird-line:#d0c7bf; --beak:#e8a25e; --pouch:#ecc190;
+      --teal:#638783; --teal-dark:#436b69; --panel:rgba(246,230,217,.9);
+    }
+    [data-theme="night"] {
+      color-scheme:dark;
+      --paper:#162932; --text:#e0e8dd; --ink:#263f47; --muted:#91aaa9; --line:#38535d;
+      --sky:#162932; --sun:#e8dcaf; --sun-halo:#6c8a8a; --cloud:#39535e;
+      --hill:#3d6269; --hill-back:#2a4956; --sea:#2b505e; --sea-deep:#244653;
+      --foam:#698b8c; --sand:#81958b; --road:#607e7d; --road-line:#a0b6a6;
+      --grass:#486d70; --grass-light:#829982; --bird:#e9eddf; --bird-shade:#c1d2ca;
+      --bird-line:#9ab8b0; --beak:#d9aa72; --pouch:#dfc38f;
+      --leg:#c99a64; --leg-far:#a47f53; --bike:#cf8969; --bike-light:#e3b783;
+      --teal:#a0c0b5; --teal-dark:#386f74; --metal:#94adab; --shadow:#10252c;
+      --panel:#1c333d; --control-bg:#e2d1b1; --control-fg:#213943;
+    }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--paper); color:var(--text,var(--ink)); font-family:"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif; transition:background .9s,color .9s; }
+    button,input { font:inherit; }
+    button { color:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+    button:focus-visible,a:focus-visible,input:focus-visible { outline:3px solid var(--teal); outline-offset:5px; }
+    .page { max-width:1800px; margin:auto; min-height:100svh; display:flex; flex-direction:column; overflow:hidden; }
+    .topbar { padding:28px 5.6% 18px; display:flex; align-items:center; justify-content:space-between; gap:20px; position:relative; z-index:2; }
+    .brand { display:flex; gap:12px; align-items:center; }
+    .brand-emblem { width:43px; height:43px; }
+    .brand-name { font-size:13px; font-weight:750; letter-spacing:2.4px; line-height:1.5; }
+    .brand-sub { display:block; font-size:9px; font-weight:500; letter-spacing:2.5px; opacity:.6; }
+    .top-right { display:flex; align-items:center; gap:25px; }
+    .weather { font-size:11px; letter-spacing:1.7px; display:flex; align-items:center; gap:9px; }
+    .weather-dot { width:6px; height:6px; background:var(--teal); border-radius:50%; }
+    .time-switch { display:flex; gap:3px; padding:4px; border:1px solid var(--line); border-radius:30px; background:var(--panel); transition:border-color .9s,background .9s; }
+    .theme-button { border:0; border-radius:24px; min-height:34px; padding:8px 11px; display:flex; align-items:center; justify-content:center; gap:6px; font-size:10px; letter-spacing:.35px; background:transparent; transition:background .35s,color .35s,transform .4s cubic-bezier(.2,.8,.2,1),box-shadow .35s; }
+    .theme-button svg { width:16px; height:16px; flex-shrink:0; transition:transform .4s cubic-bezier(.2,.8,.2,1); }
+    .theme-button[aria-pressed="true"] { background:var(--control-bg,var(--ink)); color:var(--control-fg,var(--paper)); }
+    .stage { position:relative; flex:1; height:calc(100svh - 190px); min-height:575px; max-height:940px; overflow:hidden; }
+    .scene { position:absolute; inset:0; width:100%; height:100%; display:block; contain:layout paint; }
+    .stage::after { content:""; position:absolute; inset:0; pointer-events:none; background-image:var(--grain-texture); background-repeat:repeat; opacity:.065; mix-blend-mode:multiply; }
+    .scene [fill],.scene [stroke] { transition:fill .7s,stroke .7s; }
+    #moon,#stars,.lighthouse-beam { opacity:0; transition:opacity 1.1s; }
+    #sun { opacity:1; transition:opacity 1.1s; }
+    [data-theme="night"] #sun { opacity:0; }
+    [data-theme="night"] #moon,[data-theme="night"] #stars { opacity:1; }
+    [data-theme="night"] .lighthouse-beam { opacity:.15; }
+    .intro { position:absolute; z-index:1; top:7%; left:7.1%; pointer-events:none; }
+    .eyebrow { font-size:10px; letter-spacing:3px; font-weight:650; margin:0 0 22px; color:var(--teal); }
+    h1 { font-family:Georgia,"Times New Roman",serif; font-size:clamp(43px,4.8vw,76px); line-height:1.08; letter-spacing:-2.6px; font-weight:400; margin:0; }
+    .intro p:last-child { font-size:12px; letter-spacing:1.5px; margin-top:23px; color:var(--muted); line-height:1.9; }
+    .bottom { position:relative; z-index:3; display:grid; grid-template-columns:1fr auto 1fr; align-items:center; padding:23px 5.6% 27px; gap:24px; background:var(--paper); }
+    .caption { font-size:10px; color:var(--muted); letter-spacing:1.2px; line-height:1.8; }
+    .caption strong { font-size:11px; color:var(--text,var(--ink)); font-weight:600; letter-spacing:1.8px; }
+    .controls { display:flex; align-items:center; gap:24px; }
+    .play-button { display:flex; align-items:center; justify-content:center; gap:8px; background:var(--control-bg,var(--ink)); color:var(--control-fg,var(--paper)); border:0; border-radius:30px; min-width:145px; padding:12px 19px; font-size:12px; letter-spacing:.5px; transition:transform .4s cubic-bezier(.2,.8,.2,1),box-shadow .4s,background .4s; }
+    .play-button svg { width:14px; height:14px; flex-shrink:0; transition:transform .4s cubic-bezier(.2,.8,.2,1); }
+    .speed-control { display:grid; grid-template-columns:auto minmax(210px,300px) 43px; align-items:center; gap:5px 13px; font-size:11px; }
+    .drive-status { grid-column:1/-1; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:5px 12px; color:var(--muted); font-size:9px; letter-spacing:.65px; font-variant-numeric:tabular-nums; }
+    .drive-status .gear { color:var(--teal); }
+    .speed-control label { color:var(--muted); letter-spacing:1px; cursor:pointer; transition:color .3s; }
+    .speed-control output { font-variant-numeric:tabular-nums; font-size:11px; }
+    input[type="range"] { appearance:none; -webkit-appearance:none; height:24px; width:100%; min-width:0; cursor:pointer; background:transparent; margin:0; accent-color:var(--teal); transition:transform .35s cubic-bezier(.2,.8,.2,1); }
+    input[type="range"]::-webkit-slider-runnable-track { background:var(--line); height:3px; border-radius:3px; }
+    input[type="range"]::-webkit-slider-thumb { appearance:none; -webkit-appearance:none; margin-top:-4px; width:11px; height:11px; background:var(--teal); border:2px solid var(--paper); border-radius:50%; box-shadow:0 0 0 1px var(--teal); transition:transform .3s,box-shadow .3s; }
+    input[type="range"]::-moz-range-track { background:var(--line); height:3px; border-radius:3px; }
+    input[type="range"]::-moz-range-thumb { width:9px; height:9px; background:var(--teal); border:2px solid var(--paper); border-radius:50%; transition:transform .3s,box-shadow .3s; }
+    .credit { display:flex; justify-self:end; align-items:center; gap:10px; font-size:10px; letter-spacing:1.2px; white-space:nowrap; color:var(--muted); }
+    .signature { display:block; width:96px; height:38px; overflow:visible; color:var(--text,var(--ink)); transform:rotate(-5deg); }
+    button:active { transform:scale(.97); }
+    @media(hover:hover) {
+      .theme-button:hover { background:var(--sun-halo); transform:translateY(-1px) scale(1.06); box-shadow:0 4px 16px #263e3c09; }
+      .theme-button:hover svg { transform:rotate(15deg) scale(1.12); }
+      .theme-button[aria-pressed="true"]:hover { background:var(--control-bg,var(--ink)); }
+      .play-button:hover { transform:translateY(-2px) scale(1.025); box-shadow:0 6px 18px #263e3c15; }
+      .play-button:hover svg { transform:scale(1.14); }
+      .speed-control:hover label { color:var(--teal); }
+      input[type="range"]:hover { transform:scaleX(1.035); }
+      input[type="range"]:hover::-webkit-slider-thumb { transform:scale(1.22); box-shadow:0 0 0 1px var(--teal),0 0 0 5px #427e7610; }
+      input[type="range"]:hover::-moz-range-thumb { transform:scale(1.22); box-shadow:0 0 0 5px #427e7610; }
+    }
+    input[type="range"]:active::-webkit-slider-thumb { transform:scale(1.3); }
+    input[type="range"]:active::-moz-range-thumb { transform:scale(1.3); }
+    .theme-button:active,.play-button:active { transform:scale(.97); }
+    @media(prefers-reduced-motion:reduce) { button,.theme-button svg,.play-button svg,input[type="range"] { transition:none; } }
+    .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
+    @media(min-width:1600px) { .intro { top:10%; } }
+    @media(max-width:1180px) { .bottom { grid-template-columns:1fr 1fr; gap:16px; } .controls { grid-column:1/-1; grid-row:1; justify-self:center; } .caption { grid-column:1; grid-row:2; } .credit { grid-column:2; grid-row:2; } .speed-control { grid-template-columns:auto minmax(240px,340px) 43px; } }
+    @media(max-width:1000px) { .weather { display:none; } .intro { top:3%; } h1 { font-size:51px; } .stage { min-height:570px; } .caption strong { font-size:10px; letter-spacing:1px; } .controls { gap:18px; } .signature { width:81px; } }
+    @media(max-width:680px) {
+      .topbar { padding:23px 7% 10px; } .brand-name { font-size:11px; letter-spacing:1.8px; } .brand-sub { font-size:8px; } .brand-emblem { width:36px; height:36px; }
+      .topbar { gap:12px; flex-wrap:wrap; } .top-right { margin-left:auto; } .theme-button { padding:7px 9px; font-size:9px; } .theme-button svg { width:14px; height:14px; }
+      .stage { height:calc(100svh - 220px); min-height:580px; max-height:740px; flex:none; }
+      .intro { top:32px; left:8%; } .eyebrow { font-size:9px; letter-spacing:2.2px; margin-bottom:15px; }
+      h1 { font-size:50px; line-height:1.05; letter-spacing:-1.8px; }
+      .intro p:last-child { font-size:11px; letter-spacing:.7px; margin-top:14px; }
+      .bottom { padding:21px 7% 26px; gap:21px 12px; }
+      .controls { width:100%; display:grid; grid-template-columns:auto minmax(0,1fr); gap:16px; } .speed-control { grid-template-columns:auto minmax(75px,1fr) 36px; gap:5px 8px; }
+      .drive-status { justify-content:flex-start; gap:4px 8px; font-size:8px; letter-spacing:.15px; } .caption { font-size:8px; letter-spacing:.6px; } .caption strong { font-size:8px; letter-spacing:.6px; } .credit { font-size:8px; letter-spacing:.6px; gap:7px; } .signature { width:77px; height:31px; }
+      .page { min-height:100svh; } .play-button { min-width:132px; padding:12px 15px; font-size:11px; }
+    }
+    @media(max-width:370px) { h1 { font-size:43px; } .speed-control label { display:none; } .speed-control { grid-template-columns:minmax(70px,1fr) 35px; } .controls { gap:10px; } .play-button { min-width:114px; } }
+
+    /* The VPN destination is an alternate view inside this same document. */
+    .page[hidden],.vpn-view[hidden] { display:none !important; }
+    .controls { flex-wrap:wrap; justify-content:center; }
+    .vpn-button { display:flex; align-items:center; justify-content:center; gap:9px; min-height:43px; padding:9px 17px; border:1px solid #263e3c18; border-radius:28px; background:var(--bike); color:#263e3c; box-shadow:0 3px 12px #263e3c09; transition:transform .35s,box-shadow .35s,background .35s; }
+    .vpn-button svg { width:19px; height:19px; flex-shrink:0; transition:transform .35s; }
+    .vpn-button-copy { display:grid; gap:3px; text-align:left; }
+    .vpn-button-copy strong { font-size:12px; font-weight:650; letter-spacing:.3px; line-height:1; }
+    .vpn-button-copy small { font-size:8px; letter-spacing:1.5px; line-height:1; }
+    body.vpn-open { background:#fff; color:#263e3c; color-scheme:light; transition:none; }
+    .vpn-view { position:relative; display:grid; place-items:center; min-height:100vh; min-height:100svh; padding:90px 24px; background:#fff; color:#263e3c; }
+    .vpn-back { position:absolute; top:28px; left:5.6%; display:flex; align-items:center; gap:8px; padding:11px 18px; border:1px solid #dcded0; border-radius:28px; background:#fff; color:#263e3c; font-size:12px; letter-spacing:.5px; transition:transform .35s,background .35s,box-shadow .35s; }
+    .vpn-back svg { width:16px; height:16px; transition:transform .35s; }
+    .vpn-address-wrap { min-width:0; width:max-content; max-width:100%; overflow-x:auto; padding:16px 4px; }
+    .vpn-address { display:block; width:max-content; white-space:nowrap; color:#427e76; font-size:clamp(12px,1.05vw,17px); line-height:1.8; text-decoration-thickness:1px; text-underline-offset:5px; transition:color .3s; }
+    .vpn-address:focus-visible,.vpn-back:focus-visible { outline:3px solid #427e76; outline-offset:5px; }
+    @media(hover:hover) {
+      .vpn-button:hover { transform:translateY(-2px) scale(1.025); background:var(--bike-light); box-shadow:0 6px 18px #263e3c15; }
+      .vpn-button:hover svg { transform:scale(1.12) rotate(-5deg); }
+      .vpn-back:hover { transform:translateY(-1px) scale(1.025); background:#f8f4e9; box-shadow:0 5px 16px #263e3c0b; }
+      .vpn-back:hover svg { transform:translateX(-2px); }
+      .vpn-address:hover { color:#263e3c; }
+    }
+    .vpn-button:active,.vpn-back:active { transform:scale(.97); }
+    @media(max-width:680px) {
+      .controls { grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+      .vpn-button,.controls .play-button { min-width:0; width:100%; }
+      .speed-control { grid-column:1/-1; grid-template-columns:auto minmax(0,1fr) 43px; }
+      .vpn-back { top:23px; left:7%; }
+    }
+    @media(prefers-reduced-motion:reduce) { .vpn-button,.vpn-button svg,.vpn-back,.vpn-back svg,.vpn-address { transition:none; } }
+  </style>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <style>
+    /* 原页面自带的 VPN 推广按钮 / 购买区，本站不展示（节点保留，脚本依赖） */
+    .vpn-button, #vpnView { display: none !important; }
+    .signature-text {
+      display: block;
+      font: 700 21px/1 "Segoe UI", -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+      letter-spacing: 1.5px;
+      color: var(--ink);
+      transform: rotate(-4deg);
+      text-transform: lowercase;
+    }
+    @media (max-width: 1000px) { .signature-text { font-size: 18px; } }
+    @media (max-width: 620px) { .signature-text { font-size: 15px; letter-spacing: 1px; } }
+  </style>
+</head>
+<body>
+<div class="page" id="rideView">
+  <header class="topbar">
+    <div class="brand" aria-label="鹈鹕自行车俱乐部">
+      <svg class="brand-emblem" viewBox="0 0 48 48" aria-hidden="true">
+        <circle cx="24" cy="24" r="22" fill="none" stroke="currentColor" stroke-width="1.2"></circle>
+        <path d="M10 29c6-1 8-5 10-12 1-5 6-6 9-3l8 3-10 2c-1 5 2 10-3 13-5 3-10 1-14-3Z" fill="currentColor"></path>
+        <path d="m25 15 12 2-10 3" fill="var(--paper)"></path><circle cx="25.7" cy="14.8" r=".9" fill="var(--paper)"></circle>
+        <path d="m20 33-1 5m6-6 2 6m-12 0h7m2 0h7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"></path>
+      </svg>
+      <div class="brand-name">鹈鹕<span class="brand-sub">自行车俱乐部——至今成立</span></div>
+    </div>
+    <div class="top-right">
+      <span class="weather"><span class="weather-dot"></span><span id="weatherText">今天是骑行的好日子</span></span>
+      <div class="time-switch" role="group" aria-label="一天中的时间">
+        <button class="theme-button" type="button" data-time="day" aria-label="白昼" title="Daylight" aria-pressed="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" stroke-linecap="round"></path></svg><span>一天</span>
+        </button>
+        <button class="theme-button" type="button" data-time="sunset" aria-label="日落" title="Sunset" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M3 16h18M6 16a6 6 0 0 1 12 0M12 4v3M4 9l2 2m12 0 2-2M5 20h14"></path></svg><span>日落</span>
+        </button>
+        <button class="theme-button" type="button" data-time="night" aria-label="晚安" title="Night" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.3 14.2A8.5 8.5 0 0 1 9.8 3.7a8.5 8.5 0 1 0 10.5 10.5Z"></path><path d="M18 3v4m-2-2h4"></path></svg><span>晚安</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="stage" style="--grain-texture: url(&quot;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAAQAElEQVR4ATTdBZQfVdIF8Kq3lvWss+wuhODuboNDsODBgzsEd3d3d3cI7u7u7u7u2vt+L6e/c+bMzL+736u6de+tej1ZvvLCCy90++67b7flllt2q6++erfOOut0X331Vffyyy+3zw866KButdVW637++efu22+/7dz/xRdfdCeddFK36667dgceeGB3ww03dA8++GB37rnndt9//3334Ycfds8//3z3zTffdO+//3631lprdWeffXZ3wAEHdJtvvnn3448/tue322677t577233Pfzww529brnllu6NN97orr322u67777rDjnkkG7PPffsHn/88e6hhx5q91x11VWdrwceeKBbf/312/VRo0Z1b731Vvfoo492++yzT7fKKqu0WO68887u4osv7s4666zuhBNO6O65554Wj1g22WST7pVXXmn3jR49uvv4449b/s8++2z3ww8/dBtttFGLQZyffPJJw2WbbbZp8brngw8+aHFsv/32DYcjjzyy7fPpp592V1xxRffqq692+++/f3fjjTe2uK1hD/efd9553TvvvNPWvPzyyxsexx13XLfjjjs27H766afu/PPPb+vCVNy77LJL9+abb3ZXX311w8Xnt912W6vPoYce2vKD3QUXXNDZQz2vu+66bo899mi/wwhunt9vv/26m2++uSuvv/561GJFLXxkZiyyyCJRN4l6MVzbbLPNYujQoVELGRWkqIHHl19+GY899lgst9xyMeWUU8bcc88dY489dtx6662x1VZbxWWXXRYnnnhiu2eLLbaIHXbYId57772YZ555YtCgQXHqqadGLUxsvfXWcdppp8W2224bv/vd76IWJCaeeOKo4Mcll1wSxx57bPzjH/+Il156KWqxY6KJJoqll146pptuuphqqqlaLD///HPMNttsMc4440QpJY4//vh48sknWz61WDHTTDO19X7xi1/E4osv3n5fcMEF2xpirgSOo48+uq1x1FFHxaabbhoHH3xwnHzyyVHJGrXI7bNnnnkmqkhivvnma+v/5z//afkusMACMcMMM0QtblSBtDj9XEnePrNv1P/7zW9+E3fffXdcf/31AZNKioYFfMcff/yohIqvv/46BgYGWh3uv//+mHPOOaMKLvxcixrrrrtu7LTTTq0Wb7/9dlQyNUys8etf/7rlCS81rESKf//73yGOGWecMaaeeuqYdtpp47XXXovPPvss1l577bZOeeqpp9pGXde1m4D59NNPx5/+9KcYMWJEVCa1hf/85z/Hp59+2opt87333rsV8a677orqBlHZGsOGDQuBSNrmp9XiVoVGdYYYa6yx4uWXX25Fv/3221shEG3RRReNZZddtl0T2M477xyHHXZY/OUvf2lFlNA///nPuLWSSxHEURkd1aVagX7/+9/HZJNN1oiBsIr3v//9L0aPHt0KgkRVBTHBBBNEdZVWTKSoSomllloqFB25qws2gKo64r///W8rzosvvhhyvfLKK+O5556Lww8/PC666KJG7l/+8peNtNUFGyEQc+GFF46qupbLQgstFNX1AkEVnmDs+cgjj8TgwYOjumLAZ4MNNmgEhC2CV+XHo48+2oorVzhUlTfC7r777qFOd9xxR4vdfcgGawW2f3XJkMvGG28c4447bvz1r3+Na665Jqxh70FVgOqrTssss0yUf/3rX439Ev/73//eWFqttymaUtdff/3K34hTTjklqg217wqoIFRNZRNOOGFj7rvvvht//OMfY/LJJ2/FGTVqVFO+QGafffZW9HPOOaepd5pppglEycyYddZZAzicRcBDhgxprlBtLQA9ySSTRG0FDTgKqtbcClEtM5CB4rkMkF+rDMf03XbbLX71q1+1Pajmm2++aURRRGsgXbXeOPPMM5uTISIno3CuRuEIyx2GDx/eAL/ppptaPIpAkX/4wx/a/kjKMTileOED9NoKG+FGjhwZAwMDUS27rbPhhhs2h+FITzzxRCOh4ntOnIrqZ07BNTkP7BFATpyG280111yBOJyDCBXq888/jxVXXLG5mOuDK9k4AJf1M9L4nZjkV4Ag2N/+9rfNMgCItQrOAjMz9tprrwaeTdm+grNcNoxpFEPNgq99uNk3xQCaQmt/j8OqqoHj2TpDBABZcJ0BmiUCq/bpRpzavxuLhw8f3txHYsjIRpFM8FxhhRVWaInOPPPMIVlupkXV/ttUOccccwSF3Xfffc3K5STOOq+0VjXLLLPEEkss0YhN6VSClEC2J3FQCmzkCUBKV0iF8QwnIhxqRRD3cCJtC0aKZz2k5jyTTjppczYEvPTSS4NqFSUzW4th32ussUYodp2JYrzxxguiIRKuzNrr/NII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&quot;);">
+    <div class="intro">
+      <p class="eyebrow">鹈鹕休息日</p>
+      <h1>好日子。<br _istranslated="1">轻松的骑行。</h1>
+      <p>无处可去。只有大海和微风。</p>
+    </div>
+
+    <svg id="landscape" class="scene" viewBox="0 0 1440 820" preserveAspectRatio="xMidYMax meet" role="img" aria-labelledby="sceneTitle sceneDescription">
+      <title id="sceneTitle">The Pelican's Day Off</title>
+      <desc id="sceneDescription">A white pelican rides a four-bar full-suspension mountain bike along the coast. Three front chainrings and a twelve-speed cassette shift smoothly with cadence and riding speed. The sailboat cruises left at a constant world speed, plus the same camera parallax as the distant coast. Clouds and birds have their own motion and depth; the sun stays fixed. The rider stops pedaling, shifts its weight, then lowers one foot to the ground. To start again, it positions the other pedal for a push, lifts its supporting foot and settles into the saddle. The scarf follows the airflow and gravity. The pelican watches your pointer. Made by Frank.</desc>
+      <defs>
+        <mask id="chainOpenings" maskUnits="userSpaceOnUse" x="470" y="610" width="280" height="180" style="mask-type:luminance">
+          <rect x="470" y="610" width="280" height="180" fill="white"></rect>
+          <path id="chainWindows" fill="none" stroke="black" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="1.7 3.1" d="M541.566 640.604L706.273 651.178A19.863 19.863 0 0 1 713.674 688.868L571.082 758.091A11.459 11.459 0 0 1 554.761 745.980L560.808 708.008A9.931 9.931 0 0 0 554.695 697.228L530.904 687.691A24.446 24.446 0 0 1 541.566 640.604Z" stroke-dashoffset="-2.3260587967714943"></path>
+        </mask>
+        <filter id="farMotionBlur" filterUnits="userSpaceOnUse" x="-40" y="365" width="1520" height="340" color-interpolation-filters="sRGB"><fegaussianblur id="farBlur" stdDeviation="0.55 0"></fegaussianblur></filter>
+        <filter id="midMotionBlur" filterUnits="userSpaceOnUse" x="-40" y="615" width="1520" height="175" color-interpolation-filters="sRGB"><fegaussianblur id="midBlur" stdDeviation="1.8 0"></fegaussianblur></filter>
+        <filter id="nearMotionBlur" filterUnits="userSpaceOnUse" x="-96" y="680" width="1632" height="155" color-interpolation-filters="sRGB"><fegaussianblur id="nearBlur" stdDeviation="4.1 0"></fegaussianblur></filter>
+        <clippath id="worldClip"><rect width="1440" height="820"></rect></clippath>
+        <pattern id="seaLines" width="205" height="47" patternUnits="userSpaceOnUse" patternTransform="translate(-26.7984 -1.75826)">
+          <path d="M6 16h40m36 19h61m28-24h20" stroke="var(--foam)" stroke-width="2" opacity=".65" stroke-linecap="round"></path>
+        </pattern>
+        <pattern id="roadDashes" width="220" height="820" patternUnits="userSpaceOnUse" patternTransform="translate(-101.198 0)">
+          <path d="M20 802h78" stroke="var(--road-line)" stroke-width="4" stroke-linecap="round"></path>
+        </pattern>
+        <g id="cloudBank" fill="var(--cloud)">
+          <path d="M168 190c-22-19-9-41 11-40 3-33 50-37 61-9 20-14 48 0 47 21 25-6 43 15 32 28Z"></path>
+          <path d="M1030 102c-18-12-11-32 8-35 2-25 40-29 47-4 16-8 34 3 33 18 18-1 32 11 27 21Z" opacity=".88"></path>
+          <path d="M1320 345c-21-11-17-33 4-36 4-29 47-30 53-2 25-8 44 8 39 27 22-2 30 11 27 20h-123Z" opacity=".75"></path>
+        </g>
+        <g id="farCoast">
+          <path d="M-20 514c75-4 109-61 177-66s127 57 210 57 129-39 210-26 133 47 208 35v60H-20Z" fill="var(--hill-back)"></path>
+          <path d="M-30 535c52-10 67-42 117-43s54 22 94 29 67-7 104 13l53 41H-30Z" fill="var(--hill)"></path>
+          <g transform="translate(1190 404)">
+            <path class="lighthouse-beam" d="M0 25-180-5v70L0 33Z" fill="var(--sun)"></path>
+            <path d="M-86 151c23-14 41-15 62-13s33-8 52-11 49 10 68 24Z" fill="var(--hill)"></path>
+            <path d="m-8 35-11 105h49L19 35Z" fill="var(--cloud)"></path>
+            <path d="m-12 79-3 22h41l-3-22Z" fill="var(--bike)"></path>
+            <path d="M-10 33h31v13h-31Z" fill="var(--ink)"></path>
+            <path d="M-17 33 5 13l23 20Z" fill="var(--bike)"></path>
+            <path d="M0 23v10h10V23" fill="var(--sun)"></path>
+            <path d="M-20 45h51M-11 31v-9M21 31v-9" fill="none" stroke="var(--ink)" stroke-width="2"></path>
+            <path d="M1 113h8v13H1Z" fill="var(--teal)"></path>
+            <path d="M5 6v8" stroke="var(--ink)" stroke-width="2"></path>
+            <g transform="translate(48 124)"><path d="M-13 4 2-7 17 4" fill="var(--bike)"></path><path d="M-10 4h24v16h-24Z" fill="var(--cloud)"></path><path d="M0 10h5v10H0Z" fill="var(--teal)"></path></g>
+          </g>
+        </g>
+        <g id="grassTuft" fill="none" stroke="var(--grass)" stroke-width="3" stroke-linecap="round">
+          <path d="M0 0q-3-18-12-25M0 0q0-29 8-36M0 0q10-20 20-20"></path>
+          <path d="M-8-11q-8-1-13-9M10-12q11-1 16-9" stroke-width="2"></path>
+        </g>
+        <g id="roadside">
+          <use href="#grassTuft" x="90" y="748"></use>
+          <use href="#grassTuft" x="350" y="746" transform="translate(175 374) scale(.5)"></use>
+          <use href="#grassTuft" x="1080" y="748"></use>
+          <g transform="translate(1250 733)" fill="var(--grass-light)"><ellipse rx="27" ry="6"></ellipse><path d="M-4 0q-7-20-18-24 18-1 22 21Q1-38 14-43q4 26-8 41 13-17 29-13-8 13-32 15Z"></path></g>
+          <g fill="var(--road-line)" opacity=".65"><ellipse cx="203" cy="774" rx="6" ry="2"></ellipse><ellipse cx="1123" cy="780" rx="4" ry="2"></ellipse><ellipse cx="410" cy="762" rx="3" ry="1.6"></ellipse><ellipse cx="1318" cy="787" rx="5" ry="2"></ellipse></g>
+        </g>
+        <g id="spokeSet" fill="none">
+          <circle r="113.5" stroke="var(--ink)" stroke-width="6" stroke-dasharray="4 7.6"></circle>
+          <path d="M-88 0H88M0-88V88M-62.2-62.2 62.2 62.2M-62.2 62.2 62.2-62.2M-81.3-33.7 81.3 33.7M-81.3 33.7 81.3-33.7M-33.7-81.3 33.7 81.3M-33.7 81.3 33.7-81.3" stroke="var(--metal)" stroke-width="1.7"></path>
+          <circle r="28" stroke="var(--metal)" stroke-width="5"></circle>
+          <circle r="28" stroke="var(--paper)" stroke-width="2.5" stroke-dasharray="3 5"></circle>
+          <path d="M-21-15 21 15M-2-26 2 26M21-15-21 15" stroke="var(--metal)" stroke-width="3"></path>
+        </g>
+        <g id="wheelShell" fill="none">
+          <circle r="104" stroke="var(--ink)" stroke-width="19"></circle>
+          <circle r="98" stroke="var(--metal)" stroke-width="1" opacity=".65"></circle>
+          <circle r="92" stroke="var(--ink)" stroke-width="8"></circle>
+          <circle r="87" stroke="var(--metal)" stroke-width="1.2"></circle>
+          <path d="M-81-44a92 92 0 0 1 28-31" stroke="var(--bike-light)" stroke-width="2" opacity=".8" stroke-linecap="round"></path>
+        </g>
+      </defs>
+
+      <g clip-path="url(#worldClip)">
+        <rect width="1440" height="820" fill="var(--sky)"></rect>
+        <g id="sun" transform="translate(0 0)"><circle cx="1160" cy="222" r="111" fill="var(--sun-halo)" opacity=".37"></circle><circle cx="1160" cy="222" r="80" fill="var(--sun-halo)" opacity=".6"></circle><circle cx="1160" cy="222" r="60" fill="var(--sun)"></circle></g>
+        <g id="stars" fill="#e6dfbe" aria-hidden="true">
+          <circle cx="470" cy="144" r="1.7"></circle><circle cx="598" cy="90" r="1.2"></circle><circle cx="885" cy="113" r="1.8"></circle><circle cx="998" cy="205" r="1.3"></circle><circle cx="1280" cy="127" r="1.8"></circle><circle cx="1350" cy="253" r="1.2"></circle><circle cx="1090" cy="340" r="1.5"></circle><circle cx="549" cy="286" r="1.4"></circle><circle cx="1215" cy="370" r="1.2"></circle><circle cx="967" cy="72" r="1.2"></circle>
+          <path d="M945 158v9m-4.5-4.5h9M1301 324v7m-3.5-3.5h7" fill="none" stroke="#e6dfbe" stroke-width="1.1" stroke-linecap="round"></path>
+        </g>
+        <g id="moon" aria-hidden="true"><circle cx="1160" cy="222" r="74" fill="var(--sun-halo)" opacity=".1"></circle><path d="M1181 171a54 54 0 1 0 29 79 47 47 0 0 1-29-79Z" fill="#e8dfbd"></path><circle cx="1133" cy="227" r="6" fill="#bdc5ac" opacity=".25"></circle><circle cx="1145" cy="251" r="3" fill="#bdc5ac" opacity=".2"></circle></g>
+        <g id="movingClouds" transform="translate(-84.3513 0)"><use href="#cloudBank"></use><use href="#cloudBank" x="1440"></use></g>
+        <path id="gullOne" d="M1040 360q11 -15.366108554782365 23 0 10 -15.366108554782365 22 0" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" transform="translate(-58.434 0.732294)"></path>
+        <path id="gullTwo" d="M1100 391q8 -5.812029439391463 16 0 8 -5.812029439391463 16 0" fill="none" stroke="var(--muted)" stroke-width="1.7" stroke-linecap="round" transform="translate(-32.1048 -2.73652)"></path>
+        <g id="distantScenery" filter="url(#farMotionBlur)">
+        <path d="M0 520Q390 497 720 521t720-2V677H0Z" fill="var(--sea)"></path>
+        <g id="movingCoast" transform="translate(-308.669 0)"><use href="#farCoast"></use><use href="#farCoast" x="1440"></use></g>
+        <path d="M0 558q160-18 325 0t345 0 385 0 385 0v101H0Z" fill="var(--sea)"></path>
+        <rect y="535" width="1440" height="133" fill="url(#seaLines)"></rect>
+        </g>
+        <g id="sailboatLayer" filter="url(#farMotionBlur)"><g id="sailboat" transform="translate(-99.8146 554) rotate(0)">
+          <path d="M-23 0h51L16 9H-11Z" fill="var(--teal)"></path>
+          <path d="M3-51V1" stroke="var(--ink)" stroke-width="2"></path>
+          <path d="M-1-47-21-6h20Z" fill="var(--cloud)"></path><path d="m7-39 17 33H7Z" fill="var(--sun-halo)"></path>
+          <path d="M-31 15H36" stroke="var(--foam)" stroke-width="2" stroke-linecap="round"></path>
+        </g></g>
+        <g id="coastalForeground" filter="url(#midMotionBlur)">
+        <path d="M-20 654Q139 625 325 649t378 3 368-6 389 9v122H-20Z" fill="var(--foam)"></path>
+        <path d="M-20 669Q180 633 364 668t359-1 365-5 372 5v112H-20Z" fill="var(--sand)"></path>
+        <path d="M0 708q140-15 300-3m735 12q169-24 405-3" fill="none" stroke="var(--road-line)" stroke-width="3" opacity=".65" stroke-linecap="round"></path>
+        </g>
+        <rect y="753" width="1440" height="67" fill="var(--road)"></rect>
+        <path d="M0 755H1440" stroke="var(--road-line)" stroke-width="5"></path>
+        <g id="nearScenery" filter="url(#nearMotionBlur)">
+        <rect y="780" width="1440" height="40" fill="url(#roadDashes)"></rect>
+        <g id="movingRoadside" transform="translate(-1341.2 0)"><use href="#roadside"></use><use href="#roadside" x="1440"></use></g>
+        </g>
+
+        <g id="riderScene">
+          <ellipse cx="724" cy="781" rx="302" ry="12" fill="var(--shadow)" opacity=".045"></ellipse>
+          <ellipse cx="724" cy="781" rx="277" ry="8" fill="var(--shadow)" opacity=".055"></ellipse>
+          <ellipse id="supportShadow" cx="673.8498227124583" cy="783" rx="24" ry="3" fill="var(--shadow)" opacity="0"></ellipse>
+          <g transform="translate(540 665)"><use href="#wheelShell"></use><g id="rearSpokes" transform="rotate(205.256)"><use href="#spokeSet"></use><path d="M0-94v7" stroke="var(--bike)" stroke-width="3"></path></g><circle r="10" fill="var(--metal)"></circle><circle r="4" fill="var(--ink)"></circle></g>
+          <g transform="translate(900 665)"><use href="#wheelShell"></use><g id="frontSpokes" transform="rotate(205.256)"><use href="#spokeSet"></use><path d="M0-94v7" stroke="var(--bike)" stroke-width="3"></path></g><circle r="9" fill="var(--metal)"></circle><circle r="4" fill="var(--ink)"></circle></g>
+
+          <!-- The far leg and crank stay behind the bicycle frame. -->
+          <g id="farPedalAssembly"><path id="farCrank" fill="none" stroke="var(--metal)" stroke-width="6" stroke-linecap="round" d="M705 671L736.15 702.08"></path><rect id="farPedal" width="37" height="7" rx="3" fill="var(--ink)" x="717.65" y="705.075"></rect></g>
+          <path id="farLeg" d="M642.00 492.50 Q717.69 573.79 715.69 580.79 L736.15 695.08" fill="none" stroke="var(--leg-far)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"></path>
+          <g id="farFoot" fill="var(--leg-far)" transform="translate(736.15 698.075) rotate(-1.46873)"><path d="M-18-6q10-13 19-4L23 0q5 5-3 7h-41q-8-6 3-13Z"></path><path d="m5 1 13 3m-19-5 5 5" fill="none" stroke="var(--beak-edge)" stroke-width="1.3"></path></g>
+
+          <!-- A fictional flagship carbon enduro bike, in the original illustration palette. -->
+          <g fill="none" stroke-linejoin="round" stroke-linecap="round">
+            <!-- Horst-style four-bar: chainstay pivots at the main frame;
+                 the rear carrier reaches the rocker, never the fixed seat tube. -->
+            <path d="M690 637Q628 667 563 677" stroke="var(--ink)" stroke-width="10"></path>
+            <path d="M685 638Q625 665 567 675" stroke="var(--teal-dark)" stroke-width="4"></path>
+            <path d="M648 597Q593 626 540 665L563 677" stroke="var(--ink)" stroke-width="10"></path>
+            <path d="M645 597Q590 628 542 662" stroke="var(--bike)" stroke-width="5"></path>
+            <path d="M670 554C734 551 784 536 838 529" stroke="var(--ink)" stroke-width="18"></path>
+            <path d="M671 550C734 547 784 532 836 525" stroke="var(--bike)" stroke-width="9"></path>
+            <path d="M851 556C807 591 752 640 705 671" stroke="var(--ink)" stroke-width="23"></path>
+            <path d="M846 556C803 592 751 635 710 665" stroke="var(--bike)" stroke-width="5"></path>
+            <path d="M670 554 686 604 705 671" stroke="var(--ink)" stroke-width="15"></path>
+            <path d="M668 557 682 604 698 660" stroke="var(--bike)" stroke-width="7"></path>
+            <path d="M838 529 851 556" stroke="var(--ink)" stroke-width="19"></path>
+            <path d="M838 529 847 548" stroke="var(--bike)" stroke-width="8"></path>
+            <path d="M648 597 681 590 707 608Z" fill="var(--teal-dark)" stroke="var(--ink)" stroke-width="3"></path>
+            <path d="m663 596 17-2 13 10Z" fill="var(--paper)" stroke="var(--metal)" stroke-width="1"></path>
+            <path d="M687 628 700 628 707 651 694 648Z" fill="var(--ink)" stroke="var(--ink)" stroke-width="2"></path>
+
+            <!-- Low, forward air shock: a moving rocker eye and a fixed down-tube eye. -->
+            <path d="M707 608 750 637" stroke="var(--metal)" stroke-width="7"></path>
+            <path d="M711 611 726 621" stroke="var(--beak)" stroke-width="5.5"></path>
+            <path d="M727 621 747 635" stroke="var(--ink)" stroke-width="15"></path>
+            <path d="M729 623 744 633" stroke="var(--teal)" stroke-width="10"></path>
+            <path d="m735 618 12 8" stroke="var(--ink)" stroke-width="6"></path>
+            <circle cx="740" cy="622" r="3" fill="var(--bike)" stroke="var(--ink)" stroke-width="1"></circle>
+            <path d="M747 632 754 632 758 640" stroke="var(--ink)" stroke-width="6"></path>
+            <circle cx="750" cy="637" r="4.5" fill="var(--metal)" stroke="var(--ink)" stroke-width="2"></circle>
+            <circle cx="707" cy="608" r="4.5" fill="var(--metal)" stroke="var(--ink)" stroke-width="2"></circle>
+            <circle cx="681" cy="590" r="5.5" fill="var(--metal)" stroke="var(--ink)" stroke-width="2.5"></circle>
+            <circle cx="648" cy="597" r="5" fill="var(--metal)" stroke="var(--ink)" stroke-width="2"></circle>
+            <circle cx="563" cy="677" r="5" fill="var(--metal)" stroke="var(--ink)" stroke-width="2"></circle>
+            <circle cx="690" cy="637" r="6" fill="var(--metal)" stroke="var(--ink)" stroke-width="2.5"></circle>
+            <circle cx="690" cy="637" r="1.6" fill="var(--ink)"></circle>
+
+            <!-- A dropper post, short stem, wide riser bar and hydraulic hoses. -->
+            <path d="M670 554 661 527" stroke="var(--ink)" stroke-width="9"></path>
+            <path d="m661 527-5-16" stroke="var(--metal)" stroke-width="6"></path>
+            <path d="m665 539 4 11" stroke="var(--bike-light)" stroke-width="2"></path>
+            <path d="M838 529 825 502 848 497" stroke="var(--ink)" stroke-width="8"></path>
+            <path d="m808 490 21 7 32-3 29-9" stroke="var(--ink)" stroke-width="5"></path>
+            <path d="m807 490 17 5m53-6 15-5" stroke="var(--teal-dark)" stroke-width="8"></path>
+            <path d="m867 495 4 11m-41-5-6 9" stroke="var(--metal)" stroke-width="3"></path>
+            <path d="M865 503q32 23 5 68l19 58q3 10-8 18M828 506q-17 27-45 42" stroke="var(--ink)" stroke-width="1.6"></path>
+
+            <!-- Long-travel fork: two gold stanchions above carbon-black lowers. -->
+            <path d="m864 555 22 48" stroke="var(--beak)" stroke-width="8"></path>
+            <path d="M886 603 912 659 900 665" stroke="var(--ink)" stroke-width="11"></path>
+            <path d="m852 561 22 48" stroke="var(--beak)" stroke-width="10"></path>
+            <path d="m850 563 20 43" stroke="var(--sun-halo)" stroke-width="2"></path>
+            <path d="M874 609 900 665" stroke="var(--ink)" stroke-width="15"></path>
+            <path d="m874 612 24 52" stroke="var(--teal-dark)" stroke-width="5"></path>
+            <path d="m876 611 12-7m-40-44 21-10" stroke="var(--ink)" stroke-width="8"></path>
+            <path d="m882 629 7 16" stroke="var(--bike)" stroke-width="6"></path>
+            <path d="M888 639 881 643 878 650" stroke="var(--ink)" stroke-width="4.5"></path>
+            <path d="m895 667 10-4" stroke="var(--metal)" stroke-width="5"></path>
+            <path d="M572 646 565 642 560 646" stroke="var(--ink)" stroke-width="4"></path>
+            <path d="M828 506q-45 35-140 51t-116 89" stroke="var(--ink)" stroke-width="1.25"></path>
+          </g>
+          <g transform="translate(879 650) rotate(35)"><rect x="-4" y="-8" width="8" height="16" rx="2" fill="var(--ink)"></rect><rect x="-1.4" y="-5" width="2.8" height="10" rx="1" fill="var(--bike)"></rect><circle cx="0" cy="-6" r="1" fill="var(--metal)"></circle><circle cx="0" cy="6" r="1" fill="var(--metal)"></circle></g>
+          <g transform="translate(560 646) rotate(44)"><rect x="-4" y="-8" width="8" height="16" rx="2" fill="var(--ink)"></rect><path d="M0-4v8" stroke="var(--bike)" stroke-width="3" stroke-linecap="round"></path></g>
+          <circle cx="900" cy="665" r="5" fill="var(--metal)" stroke="var(--ink)" stroke-width="2"></circle>
+          <path d="M622 507q18-3 41-1l20 3q8 1 4 6l-57 3q-15 0-8-11Z" fill="var(--ink)"></path>
+          <path d="M630 510h42" stroke="var(--bike-light)" stroke-width="1.5" stroke-linecap="round"></path>
+          <text x="764" y="625" transform="rotate(-38 764 625)" fill="var(--paper)" font-family="sans-serif" font-size="7.5" font-weight="700" letter-spacing="2.1">鹈鹕</text>
+          <text x="757" y="545" transform="rotate(-8 757 545)" fill="var(--paper)" font-family="sans-serif" font-size="5.5" letter-spacing="1.5">作品 / 02</text>
+          <g transform="translate(540 665)"><g id="cassetteRotor" transform="rotate(6325.26)"><g id="cassetteCogs"><path d="M38.33 0.00L40.61 0.98L40.54 2.55L38.17 3.47L38.05 4.62L40.20 5.87L39.94 7.42L37.47 8.04L37.21 9.17L39.20 10.67L38.76 12.18L36.23 12.50L35.83 13.59L37.63 15.32L37.01 16.76L34.46 16.78L33.94 17.81L35.51 19.74L34.72 21.10L32.18 20.81L31.54 21.77L32.87 23.88L31.92 25.13L29.44 24.54L28.69 25.41L29.75 27.67L28.66 28.80L26.27 27.91L25.41 28.69L26.20 31.05L24.98 32.04L22.71 30.87L21.77 31.54L22.26 33.98L20.93 34.82L18.83 33.38L17.81 33.94L18.00 36.42L16.58 37.09L14.67 35.41L13.59 35.83L13.48 38.32L11.99 38.81L10.29 36.92L9.17 37.21L8.77 39.67L7.23 39.98L5.77 37.89L4.62 38.05L3.92 40.44L2.35 40.56L1.16 38.31L-0.00 38.33L-0.98 40.61L-2.55 40.54L-3.47 38.17L-4.62 38.05L-5.87 40.20L-7.42 39.94L-8.04 37.47L-9.17 37.21L-10.67 39.20L-12.18 38.76L-12.50 36.23L-13.59 35.83L-15.32 37.63L-16.76 37.01L-16.78 34.46L-17.81 33.94L-19.74 35.51L-21.10 34.72L-20.81 32.18L-21.77 31.54L-23.88 32.87L-25.13 31.92L-24.54 29.44L-25.41 28.69L-27.67 29.75L-28.80 28.66L-27.91 26.27L-28.69 25.41L-31.05 26.20L-32.04 24.98L-30.87 22.71L-31.54 21.77L-33.98 22.26L-34.82 20.93L-33.38 18.83L-33.94 17.81L-36.42 18.00L-37.09 16.58L-35.41 14.67L-35.83 13.59L-38.32 13.48L-38.81 11.99L-36.92 10.29L-37.21 9.17L-39.67 8.77L-39.98 7.23L-37.89 5.77L-38.05 4.62L-40.44 3.92L-40.56 2.35L-38.31 1.16L-38.33 -0.00L-40.61 -0.98L-40.54 -2.55L-38.17 -3.47L-38.05 -4.62L-40.20 -5.87L-39.94 -7.42L-37.47 -8.04L-37.21 -9.17L-39.20 -10.67L-38.76 -12.18L-36.23 -12.50L-35.83 -13.59L-37.63 -15.32L-37.01 -16.76L-34.46 -16.78L-33.94 -17.81L-35.51 -19.74L-34.72 -21.10L-32.18 -20.81L-31.54 -21.77L-32.87 -23.88L-31.92 -25.13L-29.44 -24.54L-28.69 -25.41L-29.75 -27.67L-28.66 -28.80L-26.27 -27.91L-25.41 -28.69L-26.20 -31.05L-24.98 -32.04L-22.71 -30.87L-21.77 -31.54L-22.26 -33.98L-20.93 -34.82L-18.83 -33.38L-17.81 -33.94L-18.00 -36.42L-16.58 -37.09L-14.67 -35.41L-13.59 -35.83L-13.48 -38.32L-11.99 -38.81L-10.29 -36.92L-9.17 -37.21L-8.77 -39.67L-7.23 -39.98L-5.77 -37.89L-4.62 -38.05L-3.92 -40.44L-2.35 -40.56L-1.16 -38.31L-0.00 -38.33L0.98 -40.61L2.55 -40.54L3.47 -38.17L4.62 -38.05L5.87 -40.20L7.42 -39.94L8.04 -37.47L9.17 -37.21L10.67 -39.20L12.18 -38.76L12.50 -36.23L13.59 -35.83L15.32 -37.63L16.76 -37.01L16.78 -34.46L17.81 -33.94L19.74 -35.51L21.10 -34.72L20.81 -32.18L21.77 -31.54L23.88 -32.87L25.13 -31.92L24.54 -29.44L25.41 -28.69L27.67 -29.75L28.80 -28.66L27.91 -26.27L28.69 -25.41L31.05 -26.20L32.04 -24.98L30.87 -22.71L31.54 -21.77L33.98 -22.26L34.82 -20.93L33.38 -18.83L33.94 -17.81L36.42 -18.00L37.09 -16.58L35.41 -14.67L35.83 -13.59L38.32 -13.48L38.81 -11.99L36.92 -10.29L37.21 -9.17L39.67 -8.77L39.98 -7.23L37.89 -5.77L38.05 -4.62L40.44 -3.92L40.56 -2.35L38.31 -1.16Z" fill="var(--ink)" fill-opacity="0.3" stroke="var(--metal)" stroke-width="0.8" opacity="0.8"></path><path d="M32.21 0.00L34.50 0.99L34.42 2.56L32.03 3.44L31.89 4.58L34.01 5.89L33.70 7.43L31.21 7.97L30.91 9.08L32.82 10.67L32.30 12.15L29.76 12.33L29.30 13.38L30.97 15.23L30.24 16.63L27.70 16.44L27.10 17.42L28.49 19.48L27.57 20.76L25.08 20.21L24.35 21.10L25.43 23.34L24.33 24.47L21.95 23.58L21.10 24.35L21.85 26.72L20.60 27.69L18.37 26.46L17.42 27.10L17.82 29.56L16.45 30.34L14.42 28.81L13.38 29.30L13.44 31.79L11.97 32.37L10.17 30.57L9.08 30.91L8.77 33.38L7.24 33.75L5.72 31.70L4.58 31.89L3.93 34.29L2.36 34.43L1.15 32.19L0.00 32.21L-0.99 34.50L-2.56 34.42L-3.44 32.03L-4.58 31.89L-5.89 34.01L-7.43 33.70L-7.97 31.21L-9.08 30.91L-10.67 32.82L-12.15 32.30L-12.33 29.76L-13.38 29.30L-15.23 30.97L-16.63 30.24L-16.44 27.70L-17.42 27.10L-19.48 28.49L-20.76 27.57L-20.21 25.08L-21.10 24.35L-23.34 25.43L-24.47 24.33L-23.58 21.95L-24.35 21.10L-26.72 21.85L-27.69 20.60L-26.46 18.37L-27.10 17.42L-29.56 17.82L-30.34 16.45L-28.81 14.42L-29.30 13.38L-31.79 13.44L-32.37 11.97L-30.57 10.17L-30.91 9.08L-33.38 8.77L-33.75 7.24L-31.70 5.72L-31.89 4.58L-34.29 3.93L-34.43 2.36L-32.19 1.15L-32.21 0.00L-34.50 -0.99L-34.42 -2.56L-32.03 -3.44L-31.89 -4.58L-34.01 -5.89L-33.70 -7.43L-31.21 -7.97L-30.91 -9.08L-32.82 -10.67L-32.30 -12.15L-29.76 -12.33L-29.30 -13.38L-30.97 -15.23L-30.24 -16.63L-27.70 -16.44L-27.10 -17.42L-28.49 -19.48L-27.57 -20.76L-25.08 -20.21L-24.35 -21.10L-25.43 -23.34L-24.33 -24.47L-21.95 -23.58L-21.10 -24.35L-21.85 -26.72L-20.60 -27.69L-18.37 -26.46L-17.42 -27.10L-17.82 -29.56L-16.45 -30.34L-14.42 -28.81L-13.38 -29.30L-13.44 -31.79L-11.97 -32.37L-10.17 -30.57L-9.08 -30.91L-8.77 -33.38L-7.24 -33.75L-5.72 -31.70L-4.58 -31.89L-3.93 -34.29L-2.36 -34.43L-1.15 -32.19L-0.00 -32.21L0.99 -34.50L2.56 -34.42L3.44 -32.03L4.58 -31.89L5.89 -34.01L7.43 -33.70L7.97 -31.21L9.08 -30.91L10.67 -32.82L12.15 -32.30L12.33 -29.76L13.38 -29.30L15.23 -30.97L16.63 -30.24L16.44 -27.70L17.42 -27.10L19.48 -28.49L20.76 -27.57L20.21 -25.08L21.10 -24.35L23.34 -25.43L24.47 -24.33L23.58 -21.95L24.35 -21.10L26.72 -21.85L27.69 -20.60L26.46 -18.37L27.10 -17.42L29.56 -17.82L30.34 -16.45L28.81 -14.42L29.30 -13.38L31.79 -13.44L32.37 -11.97L30.57 -10.17L30.91 -9.08L33.38 -8.77L33.75 -7.24L31.70 -5.72L31.89 -4.58L34.29 -3.93L34.43 -2.36L32.19 -1.15Z" fill="none" fill-opacity="0.3" stroke="var(--metal)" stroke-width="0.8" opacity="0.8"></path><path d="M27.63 0.00L29.91 0.99L29.82 2.57L27.42 3.42L27.25 4.55L29.34 5.90L28.99 7.44L26.48 7.88L26.13 8.97L27.97 10.65L27.37 12.11L24.82 12.13L24.30 13.15L25.84 15.11L25.00 16.45L22.49 16.06L21.80 16.97L23.00 19.15L21.95 20.34L19.54 19.54L18.71 20.33L19.53 22.68L18.31 23.68L16.06 22.49L15.11 23.13L15.53 25.58L14.16 26.37L12.13 24.82L11.10 25.30L11.11 27.79L9.62 28.34L7.88 26.48L6.78 26.78L6.38 29.24L4.83 29.54L3.42 27.42L2.28 27.54L1.48 29.89L-0.10 29.93L-1.14 27.61L-2.28 27.54L-3.46 29.73L-5.02 29.51L-5.67 27.04L-6.78 26.78L-8.30 28.76L-9.81 28.28L-10.04 25.74L-11.10 25.30L-12.92 27.00L-14.33 26.28L-14.14 23.74L-15.11 23.13L-17.19 24.50L-18.46 23.56L-17.86 21.08L-18.71 20.33L-20.99 21.34L-22.09 20.20L-21.08 17.86L-21.80 16.97L-24.21 17.59L-25.11 16.29L-23.74 14.14L-24.30 13.15L-26.78 13.37L-27.45 11.93L-25.74 10.04L-26.13 8.97L-28.61 8.78L-29.04 7.25L-27.04 5.67L-27.25 4.55L-29.67 3.95L-29.84 2.37L-27.61 1.14L-27.63 0.00L-29.91 -0.99L-29.82 -2.57L-27.42 -3.42L-27.25 -4.55L-29.34 -5.90L-28.99 -7.44L-26.48 -7.88L-26.13 -8.97L-27.97 -10.65L-27.37 -12.11L-24.82 -12.13L-24.30 -13.15L-25.84 -15.11L-25.00 -16.45L-22.49 -16.06L-21.80 -16.97L-23.00 -19.15L-21.95 -20.34L-19.54 -19.54L-18.71 -20.33L-19.53 -22.68L-18.31 -23.68L-16.06 -22.49L-15.11 -23.13L-15.53 -25.58L-14.16 -26.37L-12.13 -24.82L-11.10 -25.30L-11.11 -27.79L-9.62 -28.34L-7.88 -26.48L-6.78 -26.78L-6.38 -29.24L-4.83 -29.54L-3.42 -27.42L-2.28 -27.54L-1.48 -29.89L0.10 -29.93L1.14 -27.61L2.28 -27.54L3.46 -29.73L5.02 -29.51L5.67 -27.04L6.78 -26.78L8.30 -28.76L9.81 -28.28L10.04 -25.74L11.10 -25.30L12.92 -27.00L14.33 -26.28L14.14 -23.74L15.11 -23.13L17.19 -24.50L18.46 -23.56L17.86 -21.08L18.71 -20.33L20.99 -21.34L22.09 -20.20L21.08 -17.86L21.80 -16.97L24.21 -17.59L25.11 -16.29L23.74 -14.14L24.30 -13.15L26.78 -13.37L27.45 -11.93L25.74 -10.04L26.13 -8.97L28.61 -8.78L29.04 -7.25L27.04 -5.67L27.25 -4.55L29.67 -3.95L29.84 -2.37L27.61 -1.14Z" fill="none" fill-opacity="0.3" stroke="var(--metal)" stroke-width="0.8" opacity="0.8"></path><path d="M23.05 0.00L25.33 1.00L25.21 2.58L22.80 3.38L22.60 4.50L24.65 5.92L24.23 7.45L21.70 7.76L21.29 8.82L23.02 10.61L22.31 12.04L19.77 11.85L19.16 12.80L20.51 14.90L19.53 16.16L17.08 15.48L16.30 16.30L17.21 18.61L16.00 19.66L13.73 18.51L12.80 19.16L13.24 21.61L11.86 22.40L9.85 20.83L8.82 21.29L8.77 23.78L7.26 24.28L5.60 22.36L4.50 22.60L3.97 25.03L2.39 25.23L1.13 23.02L0.00 23.05L-1.00 25.33L-2.58 25.21L-3.38 22.80L-4.50 22.60L-5.92 24.65L-7.45 24.23L-7.76 21.70L-8.82 21.29L-10.61 23.02L-12.04 22.31L-11.85 19.77L-12.80 19.16L-14.90 20.51L-16.16 19.53L-15.48 17.08L-16.30 16.30L-18.61 17.21L-19.66 16.00L-18.51 13.73L-19.16 12.80L-21.61 13.24L-22.40 11.86L-20.83 9.85L-21.29 8.82L-23.78 8.77L-24.28 7.26L-22.36 5.60L-22.60 4.50L-25.03 3.97L-25.23 2.39L-23.02 1.13L-23.05 0.00L-25.33 -1.00L-25.21 -2.58L-22.80 -3.38L-22.60 -4.50L-24.65 -5.92L-24.23 -7.45L-21.70 -7.76L-21.29 -8.82L-23.02 -10.61L-22.31 -12.04L-19.77 -11.85L-19.16 -12.80L-20.51 -14.90L-19.53 -16.16L-17.08 -15.48L-16.30 -16.30L-17.21 -18.61L-16.00 -19.66L-13.73 -18.51L-12.80 -19.16L-13.24 -21.61L-11.86 -22.40L-9.85 -20.83L-8.82 -21.29L-8.77 -23.78L-7.26 -24.28L-5.60 -22.36L-4.50 -22.60L-3.97 -25.03L-2.39 -25.23L-1.13 -23.02L-0.00 -23.05L1.00 -25.33L2.58 -25.21L3.38 -22.80L4.50 -22.60L5.92 -24.65L7.45 -24.23L7.76 -21.70L8.82 -21.29L10.61 -23.02L12.04 -22.31L11.85 -19.77L12.80 -19.16L14.90 -20.51L16.16 -19.53L15.48 -17.08L16.30 -16.30L18.61 -17.21L19.66 -16.00L18.51 -13.73L19.16 -12.80L21.61 -13.24L22.40 -11.86L20.83 -9.85L21.29 -8.82L23.78 -8.77L24.28 -7.26L22.36 -5.60L22.60 -4.50L25.03 -3.97L25.23 -2.39L23.02 -1.13Z" fill="none" fill-opacity="0.3" stroke="var(--metal)" stroke-width="0.8" opacity="0.8"></path><path d="M19.99 0.00L22.27 1.00L22.14 2.60L19.71 3.35L19.49 4.45L21.49 5.93L21.01 7.46L18.47 7.65L18.01 8.67L19.63 10.56L18.82 11.94L16.30 11.57L15.63 12.46L16.79 14.67L15.69 15.83L13.32 14.91L12.46 15.63L13.10 18.03L11.77 18.93L9.67 17.50L8.67 18.01L8.76 20.50L7.27 21.07L5.53 19.21L4.45 19.49L3.98 21.93L2.40 22.16L1.12 19.96L0.00 19.99L-1.00 22.27L-2.60 22.14L-3.35 19.71L-4.45 19.49L-5.93 21.49L-7.46 21.01L-7.65 18.47L-8.67 18.01L-10.56 19.63L-11.94 18.82L-11.57 16.30L-12.46 15.63L-14.67 16.79L-15.83 15.69L-14.91 13.32L-15.63 12.46L-18.03 13.10L-18.93 11.77L-17.50 9.67L-18.01 8.67L-20.50 8.76L-21.07 7.27L-19.21 5.53L-19.49 4.45L-21.93 3.98L-22.16 2.40L-19.96 1.12L-19.99 0.00L-22.27 -1.00L-22.14 -2.60L-19.71 -3.35L-19.49 -4.45L-21.49 -5.93L-21.01 -7.46L-18.47 -7.65L-18.01 -8.67L-19.63 -10.56L-18.82 -11.94L-16.30 -11.57L-15.63 -12.46L-16.79 -14.67L-15.69 -15.83L-13.32 -14.91L-12.46 -15.63L-13.10 -18.03L-11.77 -18.93L-9.67 -17.50L-8.67 -18.01L-8.76 -20.50L-7.27 -21.07L-5.53 -19.21L-4.45 -19.49L-3.98 -21.93L-2.40 -22.16L-1.12 -19.96L-0.00 -19.99L1.00 -22.27L2.60 -22.14L3.35 -19.71L4.45 -19.49L5.93 -21.49L7.46 -21.01L7.65 -18.47L8.67 -18.01L10.56 -19.63L11.94 -18.82L11.57 -16.30L12.46 -15.63L14.67 -16.79L15.83 -15.69L14.91 -13.32L15.63 -12.46L18.03 -13.10L18.93 -11.77L17.50 -9.67L18.01 -8.67L20.50 -8.76L21.07 -7.27L19.21 -5.53L19.49 -4.45L21.93 -3.98L22.16 -2.40L19.96 -1.12Z" fill="none" fill-opacity="0.3" stroke="var(--metal)" stroke-width="0.8" opacity="0.8"></path><path d="M16.93 0.00L19.21 1.01L19.06 2.61L16.61 3.30L16.36 4.38L18.29 5.94L17.73 7.45L15.19 7.49L14.67 8.47L16.13 10.48L15.20 11.79L12.73 11.17L11.97 11.97L12.87 14.29L11.63 15.32L9.41 14.08L8.47 14.67L8.73 17.14L7.27 17.81L5.44 16.04L4.38 16.36L4.00 18.81L2.41 19.08L1.11 16.90L0.00 16.93L-1.01 19.21L-2.61 19.06L-3.30 16.61L-4.38 16.36L-5.94 18.29L-7.45 17.73L-7.49 15.19L-8.47 14.67L-10.48 16.13L-11.79 15.20L-11.17 12.73L-11.97 11.97L-14.29 12.87L-15.32 11.63L-14.08 9.41L-14.67 8.47L-17.14 8.73L-17.81 7.27L-16.04 5.44L-16.36 4.38L-18.81 4.00L-19.08 2.41L-16.90 1.11L-16.93 0.00L-19.21 -1.01L-19.06 -2.61L-16.61 -3.30L-16.36 -4.38L-18.29 -5.94L-17.73 -7.45L-15.19 -7.49L-14.67 -8.47L-16.13 -10.48L-15.20 -11.79L-12.73 -11.17L-11.97 -11.97L-12.87 -14.29L-11.63 -15.32L-9.41 -14.08L-8.47 -14.67L-8.73 -17.14L-7.27 -17.81L-5.44 -16.04L-4.38 -16.36L-4.00 -18.81L-2.41 -19.08L-1.11 -16.90L-0.00 -16.93L1.01 -19.21L2.61 -19.06L3.30 -16.61L4.38 -16.36L5.94 -18.29L7.45 -17.73L7.49 -15.19L8.47 -14.67L10.48 -16.13L11.79 -15.20L11.17 -12.73L11.97 -11.97L14.29 -12.87L15.32 -11.63L14.08 -9.41L14.67 -8.47L17.14 -8.73L17.81 -7.27L16.04 -5.44L16.36 -4.38L18.81 -4.00L19.08 -2.41L16.90 -1.11Z" fill="none" fill-opacity="0.3" stroke="var(--metal)" stroke-width="0.8" opacity="0.8"></path><path d="M14.64 0.00L16.91 1.01L16.74 2.63L14.28 3.26L13.99 4.32L15.86 5.95L15.22 7.44L12.68 7.32L12.10 8.25L13.40 10.36L12.35 11.60L9.96 10.73L9.13 11.45L9.75 13.85L8.38 14.72L6.35 13.19L5.35 13.63L5.24 16.11L3.67 16.54L2.18 14.48L1.09 14.60L0.25 16.94L-1.37 16.89L-2.18 14.48L-3.26 14.28L-4.75 16.26L-6.28 15.73L-6.35 13.19L-7.32 12.68L-9.33 14.14L-10.64 13.18L-9.96 10.73L-10.73 9.96L-13.09 10.76L-14.06 9.46L-12.68 7.32L-13.19 6.35L-15.68 6.43L-16.22 4.90L-14.28 3.26L-14.48 2.18L-16.87 1.52L-16.94 -0.10L-14.60 -1.09L-14.48 -2.18L-16.57 -3.52L-16.16 -5.09L-13.63 -5.35L-13.19 -6.35L-14.80 -8.25L-13.94 -9.63L-11.45 -9.13L-10.73 -9.96L-11.71 -12.25L-10.48 -13.31L-8.25 -12.10L-7.32 -12.68L-7.58 -15.15L-6.10 -15.81L-4.32 -13.99L-3.26 -14.28L-2.78 -16.71L-1.17 -16.90L-0.00 -14.64L1.09 -14.60L2.27 -16.79L3.87 -16.50L4.32 -13.99L5.35 -13.63L7.12 -15.37L8.56 -14.62L8.25 -12.10L9.13 -11.45L11.34 -12.59L12.49 -11.45L11.45 -9.13L12.10 -8.25L14.54 -8.69L15.31 -7.26L13.63 -5.35L13.99 -4.32L16.46 -4.02L16.77 -2.42L14.60 -1.09Z" fill="none" fill-opacity="0.3" stroke="var(--metal)" stroke-width="0.8" opacity="0.8"></path><path d="M12.35 0.00L14.62 1.02L14.41 2.64L11.93 3.20L11.61 4.22L13.38 5.96L12.64 7.41L10.12 7.08L9.46 7.94L10.54 10.18L9.34 11.29L7.08 10.12L6.18 10.70L6.42 13.17L4.91 13.80L3.20 11.93L2.14 12.16L1.53 14.57L-0.10 14.65L-1.08 12.30L-2.14 12.16L-3.54 14.22L-5.11 13.73L-5.22 11.19L-6.18 10.70L-8.19 12.15L-9.50 11.16L-8.73 8.73L-9.46 7.94L-11.85 8.61L-12.74 7.24L-11.19 5.22L-11.61 4.22L-14.08 4.04L-14.45 2.44L-12.30 1.08L-12.35 0.00L-14.62 -1.02L-14.41 -2.64L-11.93 -3.20L-11.61 -4.22L-13.38 -5.96L-12.64 -7.41L-10.12 -7.08L-9.46 -7.94L-10.54 -10.18L-9.34 -11.29L-7.08 -10.12L-6.18 -10.70L-6.42 -13.17L-4.91 -13.80L-3.20 -11.93L-2.14 -12.16L-1.53 -14.57L0.10 -14.65L1.08 -12.30L2.14 -12.16L3.54 -14.22L5.11 -13.73L5.22 -11.19L6.18 -10.70L8.19 -12.15L9.50 -11.16L8.73 -8.73L9.46 -7.94L11.85 -8.61L12.74 -7.24L11.19 -5.22L11.61 -4.22L14.08 -4.04L14.45 -2.44L12.30 -1.08Z" fill="none" fill-opacity="0.3" stroke="var(--metal)" stroke-width="0.8" opacity="0.8"></path><path d="M10.82 0.00L13.08 1.03L12.85 2.66L10.36 3.14L10.00 4.14L11.69 5.96L10.85 7.38L8.37 6.87L7.65 7.65L8.52 9.98L7.20 10.97L5.10 9.55L4.14 10.00L4.06 12.48L2.46 12.89L1.06 10.77L0.00 10.82L-1.03 13.08L-2.66 12.85L-3.14 10.36L-4.14 10.00L-5.96 11.69L-7.38 10.85L-6.87 8.37L-7.65 7.65L-9.98 8.52L-10.97 7.20L-9.55 5.10L-10.00 4.14L-12.48 4.06L-12.89 2.46L-10.77 1.06L-10.82 0.00L-13.08 -1.03L-12.85 -2.66L-10.36 -3.14L-10.00 -4.14L-11.69 -5.96L-10.85 -7.38L-8.37 -6.87L-7.65 -7.65L-8.52 -9.98L-7.20 -10.97L-5.10 -9.55L-4.14 -10.00L-4.06 -12.48L-2.46 -12.89L-1.06 -10.77L-0.00 -10.82L1.03 -13.08L2.66 -12.85L3.14 -10.36L4.14 -10.00L5.96 -11.69L7.38 -10.85L6.87 -8.37L7.65 -7.65L9.98 -8.52L10.97 -7.20L9.55 -5.10L10.00 -4.14L12.48 -4.06L12.89 -2.46L10.77 -1.06Z" fill="none" fill-opacity="0.3" stroke="var(--metal)" stroke-width="0.8" opacity="0.8"></path><path d="M9.30 0.00L11.55 1.04L11.28 2.68L8.77 3.07L8.37 4.03L9.95 5.95L9.00 7.31L6.57 6.57L5.80 7.27L6.39 9.68L4.94 10.49L3.07 8.77L2.07 9.06L1.56 11.49L-0.10 11.59L-1.04 9.24L-2.07 9.06L-3.58 11.03L-5.12 10.40L-4.95 7.87L-5.80 7.27L-8.01 8.38L-9.13 7.15L-7.87 4.95L-8.37 4.03L-10.86 4.07L-11.33 2.48L-9.24 1.04L-9.30 0.00L-11.55 -1.04L-11.28 -2.68L-8.77 -3.07L-8.37 -4.03L-9.95 -5.95L-9.00 -7.31L-6.57 -6.57L-5.80 -7.27L-6.39 -9.68L-4.94 -10.49L-3.07 -8.77L-2.07 -9.06L-1.56 -11.49L0.10 -11.59L1.04 -9.24L2.07 -9.06L3.58 -11.03L5.12 -10.40L4.95 -7.87L5.80 -7.27L8.01 -8.38L9.13 -7.15L7.87 -4.95L8.37 -4.03L10.86 -4.07L11.33 -2.48L9.24 -1.04Z" fill="none" fill-opacity="0.3" stroke="var(--metal)" stroke-width="0.8" opacity="0.8"></path><path d="M7.77 0.00L10.01 1.05L9.70 2.71L7.18 2.97L6.73 3.88L8.14 5.92L7.04 7.19L4.73 6.16L3.88 6.73L4.09 9.20L2.50 9.75L1.01 7.70L0.00 7.77L-1.05 10.01L-2.71 9.70L-2.97 7.18L-3.88 6.73L-5.92 8.14L-7.19 7.04L-6.16 4.73L-6.73 3.88L-9.20 4.09L-9.75 2.50L-7.70 1.01L-7.77 0.00L-10.01 -1.05L-9.70 -2.71L-7.18 -2.97L-6.73 -3.88L-8.14 -5.92L-7.04 -7.19L-4.73 -6.16L-3.88 -6.73L-4.09 -9.20L-2.50 -9.75L-1.01 -7.70L-0.00 -7.77L1.05 -10.01L2.71 -9.70L2.97 -7.18L3.88 -6.73L5.92 -8.14L7.19 -7.04L6.16 -4.73L6.73 -3.88L9.20 -4.09L9.75 -2.50L7.70 -1.01Z" fill="none" fill-opacity="0.3" stroke="var(--metal)" stroke-width="0.8" opacity="0.8"></path><path d="M6.24 0.00L8.47 1.07L8.09 2.74L5.56 2.83L5.05 3.67L6.22 5.85L4.93 6.97L2.83 5.56L1.93 5.93L1.60 8.39L-0.11 8.54L-0.98 6.16L-1.93 5.93L-3.64 7.73L-5.11 6.84L-4.41 4.41L-5.05 3.67L-7.48 4.11L-8.15 2.54L-6.16 0.98L-6.24 0.00L-8.47 -1.07L-8.09 -2.74L-5.56 -2.83L-5.05 -3.67L-6.22 -5.85L-4.93 -6.97L-2.83 -5.56L-1.93 -5.93L-1.60 -8.39L0.11 -8.54L0.98 -6.16L1.93 -5.93L3.64 -7.73L5.11 -6.84L4.41 -4.41L5.05 -3.67L7.48 -4.11L8.15 -2.54L6.16 -0.98Z" fill="none" fill-opacity="0.3" stroke="var(--metal)" stroke-width="0.8" opacity="0.8"></path></g><path id="selectedCog" fill="none" stroke="var(--bike-light)" stroke-width="1.6" d="M23.05 0.00L25.33 1.00L25.21 2.58L22.80 3.38L22.60 4.50L24.65 5.92L24.23 7.45L21.70 7.76L21.29 8.82L23.02 10.61L22.31 12.04L19.77 11.85L19.16 12.80L20.51 14.90L19.53 16.16L17.08 15.48L16.30 16.30L17.21 18.61L16.00 19.66L13.73 18.51L12.80 19.16L13.24 21.61L11.86 22.40L9.85 20.83L8.82 21.29L8.77 23.78L7.26 24.28L5.60 22.36L4.50 22.60L3.97 25.03L2.39 25.23L1.13 23.02L0.00 23.05L-1.00 25.33L-2.58 25.21L-3.38 22.80L-4.50 22.60L-5.92 24.65L-7.45 24.23L-7.76 21.70L-8.82 21.29L-10.61 23.02L-12.04 22.31L-11.85 19.77L-12.80 19.16L-14.90 20.51L-16.16 19.53L-15.48 17.08L-16.30 16.30L-18.61 17.21L-19.66 16.00L-18.51 13.73L-19.16 12.80L-21.61 13.24L-22.40 11.86L-20.83 9.85L-21.29 8.82L-23.78 8.77L-24.28 7.26L-22.36 5.60L-22.60 4.50L-25.03 3.97L-25.23 2.39L-23.02 1.13L-23.05 0.00L-25.33 -1.00L-25.21 -2.58L-22.80 -3.38L-22.60 -4.50L-24.65 -5.92L-24.23 -7.45L-21.70 -7.76L-21.29 -8.82L-23.02 -10.61L-22.31 -12.04L-19.77 -11.85L-19.16 -12.80L-20.51 -14.90L-19.53 -16.16L-17.08 -15.48L-16.30 -16.30L-17.21 -18.61L-16.00 -19.66L-13.73 -18.51L-12.80 -19.16L-13.24 -21.61L-11.86 -22.40L-9.85 -20.83L-8.82 -21.29L-8.77 -23.78L-7.26 -24.28L-5.60 -22.36L-4.50 -22.60L-3.97 -25.03L-2.39 -25.23L-1.13 -23.02L-0.00 -23.05L1.00 -25.33L2.58 -25.21L3.38 -22.80L4.50 -22.60L5.92 -24.65L7.45 -24.23L7.76 -21.70L8.82 -21.29L10.61 -23.02L12.04 -22.31L11.85 -19.77L12.80 -19.16L14.90 -20.51L16.16 -19.53L15.48 -17.08L16.30 -16.30L18.61 -17.21L19.66 -16.00L18.51 -13.73L19.16 -12.80L21.61 -13.24L22.40 -11.86L20.83 -9.85L21.29 -8.82L23.78 -8.77L24.28 -7.26L22.36 -5.60L22.60 -4.50L25.03 -3.97L25.23 -2.39L23.02 -1.13Z" opacity="1"></path><path id="selectedCogNext" fill="none" stroke="var(--bike-light)" stroke-width="1.6" opacity="0"></path></g><circle r="4.5" fill="var(--ink)" stroke="var(--metal)" stroke-width="1.5"></circle></g>
+          <g id="rearDerailleur">
+            <path d="m540 665 4 14" fill="none" stroke="var(--ink)" stroke-width="5"></path>
+            <path id="derailleurLinkage" fill="var(--teal-dark)" stroke="var(--ink)" stroke-width="1.5" d="M540 678L549 676L563.00 690.45L549.00 698.45Z"></path>
+            <circle cx="544" cy="679" r="4" fill="var(--metal)" stroke="var(--ink)" stroke-width="1.6"></circle>
+            <g id="derailleurBody" transform="translate(551 706.446)"><rect x="-9" y="-22" width="24" height="17" rx="4" fill="var(--ink)"></rect><rect x="-6" y="-19" width="9" height="5" rx="1" fill="var(--bike)"></rect><path d="M7-18v9" stroke="var(--metal)" stroke-width="1.7"></path><circle cx="7" cy="-7" r="2.5" fill="var(--metal)"></circle></g>
+            <path id="derailleurCage" fill="none" stroke="var(--ink)" stroke-width="5" stroke-linejoin="round" d="M553.82 705.42L568.90 746.75L563.26 748.81L548.18 707.47Z"></path>
+            <path id="cageHighlight" fill="none" stroke="var(--metal)" stroke-width="1.4" d="M553.82 705.42L568.90 746.75"></path>
+            <g id="upperPulleyPosition" transform="translate(551 706.446)"><g id="upperPulleyRotor" transform="rotate(-15569.9)"><path d="M8.53 0.00L10.78 1.05L10.49 2.69L7.98 3.03L7.55 3.96L9.06 5.94L8.04 7.26L5.66 6.39L4.85 7.02L5.26 9.47L3.74 10.16L2.04 8.28L1.03 8.47L0.26 10.83L-1.41 10.74L-2.04 8.28L-3.03 7.98L-4.80 9.71L-6.24 8.85L-5.66 6.39L-6.39 5.66L-8.76 6.37L-9.64 4.94L-7.98 3.03L-8.28 2.04L-10.72 1.56L-10.83 -0.10L-8.47 -1.03L-8.28 -2.04L-10.22 -3.59L-9.54 -5.13L-7.02 -4.85L-6.39 -5.66L-7.38 -7.93L-6.07 -8.97L-3.96 -7.55L-3.03 -7.98L-2.85 -10.45L-1.20 -10.76L-0.00 -8.53L1.03 -8.47L2.34 -10.58L3.94 -10.09L3.96 -7.55L4.85 -7.02L6.98 -8.28L8.18 -7.10L7.02 -4.85L7.55 -3.96L10.03 -4.08L10.54 -2.49L8.47 -1.03ZM3.39 0.87L7.20 1.85A7.431268448934269 7.431268448934269 0 0 1 -0.47 7.42L-0.22 3.49A3.5 3.5 0 0 0 3.39 0.87ZM-2.45 2.50L-5.20 5.31A7.431268448934269 7.431268448934269 0 0 1 -6.19 -4.11L-2.92 -1.94A3.5 3.5 0 0 0 -2.45 2.50ZM-0.94 -3.37L-2.00 -7.16A7.431268448934269 7.431268448934269 0 0 1 6.66 -3.30L3.13 -1.56A3.5 3.5 0 0 0 -0.94 -3.37Z" fill="var(--ink)" fill-rule="evenodd" stroke="var(--metal)" stroke-width="0.75"></path></g><circle r="2" fill="var(--metal)"></circle></g>
+            <g id="lowerPulleyPosition" transform="translate(566.078 747.782)"><g id="lowerPulleyRotor" transform="rotate(13493.9)"><path d="M10.06 0.00L12.32 1.03L12.07 2.67L9.57 3.11L9.19 4.09L10.83 5.95L9.94 7.35L7.48 6.73L6.73 7.48L7.47 9.84L6.09 10.75L4.09 9.19L3.11 9.57L2.82 12.03L1.19 12.30L0.00 10.06L-1.05 10.00L-2.32 12.14L-3.92 11.72L-4.09 9.19L-5.03 8.71L-7.05 10.15L-8.35 9.12L-7.48 6.73L-8.14 5.91L-10.57 6.40L-11.33 4.93L-9.57 3.11L-9.84 2.09L-12.26 1.55L-12.36 -0.10L-10.00 -1.05L-9.84 -2.09L-11.83 -3.57L-11.25 -5.12L-8.71 -5.03L-8.14 -5.91L-9.36 -8.08L-8.19 -9.25L-5.91 -8.14L-5.03 -8.71L-5.26 -11.18L-3.72 -11.79L-2.09 -9.84L-1.05 -10.00L-0.26 -12.36L1.39 -12.28L2.09 -9.84L3.11 -9.57L4.79 -11.39L6.27 -10.65L5.91 -8.14L6.73 -7.48L9.01 -8.46L10.06 -7.18L8.71 -5.03L9.19 -4.09L11.67 -4.06L12.11 -2.47L10.00 -1.05ZM3.39 0.87L8.68 2.23A8.959155902616464 8.959155902616464 0 0 1 -0.56 8.94L-0.22 3.49A3.5 3.5 0 0 0 3.39 0.87ZM-2.45 2.50L-6.27 6.40A8.959155902616464 8.959155902616464 0 0 1 -7.46 -4.96L-2.92 -1.94A3.5 3.5 0 0 0 -2.45 2.50ZM-0.94 -3.37L-2.41 -8.63A8.959155902616464 8.959155902616464 0 0 1 8.02 -3.98L3.13 -1.56A3.5 3.5 0 0 0 -0.94 -3.37Z" fill="var(--ink)" fill-rule="evenodd" stroke="var(--metal)" stroke-width="0.75"></path></g><circle r="2" fill="var(--metal)"></circle></g>
+          </g>
+          <g transform="translate(705 671)"><g id="chainringRotor" transform="rotate(7784.93)"><g id="frontRingStack"><path d="M36.80 0.00L39.08 0.98L39.01 2.55L36.63 3.46L36.51 4.61L38.65 5.87L38.39 7.42L35.91 8.03L35.64 9.15L37.61 10.67L37.15 12.18L34.62 12.46L34.21 13.55L35.98 15.30L35.33 16.74L32.79 16.71L32.25 17.73L33.78 19.69L32.96 21.03L30.43 20.68L29.77 21.63L31.04 23.77L30.06 25.00L27.60 24.33L26.82 25.19L27.82 27.47L26.69 28.57L24.33 27.60L23.46 28.35L24.16 30.74L22.90 31.69L20.68 30.43L19.72 31.07L20.11 33.53L18.75 34.31L16.71 32.79L15.67 33.30L15.75 35.78L14.30 36.39L12.46 34.62L11.37 35.00L11.14 37.48L9.63 37.89L8.03 35.91L6.90 36.15L6.36 38.58L4.80 38.80L3.46 36.63L2.31 36.72L1.47 39.07L-0.10 39.10L-1.16 36.78L-2.31 36.72L-3.43 38.95L-5.00 38.78L-5.76 36.34L-6.90 36.15L-8.29 38.21L-9.82 37.84L-10.27 35.34L-11.37 35.00L-13.01 36.87L-14.48 36.32L-14.61 33.77L-15.67 33.30L-17.53 34.95L-18.92 34.21L-18.73 31.67L-19.72 31.07L-21.77 32.47L-23.06 31.57L-22.55 29.08L-23.46 28.35L-25.67 29.49L-26.84 28.43L-26.02 26.02L-26.82 25.19L-29.16 26.04L-30.19 24.85L-29.08 22.55L-29.77 21.63L-32.20 22.18L-33.06 20.87L-31.67 18.73L-32.25 17.73L-34.72 17.97L-35.42 16.56L-33.77 14.61L-34.21 13.55L-36.70 13.47L-37.21 11.99L-35.34 10.27L-35.64 9.15L-38.10 8.77L-38.42 7.23L-36.34 5.76L-36.51 4.61L-38.90 3.92L-39.03 2.36L-36.78 1.16L-36.80 0.00L-39.08 -0.98L-39.01 -2.55L-36.63 -3.46L-36.51 -4.61L-38.65 -5.87L-38.39 -7.42L-35.91 -8.03L-35.64 -9.15L-37.61 -10.67L-37.15 -12.18L-34.62 -12.46L-34.21 -13.55L-35.98 -15.30L-35.33 -16.74L-32.79 -16.71L-32.25 -17.73L-33.78 -19.69L-32.96 -21.03L-30.43 -20.68L-29.77 -21.63L-31.04 -23.77L-30.06 -25.00L-27.60 -24.33L-26.82 -25.19L-27.82 -27.47L-26.69 -28.57L-24.33 -27.60L-23.46 -28.35L-24.16 -30.74L-22.90 -31.69L-20.68 -30.43L-19.72 -31.07L-20.11 -33.53L-18.75 -34.31L-16.71 -32.79L-15.67 -33.30L-15.75 -35.78L-14.30 -36.39L-12.46 -34.62L-11.37 -35.00L-11.14 -37.48L-9.63 -37.89L-8.03 -35.91L-6.90 -36.15L-6.36 -38.58L-4.80 -38.80L-3.46 -36.63L-2.31 -36.72L-1.47 -39.07L0.10 -39.10L1.16 -36.78L2.31 -36.72L3.43 -38.95L5.00 -38.78L5.76 -36.34L6.90 -36.15L8.29 -38.21L9.82 -37.84L10.27 -35.34L11.37 -35.00L13.01 -36.87L14.48 -36.32L14.61 -33.77L15.67 -33.30L17.53 -34.95L18.92 -34.21L18.73 -31.67L19.72 -31.07L21.77 -32.47L23.06 -31.57L22.55 -29.08L23.46 -28.35L25.67 -29.49L26.84 -28.43L26.02 -26.02L26.82 -25.19L29.16 -26.04L30.19 -24.85L29.08 -22.55L29.77 -21.63L32.20 -22.18L33.06 -20.87L31.67 -18.73L32.25 -17.73L34.72 -17.97L35.42 -16.56L33.77 -14.61L34.21 -13.55L36.70 -13.47L37.21 -11.99L35.34 -10.27L35.64 -9.15L38.10 -8.77L38.42 -7.23L36.34 -5.76L36.51 -4.61L38.90 -3.92L39.03 -2.36L36.78 -1.16ZM6.88 1.31L33.59 6.41A34.197186342054884 34.197186342054884 0 0 1 11.58 32.18L2.37 6.59A7 7 0 0 0 6.88 1.31ZM-1.31 6.88L-6.41 33.59A34.197186342054884 34.197186342054884 0 0 1 -32.18 11.58L-6.59 2.37A7 7 0 0 0 -1.31 6.88ZM-6.88 -1.31L-33.59 -6.41A34.197186342054884 34.197186342054884 0 0 1 -11.58 -32.18L-2.37 -6.59A7 7 0 0 0 -6.88 -1.31ZM1.31 -6.88L6.41 -33.59A34.197186342054884 34.197186342054884 0 0 1 32.18 -11.58L6.59 -2.37A7 7 0 0 0 1.31 -6.88Z" fill="var(--ink)" fill-rule="evenodd" stroke="var(--metal)" stroke-width="0.95"></path><path d="M27.63 0.00L29.91 0.99L29.82 2.57L27.42 3.42L27.25 4.55L29.34 5.90L28.99 7.44L26.48 7.88L26.13 8.97L27.97 10.65L27.37 12.11L24.82 12.13L24.30 13.15L25.84 15.11L25.00 16.45L22.49 16.06L21.80 16.97L23.00 19.15L21.95 20.34L19.54 19.54L18.71 20.33L19.53 22.68L18.31 23.68L16.06 22.49L15.11 23.13L15.53 25.58L14.16 26.37L12.13 24.82L11.10 25.30L11.11 27.79L9.62 28.34L7.88 26.48L6.78 26.78L6.38 29.24L4.83 29.54L3.42 27.42L2.28 27.54L1.48 29.89L-0.10 29.93L-1.14 27.61L-2.28 27.54L-3.46 29.73L-5.02 29.51L-5.67 27.04L-6.78 26.78L-8.30 28.76L-9.81 28.28L-10.04 25.74L-11.10 25.30L-12.92 27.00L-14.33 26.28L-14.14 23.74L-15.11 23.13L-17.19 24.50L-18.46 23.56L-17.86 21.08L-18.71 20.33L-20.99 21.34L-22.09 20.20L-21.08 17.86L-21.80 16.97L-24.21 17.59L-25.11 16.29L-23.74 14.14L-24.30 13.15L-26.78 13.37L-27.45 11.93L-25.74 10.04L-26.13 8.97L-28.61 8.78L-29.04 7.25L-27.04 5.67L-27.25 4.55L-29.67 3.95L-29.84 2.37L-27.61 1.14L-27.63 0.00L-29.91 -0.99L-29.82 -2.57L-27.42 -3.42L-27.25 -4.55L-29.34 -5.90L-28.99 -7.44L-26.48 -7.88L-26.13 -8.97L-27.97 -10.65L-27.37 -12.11L-24.82 -12.13L-24.30 -13.15L-25.84 -15.11L-25.00 -16.45L-22.49 -16.06L-21.80 -16.97L-23.00 -19.15L-21.95 -20.34L-19.54 -19.54L-18.71 -20.33L-19.53 -22.68L-18.31 -23.68L-16.06 -22.49L-15.11 -23.13L-15.53 -25.58L-14.16 -26.37L-12.13 -24.82L-11.10 -25.30L-11.11 -27.79L-9.62 -28.34L-7.88 -26.48L-6.78 -26.78L-6.38 -29.24L-4.83 -29.54L-3.42 -27.42L-2.28 -27.54L-1.48 -29.89L0.10 -29.93L1.14 -27.61L2.28 -27.54L3.46 -29.73L5.02 -29.51L5.67 -27.04L6.78 -26.78L8.30 -28.76L9.81 -28.28L10.04 -25.74L11.10 -25.30L12.92 -27.00L14.33 -26.28L14.14 -23.74L15.11 -23.13L17.19 -24.50L18.46 -23.56L17.86 -21.08L18.71 -20.33L20.99 -21.34L22.09 -20.20L21.08 -17.86L21.80 -16.97L24.21 -17.59L25.11 -16.29L23.74 -14.14L24.30 -13.15L26.78 -13.37L27.45 -11.93L25.74 -10.04L26.13 -8.97L28.61 -8.78L29.04 -7.25L27.04 -5.67L27.25 -4.55L29.67 -3.95L29.84 -2.37L27.61 -1.14ZM6.88 1.31L24.59 4.69A25.02986161996171 25.02986161996171 0 0 1 8.48 23.55L2.37 6.59A7 7 0 0 0 6.88 1.31ZM-1.31 6.88L-4.69 24.59A25.02986161996171 25.02986161996171 0 0 1 -23.55 8.48L-6.59 2.37A7 7 0 0 0 -1.31 6.88ZM-6.88 -1.31L-24.59 -4.69A25.02986161996171 25.02986161996171 0 0 1 -8.48 -23.55L-2.37 -6.59A7 7 0 0 0 -6.88 -1.31ZM1.31 -6.88L4.69 -24.59A25.02986161996171 25.02986161996171 0 0 1 23.55 -8.48L6.59 -2.37A7 7 0 0 0 1.31 -6.88Z" fill="var(--ink)" fill-rule="evenodd" stroke="var(--metal)" stroke-width="0.95"></path><path d="M18.46 0.00L20.74 1.00L20.60 2.60L18.16 3.33L17.93 4.42L19.90 5.94L19.38 7.46L16.84 7.58L16.35 8.58L17.90 10.53L17.03 11.88L14.53 11.39L13.82 12.24L14.86 14.50L13.69 15.61L11.39 14.53L10.49 15.19L10.96 17.64L9.56 18.43L7.58 16.84L6.55 17.26L6.42 19.75L4.87 20.18L3.33 18.16L2.23 18.33L1.50 20.71L-0.10 20.76L-1.11 18.43L-2.23 18.33L-3.50 20.47L-5.07 20.13L-5.49 17.63L-6.55 17.26L-8.29 19.03L-9.74 18.34L-9.55 15.80L-10.49 15.19L-12.61 16.50L-13.84 15.47L-13.05 13.05L-13.82 12.24L-16.19 13.00L-17.14 11.71L-15.80 9.55L-16.35 8.58L-18.83 8.75L-19.45 7.27L-17.63 5.49L-17.93 4.42L-20.38 3.99L-20.62 2.40L-18.43 1.11L-18.46 -0.00L-20.74 -1.00L-20.60 -2.60L-18.16 -3.33L-17.93 -4.42L-19.90 -5.94L-19.38 -7.46L-16.84 -7.58L-16.35 -8.58L-17.90 -10.53L-17.03 -11.88L-14.53 -11.39L-13.82 -12.24L-14.86 -14.50L-13.69 -15.61L-11.39 -14.53L-10.49 -15.19L-10.96 -17.64L-9.56 -18.43L-7.58 -16.84L-6.55 -17.26L-6.42 -19.75L-4.87 -20.18L-3.33 -18.16L-2.23 -18.33L-1.50 -20.71L0.10 -20.76L1.11 -18.43L2.23 -18.33L3.50 -20.47L5.07 -20.13L5.49 -17.63L6.55 -17.26L8.29 -19.03L9.74 -18.34L9.55 -15.80L10.49 -15.19L12.61 -16.50L13.84 -15.47L13.05 -13.05L13.82 -12.24L16.19 -13.00L17.14 -11.71L15.80 -9.55L16.35 -8.58L18.83 -8.75L19.45 -7.27L17.63 -5.49L17.93 -4.42L20.38 -3.99L20.62 -2.40L18.43 -1.11ZM6.88 1.31L15.58 2.97A15.862536897868537 15.862536897868537 0 0 1 5.37 14.92L2.37 6.59A7 7 0 0 0 6.88 1.31ZM-1.31 6.88L-2.97 15.58A15.862536897868537 15.862536897868537 0 0 1 -14.92 5.37L-6.59 2.37A7 7 0 0 0 -1.31 6.88ZM-6.88 -1.31L-15.58 -2.97A15.862536897868537 15.862536897868537 0 0 1 -5.37 -14.92L-2.37 -6.59A7 7 0 0 0 -6.88 -1.31ZM1.31 -6.88L2.97 -15.58A15.862536897868537 15.862536897868537 0 0 1 14.92 -5.37L6.59 -2.37A7 7 0 0 0 1.31 -6.88Z" fill="var(--ink)" fill-rule="evenodd" stroke="var(--metal)" stroke-width="0.95"></path></g><path id="selectedFrontCog" fill="none" stroke="var(--bike-light)" stroke-width="1.6" d="M18.46 0.00L20.74 1.00L20.60 2.60L18.16 3.33L17.93 4.42L19.90 5.94L19.38 7.46L16.84 7.58L16.35 8.58L17.90 10.53L17.03 11.88L14.53 11.39L13.82 12.24L14.86 14.50L13.69 15.61L11.39 14.53L10.49 15.19L10.96 17.64L9.56 18.43L7.58 16.84L6.55 17.26L6.42 19.75L4.87 20.18L3.33 18.16L2.23 18.33L1.50 20.71L-0.10 20.76L-1.11 18.43L-2.23 18.33L-3.50 20.47L-5.07 20.13L-5.49 17.63L-6.55 17.26L-8.29 19.03L-9.74 18.34L-9.55 15.80L-10.49 15.19L-12.61 16.50L-13.84 15.47L-13.05 13.05L-13.82 12.24L-16.19 13.00L-17.14 11.71L-15.80 9.55L-16.35 8.58L-18.83 8.75L-19.45 7.27L-17.63 5.49L-17.93 4.42L-20.38 3.99L-20.62 2.40L-18.43 1.11L-18.46 -0.00L-20.74 -1.00L-20.60 -2.60L-18.16 -3.33L-17.93 -4.42L-19.90 -5.94L-19.38 -7.46L-16.84 -7.58L-16.35 -8.58L-17.90 -10.53L-17.03 -11.88L-14.53 -11.39L-13.82 -12.24L-14.86 -14.50L-13.69 -15.61L-11.39 -14.53L-10.49 -15.19L-10.96 -17.64L-9.56 -18.43L-7.58 -16.84L-6.55 -17.26L-6.42 -19.75L-4.87 -20.18L-3.33 -18.16L-2.23 -18.33L-1.50 -20.71L0.10 -20.76L1.11 -18.43L2.23 -18.33L3.50 -20.47L5.07 -20.13L5.49 -17.63L6.55 -17.26L8.29 -19.03L9.74 -18.34L9.55 -15.80L10.49 -15.19L12.61 -16.50L13.84 -15.47L13.05 -13.05L13.82 -12.24L16.19 -13.00L17.14 -11.71L15.80 -9.55L16.35 -8.58L18.83 -8.75L19.45 -7.27L17.63 -5.49L17.93 -4.42L20.38 -3.99L20.62 -2.40L18.43 -1.11Z" opacity="1"></path><path id="selectedFrontCogNext" fill="none" stroke="var(--bike-light)" stroke-width="1.6" opacity="0"></path><g id="chainringBolts" fill="var(--bike-light)"><circle cx="12.96753635341151" cy="0.9181508171051668" r="1.5"></circle><circle cx="-0.9181508171051637" cy="12.967536353411512" r="1.5"></circle><circle cx="-12.967536353411512" cy="-0.9181508171051659" r="1.5"></circle><circle cx="0.918150817105165" cy="-12.967536353411512" r="1.5"></circle></g></g></g>
+          <g id="frontDerailleur">
+            <path d="m689 613 12 3 2 7-12-3Z" fill="var(--metal)" stroke="var(--ink)" stroke-width="1.1"></path>
+            <path d="m699 620 9 10" stroke="var(--ink)" stroke-width="3" stroke-linecap="round"></path>
+            <rect x="702" y="625" width="12" height="11" rx="3" fill="var(--teal-dark)" stroke="var(--ink)" stroke-width="1"></rect>
+            <circle cx="708" cy="630" r="1.8" fill="var(--bike-light)"></circle>
+            <g id="frontGuideShift" transform="translate(-2.16 9.16733)"><path d="M689 633h30v17h-30" fill="none" stroke="var(--metal)" stroke-width="2.3" stroke-linejoin="round"></path><path d="M692 636h22v11" fill="none" stroke="var(--ink)" stroke-width="1"></path><path d="m705 634 3 4" stroke="var(--ink)" stroke-width="2.2" stroke-linecap="round"></path></g>
+          </g>
+          <g id="movingChain" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <g mask="url(#chainOpenings)">
+              <path id="chainOutline" stroke="var(--ink)" stroke-width="4.5" stroke-dasharray="2.1 2.7" d="M541.566 640.604L706.273 651.178A19.863 19.863 0 0 1 713.674 688.868L571.082 758.091A11.459 11.459 0 0 1 554.761 745.980L560.808 708.008A9.931 9.931 0 0 0 554.695 697.228L530.904 687.691A24.446 24.446 0 0 1 541.566 640.604Z" stroke-dashoffset="-1.1760587967714944"></path>
+              <path id="chainPlates" stroke="var(--metal)" stroke-width="3.5" stroke-dasharray="2.1 2.7" d="M541.566 640.604L706.273 651.178A19.863 19.863 0 0 1 713.674 688.868L571.082 758.091A11.459 11.459 0 0 1 554.761 745.980L560.808 708.008A9.931 9.931 0 0 0 554.695 697.228L530.904 687.691A24.446 24.446 0 0 1 541.566 640.604Z" stroke-dashoffset="-1.1760587967714944"></path>
+              <path id="chainAlternates" stroke="var(--bird-shade)" stroke-width="3.1" stroke-dasharray="2.1 7.5" d="M541.566 640.604L706.273 651.178A19.863 19.863 0 0 1 713.674 688.868L571.082 758.091A11.459 11.459 0 0 1 554.761 745.980L560.808 708.008A9.931 9.931 0 0 0 554.695 697.228L530.904 687.691A24.446 24.446 0 0 1 541.566 640.604Z" stroke-dashoffset="-1.1760587967714944"></path>
+            </g>
+            <path id="chainPins" stroke="var(--ink)" stroke-width="1.15" stroke-dasharray="0.01 4.79" d="M541.566 640.604L706.273 651.178A19.863 19.863 0 0 1 713.674 688.868L571.082 758.091A11.459 11.459 0 0 1 554.761 745.980L560.808 708.008A9.931 9.931 0 0 0 554.695 697.228L530.904 687.691A24.446 24.446 0 0 1 541.566 640.604Z" stroke-dashoffset="0.02394120322850557"></path>
+          </g>
+
+          <!-- Long bill, expandable throat pouch, white plumage and webbed feet. -->
+          <g id="pelicanBody" transform="translate(0 1.5)">
+            <path d="M563 423q-41 17-83-3l19 22-18 1q39 26 87 17Z" fill="var(--bird-shade)"></path>
+            <path d="M554 410q-27 5-48-10l14 23-17 2q22 19 52 21" fill="var(--bird)"></path>
+            <path d="M546 411c28-31 69-36 115-27 29 6 40-5 44-34l8-65c2-39 18-58 45-53 26 5 32 25 21 53-8 20-21 38-25 63l-8 60c-4 49-39 83-94 89-52 6-100-7-118-36-11-18-7-36 12-50Z" fill="var(--bird)"></path>
+            <path d="M550 460q52 36 112 20c42-12 59-41 67-74-1 51-36 85-78 91-43 6-84-3-107-23Z" fill="var(--bird-shade)"></path>
+            <path d="M709 352q5 37-3 56" fill="none" stroke="var(--bird-line)" stroke-width="2.5" stroke-linecap="round"></path>
+            <path d="M720 259q-17-9-19-22l18 8q-12-16-5-29 7 14 22 17" fill="var(--bird)"></path>
+            <path d="M773 274q62 7 199 26 22 3 15 13c-43 10-115 5-204-11Z" fill="var(--beak)"></path>
+            <path d="M783 296q39 86 94 65 55-21 108-49-90 3-202-16Z" fill="var(--pouch)"></path>
+            <path d="M789 306q42 65 87 48 35-13 64-27" fill="none" stroke="var(--beak)" stroke-width="2" stroke-linecap="round" opacity=".65"></path>
+            <path d="M781 296q109 19 205 15" fill="none" stroke="var(--beak-edge)" stroke-width="2.2" stroke-linecap="round"></path>
+            <path d="M798 282q78 10 160 21" fill="none" stroke="var(--sun-halo)" stroke-width="3" stroke-linecap="round" opacity=".6"></path>
+            <ellipse cx="799" cy="284" rx="4" ry="1.8" fill="var(--beak-edge)"></ellipse>
+            <g id="pelicanEye" transform="translate(758 275) scale(1 0.809412)">
+              <ellipse rx="10.3" ry="11.7" fill="#fffdf3" stroke="var(--bird-line)" stroke-width="1.3"></ellipse>
+              <g id="pupil" transform="translate(0 0)"><ellipse rx="5.7" ry="6.4" fill="#467c73"></ellipse><ellipse rx="3.5" ry="4.2" fill="#233c3b"></ellipse><circle cx="1.7" cy="-2.5" r="1.8" fill="#fffef5"></circle><circle cx="-1.6" cy="2" r=".7" fill="#fffef5" opacity=".7"></circle></g>
+            </g>
+            <path d="M719 246c0-25 18-35 37-31 19 4 27 15 28 32Z" fill="var(--teal)"></path>
+            <path d="M746 216q-6 12-4 28" fill="none" stroke="var(--sun-halo)" stroke-width="8"></path>
+            <path d="M714 245q42-11 82 8 10 7 0 10-46-6-82-9Z" fill="var(--teal-dark)"></path>
+            <path d="M766 255q9 6 10 15" fill="none" stroke="var(--teal-dark)" stroke-width="2" opacity=".35"></path>
+            <path id="scarfTailBack" d="M706 358C689.32 349.84 658.77 349.27 632.22 362.60L650.40 369.29 635.36 381.79C666.57 370.77 687.78 377.46 706.48 375.35Z" fill="var(--teal-dark)"></path>
+            <path id="scarfTailFront" d="M710 365C694.30 373.90 665.25 383.82 638.88 403.04L658.89 402.39 651.70 417.39C677.07 405.85 705.61 390.59 720.83 380.84Z" fill="var(--teal)"></path>
+            <path d="M704 350q21 11 47 7l-3 19q-29 4-47-10Z" fill="var(--teal)"></path>
+            <path d="M708 357q20 9 37 6" fill="none" stroke="var(--bird)" stroke-width="2" opacity=".28"></path>
+            <path d="M715 367q11-4 17 6l-8 15-16-12Z" fill="var(--teal-dark)"></path>
+            <path d="M559 431q29-26 69-14t43 37q-27 27-74 10" fill="var(--bird-shade)"></path>
+            <path d="M560 427q37-29 78-7" fill="none" stroke="var(--bird-line)" stroke-width="2" stroke-linecap="round"></path>
+            <path d="M571 444q31 1 49 15m-32-25q30 3 43 14m-22-19q22 4 34 12" fill="none" stroke="var(--bird-line)" stroke-width="2" stroke-linecap="round"></path>
+          </g>
+
+          <path id="nearLeg" d="M651.00 492.50 Q754.94 538.73 752.94 545.73 L673.85 632.92" fill="none" stroke="var(--leg)" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"></path>
+          <path id="legHighlight" d="M651.00 492.50 Q754.94 538.73 752.94 545.73 L673.85 632.92" fill="none" stroke="var(--pouch)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" opacity=".65"></path>
+          <path id="nearCrank" d="M705 671L673.85 639.92" fill="none" stroke="var(--metal)" stroke-width="7" stroke-linecap="round"></path>
+          <circle cx="705" cy="671" r="6" fill="var(--road-line)"></circle>
+          <rect id="nearPedal" x="654.35" y="642.925" width="39" height="7" rx="3" fill="var(--ink)"></rect>
+          <g id="nearFoot" fill="var(--leg)" transform="translate(673.85 635.925) rotate(-8.53127)"><path d="M-18-6q10-13 19-4L23 0q5 5-3 7h-41q-8-6 3-13Z"></path><path d="m5 1 13 3m-19-5 5 5m-18-4 4 4" fill="none" stroke="var(--beak-edge)" stroke-width="1.4" stroke-linecap="round"></path></g>
+
+          <!-- The extended wing rests on the handlebar. -->
+          <g id="frontWing" transform="matrix(1 0 0 1 0 0)">
+            <path id="wingShape" d="M635.00 411.50Q672.00 405.50 700.00 440.17C715.00 458.02 739.00 465.67 783.00 474.27L818 481Q841 482 854 496Q862 505 852 509L836 507 826 510 814 502 783 497C740.00 490.52 708.00 488.96 684.00 469.27C661.00 452.50 648.00 440.50 629.00 435.50Z" fill="var(--bird)"></path>
+            <path id="wingContour" d="M652.00 436.50Q688.00 479.05 738.00 482.45L796 493" fill="none" stroke="var(--bird-line)" stroke-width="2" stroke-linecap="round"></path>
+            <path d="m826 490 13 12m-3-14 11 12" fill="none" stroke="var(--bird-line)" stroke-width="1.7" stroke-linecap="round"></path>
+          </g>
+
+          <g id="windStrokes" fill="none" stroke="var(--teal)" stroke-width="2.3" stroke-linecap="round" opacity="0.12388106900864478" transform="translate(-15.986 0)"><path d="M469 314h54m-78 12h35m-7 179h34"></path></g>
+        </g>
+      </g>
+    </svg>
+
+  </main>
+
+  <footer class="bottom">
+    <div class="caption"><strong _istranslated="1">小小的骑行。充满喜悦。</strong><br _istranslated="1">海岸在召唤。</div>
+    <div class="controls">
+      <button type="button" id="vpnButton" class="vpn-button" aria-label="便宜的VPN——买VPN" aria-controls="vpnView" aria-expanded="false" title="Shop VPN plans">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 8h14l1 13H4L5 8Z"></path><path d="M8 8V6a4 4 0 0 1 8 0v2"></path><path d="m9 14 2 2 4-4"></path></svg>
+        <span class="vpn-button-copy"><strong>便宜的VPN</strong><small>购买VPN</small></span>
+      </button>
+      <button type="button" id="playButton" class="play-button" aria-label="轻轻暂停骑行" aria-pressed="false" title="Pause / Resume · Space" data-state="riding">
+        <svg id="pauseIcon" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" style="display: block;"><rect x="3" y="2" width="3" height="12" rx="1"></rect><rect x="10" y="2" width="3" height="12" rx="1"></rect></svg>
+        <svg id="playIcon" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" hidden="" style="display: none;"><path d="m4 2 10 6-10 6Z"></path></svg>
+        <span id="playLabel" aria-live="polite">休息一下</span>
+      </button>
+      <div class="speed-control">
+        <label for="speed">节奏</label>
+        <input id="speed" type="range" min="0.1" max="6" step="0.05" value="1" aria-label="骑行配速" aria-valuetext="1 times normal riding speed" title="Riding pace: 0.10× to 6.00× · Automatic 3 × 12 drivetrain">
+        <output id="speedValue" for="speed">1点×</output>
+        <div class="drive-status" aria-label="动力系统状态"><span class="gear" id="gearReadout">自动·F1 / R4</span><span id="ratioReadout">26T → 32T</span><span id="cadenceReadout">81转/分钟</span></div>
+      </div>
+    </div>
+    <div class="credit">制作人<span class="signature-text">mfhry</span></div>
+  </footer>
+</div>
+
+<section id="vpnView" class="vpn-view" aria-label="VPN purchase link" hidden="">
+  <button type="button" id="vpnBack" class="vpn-back" aria-label="Back to the ride"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m14 6-6 6 6 6M8 12h12"></path></svg><span>Back</span></button>
+  <div class="vpn-address-wrap"><a class="vpn-address" id="vpnAddress" href="#" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">（已移除）</a></div>
+</section>
+
+<script>
+(() => {
+  'use strict';
+  const byId = id => document.getElementById(id);
+  const landscape = byId('landscape');
+  const stage = document.querySelector('.stage');
+  const playButton = byId('playButton');
+  const speedInput = byId('speed');
+  const timeButtons = [...document.querySelectorAll('[data-time]')];
+  const node = {};
+  ['rearSpokes','frontSpokes','nearLeg','farLeg','legHighlight','nearFoot','farFoot',
+   'nearCrank','farCrank','nearPedal','farPedal','pelicanBody','frontWing',
+   'scarfTailFront','scarfTailBack','movingClouds','movingCoast','movingRoadside',
+   'seaLines','roadDashes','sailboat','sun','pelicanEye','pupil','gullOne','gullTwo',
+   'windStrokes','wingShape','wingContour','supportShadow'].forEach(id => { node[id] = byId(id); });
+  const set = (element,name,value) => element.setAttribute(name,value);
+  const point = (x,y) => `${x.toFixed(2)} ${y.toFixed(2)}`;
+  const wrap = (value,left,right) => ((value-left)%(right-left)+(right-left))%(right-left)+left;
+  const clamp01 = value => Math.max(0,Math.min(1,value));
+  const ease = value => { const u=clamp01(value); return u*u*u*(10+u*(-15+6*u)); };
+
+  function transforms(element,count=1) {
+    const list = element.transform.baseVal;
+    return Array.from({length:count},(_,index) => {
+      const value = landscape.createSVGTransform();
+      return index===0 ? list.initialize(value) : list.appendItem(value);
+    });
+  }
+  const motion = {};
+  ['rearSpokes','frontSpokes','pelicanBody','frontWing','movingClouds','movingCoast',
+   'movingRoadside','sun','gullOne','gullTwo','windStrokes'].forEach(id => {
+    motion[id] = transforms(node[id])[0];
+  });
+  const footTransforms = {near:transforms(node.nearFoot,2),far:transforms(node.farFoot,2)};
+  const boatTransforms = transforms(node.sailboat,2);
+  const eyeTransforms = transforms(node.pelicanEye,2);
+  const pupilTransform = transforms(node.pupil)[0];
+  eyeTransforms[0].setTranslate(758,275);
+  eyeTransforms[1].setScale(1,1);
+  let previousEyeScale = 1;
+  const seaTransform = node.seaLines.patternTransform.baseVal.initialize(landscape.createSVGTransform());
+  const roadTransform = node.roadDashes.patternTransform.baseVal.initialize(landscape.createSVGTransform());
+  const pedalPositions = {
+    near:{x:node.nearPedal.x.baseVal,y:node.nearPedal.y.baseVal},
+    far:{x:node.farPedal.x.baseVal,y:node.farPedal.y.baseVal}
+  };
+
+  // Paper grain is generated once and kept outside the animated SVG paint tree.
+  const grain = document.createElement('canvas');
+  grain.width = grain.height = 128;
+  const context = grain.getContext('2d');
+  if (context) {
+    const pixels = context.createImageData(128,128);
+    for (let i=0; i<pixels.data.length; i+=4) {
+      const tone = 90+Math.random()*165;
+      pixels.data[i] = pixels.data[i+1] = pixels.data[i+2] = tone;
+      pixels.data[i+3] = 255;
+    }
+    context.putImageData(pixels,0,0);
+    stage.style.setProperty('--grain-texture',`url("${grain.toDataURL()}")`);
+  }
+
+  // Reduced motion only sets the initial state. Explicit Pause/Resume always
+  // follows the user's requested, visible coast-down and gentle acceleration.
+  let playing = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let speed = 1;
+  let time = 0; // Camera travel accumulated from the bicycle, not a global clock.
+  let ambientTime = 0; // Real visible-page seconds, independent of Pace and parking.
+  let currentRate = playing ? 1 : 0;
+  let clockStart = performance.now();
+  let clockRate = currentRate;
+  let ramp = null;
+  let frameId = null;
+  let lastFrame = null;
+  let hiddenAt = null;
+  let sceneDirty = true;
+  let sceneBob = 0;
+  let vpnViewOpen = false;
+
+  // The command speed has its own smooth clock. Wheel travel is integrated
+  // below after gear ratio and cadence limits have been applied.
+  const clockSample = {rate:currentRate,finished:false};
+  function sampleClock(stamp) {
+    const elapsed = Math.max(0,(stamp-clockStart-(ramp ? ramp.delay : 0))/1000);
+    clockSample.finished = false;
+    if (!ramp) {
+      clockSample.rate = clockRate;
+      return clockSample;
+    }
+    const duration = ramp.duration/1000;
+    const u = Math.min(1,elapsed/duration);
+    clockSample.rate = ramp.from+(ramp.to-ramp.from)*ease(u);
+    clockSample.finished = elapsed>=duration;
+    return clockSample;
+  }
+  function changeRate(target,duration,delay=0) {
+    const now = performance.now();
+    currentRate = drive.actualRate;
+    clockStart = now;
+    clockRate = currentRate;
+    if (Math.abs(currentRate-target)<1e-7) {
+      clockRate = currentRate = target;
+      ramp = null;
+    } else {
+      ramp = {from:currentRate,to:target,duration,delay};
+    }
+    sceneDirty = true;
+    updatePlayback();
+    schedule();
+  }
+  function updatePlayback() {
+    const coasting = !playing && ramp!==null;
+    byId('pauseIcon').style.display = playing ? 'block' : 'none';
+    byId('playIcon').style.display = playing ? 'none' : 'block';
+    byId('playLabel').textContent = playing ? 'Take a break' : coasting ? 'Coasting…' : 'Ride on';
+    playButton.setAttribute('aria-label',playing ? 'Gently pause the ride' : 'Resume the ride');
+    playButton.setAttribute('aria-pressed',String(!playing));
+    playButton.dataset.state = playing ? 'riding' : coasting ? 'coasting' : 'paused';
+  }
+  function togglePlayback() {
+    playing = !playing;
+    const delay = beginRiderManeuver(playing);
+    changeRate(playing ? speed : 0,playing ? 2400 : BRAKE_SECONDS*1000,delay*1000);
+  }
+
+  const TAU = Math.PI*2;
+const CHAIN_PITCH = 4.8;
+const FRONT_RINGS = [26,38,50];
+const REAR_TEETH = [52,44,38,32,28,24,21,18,16,14,12,10];
+// Increasing ratios, with compensated rear shifts at each front-ring change.
+// Extreme small/small and big/big chainlines are deliberately excluded.
+const GEAR_STEPS = [
+  ...[52,44,38,32,28].map(rear=>({front:26,rear})),
+  ...[38,32,28,24,21].map(rear=>({front:38,rear})),
+  ...[24,21,18,16,14,12,10].map(rear=>({front:50,rear}))
+];
+const pitchRadius = teeth => teeth*CHAIN_PITCH/TAU;
+let cageLength = 44;
+function chainRoute(frontTeeth,rearTeeth,cageAngle,includePath=false) {
+  const rearR = pitchRadius(rearTeeth);
+  const upper = {x:551,y:665+rearR+17,r:pitchRadius(13),s:-1};
+  const lower = {x:upper.x+cageLength*Math.cos(cageAngle),y:upper.y+cageLength*Math.sin(cageAngle),r:pitchRadius(15),s:1};
+  const circles = [{x:540,y:665,r:rearR,s:1},{x:705,y:671,r:pitchRadius(frontTeeth),s:1},lower,upper];
+  const tangents = circles.map((a,i) => {
+    const b = circles[(i+1)%4], dx = b.x-a.x, dy = b.y-a.y;
+    const distance = Math.hypot(dx,dy), k = b.r*b.s-a.r*a.s;
+    const phi = Math.atan2(dy,dx)-Math.asin(Math.max(-.99999,Math.min(.99999,k/distance)));
+    const nx = Math.sin(phi), ny = -Math.cos(phi);
+    return {a:{x:a.x+a.s*a.r*nx,y:a.y+a.s*a.r*ny},b:{x:b.x+b.s*b.r*nx,y:b.y+b.s*b.r*ny},length:Math.sqrt(Math.max(0,distance*distance-k*k))};
+  });
+  let length = 0, path = includePath ? `M${tangents[0].a.x.toFixed(3)} ${tangents[0].a.y.toFixed(3)}` : '';
+  for (let i=0;i<4;i++) {
+    const j = (i+1)%4, circle = circles[j], start = tangents[i].b, end = tangents[j].a;
+    const a = Math.atan2(start.y-circle.y,start.x-circle.x), b = Math.atan2(end.y-circle.y,end.x-circle.x);
+    const sweep = circle.s===1 ? (b-a+TAU)%TAU : (a-b+TAU)%TAU;
+    length += tangents[i].length+sweep*circle.r;
+    if (includePath) path += `L${start.x.toFixed(3)} ${start.y.toFixed(3)}A${circle.r.toFixed(3)} ${circle.r.toFixed(3)} 0 ${sweep>Math.PI ? 1 : 0} ${circle.s===1 ? 1 : 0} ${end.x.toFixed(3)} ${end.y.toFixed(3)}`;
+  }
+  return {length,path:includePath ? path+'Z' : '',upper,lower};
+}
+let fixedChainLength = 0;
+const chainSizingStates = [...GEAR_STEPS];
+const chainShiftPairs = GEAR_STEPS.slice(0,-1).map((step,index)=>[step,GEAR_STEPS[index+1]]);
+for (let index=0;index<GEAR_STEPS.length;index++) {
+  const step=GEAR_STEPS[index];
+  chainShiftPairs.push([step,GEAR_STEPS[step.front===50 ? 8 : step.front===38 ? 2 : 0]]);
+  if (index+2<GEAR_STEPS.length && step.front===GEAR_STEPS[index+2].front) chainShiftPairs.push([step,GEAR_STEPS[index+2]]);
+}
+for (const [a,b] of chainShiftPairs) {
+  for (const fraction of [.125,.25,.375,.5,.625,.75,.875]) {
+    const front=a.front+(b.front-a.front)*fraction;
+    const ratio=Math.exp(Math.log(a.front/a.rear)+(Math.log(b.front/b.rear)-Math.log(a.front/a.rear))*fraction);
+    chainSizingStates.push({front,rear:front/ratio});
+  }
+}
+for (cageLength=44;cageLength<=64;cageLength+=2) {
+  let minimum = 0, maximum = Infinity;
+  for (const {front,rear} of chainSizingStates) {
+    const a = chainRoute(front,rear,.22).length, b = chainRoute(front,rear,2.9).length;
+    minimum = Math.max(minimum,Math.min(a,b));
+    maximum = Math.min(maximum,Math.max(a,b));
+  }
+  // An even number of alternating inner and outer links closes the loop.
+  const candidate = Math.ceil(minimum/(2*CHAIN_PITCH))*2*CHAIN_PITCH;
+  if (candidate<=maximum) { fixedChainLength = candidate; break; }
+}
+function solveRoute(frontTeeth,rearTeeth) {
+  let low = .22, high = 2.9;
+  for (let iteration=0;iteration<15;iteration++) {
+    const angle = (low+high)/2;
+    if (chainRoute(frontTeeth,rearTeeth,angle).length<fixedChainLength) low = angle;
+    else high = angle;
+  }
+  const angle = (low+high)/2;
+  return {...chainRoute(frontTeeth,rearTeeth,angle,true),angle};
+}
+
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  const BASE_WHEEL_OMEGA = 6.9, WHEEL_RADIUS = 116.5, CRANK_X = 705, CRANK_Y = 671, PEDAL_RADIUS = 44;
+  const MAX_CADENCE = 108*TAU/60;
+  function svgElement(name,attributes,parent) {
+    const element = document.createElementNS(SVG_NS,name);
+    Object.entries(attributes).forEach(([key,value]) => set(element,key,value));
+    parent.appendChild(element);
+    return element;
+  }
+  function toothedOutline(teeth,radius) {
+    let path = '';
+    for (let tooth=0;tooth<teeth;tooth++) {
+      for (const [offset,depth] of [[0,-1.4],[.2,.9],[.52,.9],[.75,-1.4]]) {
+        const angle = (tooth+offset)*TAU/teeth;
+        path += `${path ? 'L' : 'M'}${point(Math.cos(angle)*(radius+depth),Math.sin(angle)*(radius+depth))}`;
+      }
+    }
+    return path+'Z';
+  }
+  function spokeWindows(outer,inner,count) {
+    let path = '';
+    for (let i=0;i<count;i++) {
+      const a = (i+.12)*TAU/count, b = (i+.78)*TAU/count;
+      path += `M${point(inner*Math.cos(a),inner*Math.sin(a))}L${point(outer*Math.cos(a),outer*Math.sin(a))}A${outer} ${outer} 0 0 1 ${point(outer*Math.cos(b),outer*Math.sin(b))}L${point(inner*Math.cos(b),inner*Math.sin(b))}A${inner} ${inner} 0 0 0 ${point(inner*Math.cos(a),inner*Math.sin(a))}Z`;
+    }
+    return path;
+  }
+  [...FRONT_RINGS].reverse().forEach(teeth => {
+    const radius = pitchRadius(teeth);
+    svgElement('path',{d:toothedOutline(teeth,radius)+spokeWindows(radius-4,7,4),
+      fill:'var(--ink)','fill-rule':'evenodd',stroke:'var(--metal)','stroke-width':.95},byId('frontRingStack'));
+  });
+  for (let i=0;i<4;i++) {
+    const angle = (i+.045)*TAU/4;
+    svgElement('circle',{cx:Math.cos(angle)*13,cy:Math.sin(angle)*13,r:1.5},byId('chainringBolts'));
+  }
+  REAR_TEETH.forEach((teeth,index) => {
+    svgElement('path',{d:toothedOutline(teeth,pitchRadius(teeth)),fill:index===0 ? 'var(--ink)' : 'none',
+      'fill-opacity':.3,stroke:'var(--metal)','stroke-width':.8,opacity:.8},byId('cassetteCogs'));
+  });
+  [['upperPulleyRotor',13],['lowerPulleyRotor',15]].forEach(([id,teeth]) => {
+    svgElement('path',{d:toothedOutline(teeth,pitchRadius(teeth))+spokeWindows(pitchRadius(teeth)-2.5,3.5,3),
+      fill:'var(--ink)','fill-rule':'evenodd',stroke:'var(--metal)','stroke-width':.75},byId(id));
+  });
+  const hardware = {};
+  ['chainringRotor','cassetteRotor','upperPulleyPosition','lowerPulleyPosition','upperPulleyRotor','lowerPulleyRotor','derailleurBody','frontGuideShift'].forEach(id => {
+    hardware[id] = transforms(byId(id))[0];
+  });
+  const chainPaths = ['chainOutline','chainPlates','chainAlternates','chainPins','chainWindows'].map(byId);
+  const drive = {gear:3,effectiveFront:26,effectiveRear:32,shift:null,lastShiftAt:-10,lastRouteFront:NaN,lastRouteRear:NaN,
+    actualRate:currentRate,rateVelocity:0,wheelAngle:0,cassetteAngle:0,crankAngle:0,crankOmega:0,
+    coast:null,indexing:null,engaging:null,chainTravel:0,clothTime:0,lastReadout:-1};
+  const smoothRange = (a,b,value) => {
+    const u = Math.max(0,Math.min(1,(value-a)/(b-a)));
+    return u*u*(3-2*u);
+  };
+  const BRAKE_SECONDS = 4.1, GROUND_X = 756, GROUND_Y = 778.5;
+  const READY_PHASE = Math.PI-.55;
+  const riderPose = {mode:playing ? 'riding' : 'parked',maneuver:null,
+    scarfLift:1-Math.exp(-currentRate*1.8),scarfVelocity:0,
+    bodyX:playing ? 0 : 54,bodyY:playing ? 0 : 64,bodyVx:0,bodyVy:0,
+    nearX:playing ? 749 : GROUND_X,nearY:playing ? CRANK_Y : GROUND_Y,
+    nearAngle:playing ? -5 : 0,nearVx:0,nearVy:0,attached:playing,
+    grounded:!playing,groundX:GROUND_X,groundTravel:0};
+  const pedalPoint = phase => ({x:CRANK_X+PEDAL_RADIUS*Math.cos(phase),y:CRANK_Y+PEDAL_RADIUS*Math.sin(phase),angle:-5+5*Math.sin(phase)});
+  function beginRiderManeuver(starting) {
+    const maneuver = {elapsed:0,fromBodyX:riderPose.bodyX,fromBodyY:riderPose.bodyY,
+      fromBodyVx:riderPose.bodyVx,fromBodyVy:riderPose.bodyVy,
+      fromFoot:{x:riderPose.nearX,y:riderPose.nearY,angle:riderPose.nearAngle,vx:riderPose.nearVx,vy:riderPose.nearVy},
+      wasAttached:riderPose.attached,wasGrounded:riderPose.grounded,release:null};
+    riderPose.maneuver = maneuver;
+    riderPose.mode = starting ? 'launching' : 'braking';
+    drive.rateVelocity = 0;
+    if (starting) {
+      drive.coast = null;
+      // A planted foot holds the bike while the other foot puts its pedal
+      // just ahead of the top of its power stroke. The wheels stay still.
+      const needsIndex = riderPose.grounded && currentRate<.015;
+      const delta = wrap(READY_PHASE-drive.crankAngle,-Math.PI,Math.PI);
+      const indexDuration = needsIndex ? .65+Math.abs(delta)*.15 : 0;
+      drive.indexing = needsIndex ? {from:drive.crankAngle,delta,elapsed:0,duration:indexDuration} : null;
+      drive.engaging = !needsIndex ? {from:drive.crankOmega,elapsed:0,duration:.65} : null;
+      maneuver.releaseAt = needsIndex ? indexDuration+.16 : 0;
+      maneuver.footDuration = .92;
+      maneuver.duration = maneuver.releaseAt+1.43;
+      maneuver.initialRate = currentRate;
+      return needsIndex ? indexDuration+.1 : 0;
+    }
+    drive.indexing = drive.engaging = null;
+    // The freewheel lets the rider stop pedaling before the wheels stop.
+    // This integrated curve has continuous speed and zero end acceleration.
+    drive.coast = {from:drive.crankAngle,omega:drive.crankOmega,elapsed:0,duration:2.5};
+    maneuver.releaseAt = maneuver.wasAttached ? 2.67 : 0;
+    maneuver.footDuration = BRAKE_SECONDS-maneuver.releaseAt;
+    maneuver.duration = BRAKE_SECONDS;
+    return 0;
+  }
+  function springPose(property,velocityProperty,target,frequency,dt) {
+    const offset = riderPose[property]-target;
+    const exponential = Math.exp(-frequency*dt);
+    const step = (riderPose[velocityProperty]+frequency*offset)*dt;
+    riderPose[property] = target+(offset+step)*exponential;
+    riderPose[velocityProperty] = (riderPose[velocityProperty]-frequency*step)*exponential;
+    if (Math.abs(riderPose[property]-target)+Math.abs(riderPose[velocityProperty])<.0001) {
+      riderPose[property] = target;
+      riderPose[velocityProperty] = 0;
+    }
+  }
+  function updateRiderPose(dt) {
+    const oldX=riderPose.nearX, oldY=riderPose.nearY, oldBodyX=riderPose.bodyX, oldBodyY=riderPose.bodyY, previousLift=riderPose.scarfLift;
+    springPose('scarfLift','scarfVelocity',1-Math.exp(-currentRate*1.8),5.2,dt);
+    riderPose.scarfLift = clamp01(riderPose.scarfLift);
+    const pedal = pedalPoint(drive.crankAngle), maneuver = riderPose.maneuver;
+    const travel = drive.wheelAngle*WHEEL_RADIUS;
+    if (!maneuver) {
+      if (riderPose.mode==='parked') {
+        riderPose.nearX = riderPose.groundX-(travel-riderPose.groundTravel);
+        riderPose.nearY = GROUND_Y;
+        riderPose.nearAngle = 0;
+      } else {
+        riderPose.nearX = pedal.x; riderPose.nearY = pedal.y; riderPose.nearAngle = pedal.angle;
+      }
+    } else {
+      maneuver.elapsed += dt;
+      const t = maneuver.elapsed, braking = riderPose.mode==='braking';
+      const bodyU = braking ? ease((t-1.95)/1.65) : ease((t-maneuver.releaseAt-.12)/1.28);
+      riderPose.bodyX = maneuver.fromBodyX+((braking ? 54 : 0)-maneuver.fromBodyX)*bodyU;
+      riderPose.bodyY = maneuver.fromBodyY+((braking ? 64 : 0)-maneuver.fromBodyY)*bodyU;
+      const bodyCarry=t*Math.exp(-t/.14)*(1-bodyU);
+      riderPose.bodyX+=maneuver.fromBodyVx*bodyCarry;
+      riderPose.bodyY+=maneuver.fromBodyVy*bodyCarry;
+      if (t<maneuver.releaseAt) {
+        if (braking || maneuver.wasAttached) {
+          riderPose.nearX=pedal.x; riderPose.nearY=pedal.y; riderPose.nearAngle=pedal.angle;
+        } else {
+          // World contact stays fixed even during the first tiny wheel roll.
+          riderPose.nearX=riderPose.groundX-(travel-riderPose.groundTravel);
+          riderPose.nearY=GROUND_Y; riderPose.nearAngle=0;
+        }
+      } else if (maneuver.wasAttached && !braking) {
+        riderPose.nearX=pedal.x; riderPose.nearY=pedal.y; riderPose.nearAngle=pedal.angle;
+        riderPose.attached=true; riderPose.grounded=false;
+      } else {
+        if (!maneuver.release) {
+          maneuver.release = maneuver.releaseAt===0 ? maneuver.fromFoot :
+            {x:riderPose.nearX,y:riderPose.nearY,angle:riderPose.nearAngle,
+             vx:braking ? 0 : riderPose.nearVx,vy:0};
+          riderPose.attached = riderPose.grounded = false;
+        }
+        const u=clamp01((t-maneuver.releaseAt)/maneuver.footDuration), q=ease(u), from=maneuver.release;
+        const target=braking ? {x:GROUND_X,y:GROUND_Y,angle:0} : pedal;
+        const releasedFor=Math.max(0,t-maneuver.releaseAt);
+        const velocityCarry=releasedFor*Math.exp(-releasedFor/.16)*(1-q);
+        const clearance=64*u*u*u*(1-u)*(1-u)*(1-u)*(braking ? 25 : 38);
+        riderPose.nearX=from.x+(target.x-from.x)*q+(from.vx || 0)*velocityCarry;
+        riderPose.nearY=Math.min(GROUND_Y,from.y+(target.y-from.y)*q+(from.vy || 0)*velocityCarry-clearance);
+        riderPose.nearAngle=from.angle+(target.angle-from.angle)*q;
+        if (!braking && u===1) riderPose.attached=true;
+      }
+      if (t>=maneuver.duration) {
+        riderPose.mode=braking ? 'parked' : 'riding';
+        riderPose.maneuver=null;
+        riderPose.attached=!braking; riderPose.grounded=braking;
+        if (braking) {
+          riderPose.groundX=riderPose.nearX=GROUND_X;
+          riderPose.nearY=GROUND_Y; riderPose.nearAngle=0;
+          riderPose.groundTravel=travel;
+        }
+      }
+    }
+    if (dt>0) {
+      riderPose.nearVx=(riderPose.nearX-oldX)/dt; riderPose.nearVy=(riderPose.nearY-oldY)/dt;
+      riderPose.bodyVx=(riderPose.bodyX-oldBodyX)/dt; riderPose.bodyVy=(riderPose.bodyY-oldBodyY)/dt;
+    }
+    return riderPose.maneuver!==null || Math.abs(previousLift-riderPose.scarfLift)>.000001;
+  }
+  function updateChainGeometry(frontTeeth,rearTeeth) {
+    if (Math.abs(frontTeeth-drive.lastRouteFront)<.0001 && Math.abs(rearTeeth-drive.lastRouteRear)<.0001) return;
+    const route = solveRoute(frontTeeth,rearTeeth), upper = route.upper, lower = route.lower;
+    chainPaths.forEach(path => set(path,'d',route.path));
+    hardware.frontGuideShift.setTranslate((frontTeeth-38)*.18,pitchRadius(38)-pitchRadius(frontTeeth));
+    const nx = (lower.y-upper.y)/cageLength, ny = -(lower.x-upper.x)/cageLength;
+    const cage = `M${point(upper.x+nx*3,upper.y+ny*3)}L${point(lower.x+nx*3,lower.y+ny*3)}L${point(lower.x-nx*3,lower.y-ny*3)}L${point(upper.x-nx*3,upper.y-ny*3)}Z`;
+    set(byId('derailleurCage'),'d',cage);
+    set(byId('cageHighlight'),'d',`M${point(upper.x+nx*3,upper.y+ny*3)}L${point(lower.x+nx*3,lower.y+ny*3)}`);
+    set(byId('derailleurLinkage'),'d',`M540 678L549 676L${point(upper.x+12,upper.y-16)}L${point(upper.x-2,upper.y-8)}Z`);
+    hardware.derailleurBody.setTranslate(upper.x,upper.y);
+    hardware.upperPulleyPosition.setTranslate(upper.x,upper.y);
+    hardware.lowerPulleyPosition.setTranslate(lower.x,lower.y);
+    drive.lastRouteFront = frontTeeth;
+    drive.lastRouteRear = rearTeeth;
+  }
+  function selectGear(next,seconds,duration) {
+    if (next===drive.gear) return;
+    drive.shift={from:drive.gear,to:next,elapsed:0,start:seconds,duration};
+    const from=GEAR_STEPS[drive.gear], to=GEAR_STEPS[next];
+    for (const [id,teeth] of [['selectedCog',from.rear],['selectedCogNext',to.rear],
+                             ['selectedFrontCog',from.front],['selectedFrontCogNext',to.front]]) {
+      set(byId(id),'d',toothedOutline(teeth,pitchRadius(teeth)));
+    }
+  }
+  function gearOpacity(amount) {
+    set(byId('selectedCog'),'opacity',1-amount);
+    set(byId('selectedFrontCog'),'opacity',1-amount);
+    set(byId('selectedCogNext'),'opacity',amount);
+    set(byId('selectedFrontCogNext'),'opacity',amount);
+  }
+  function updateDrivetrain(dt,stamp,commandRate) {
+    const seconds = stamp/1000;
+    const engaged = GEAR_STEPS[drive.gear];
+    const cadence = BASE_WHEEL_OMEGA*drive.actualRate*60/TAU*engaged.rear/engaged.front;
+    if (Math.abs(drive.crankOmega)>.35 && !drive.shift && !drive.indexing && seconds-drive.lastShiftAt>.14) {
+      let next = drive.gear;
+      if (!playing) {
+        // Prepare a low starting ratio while the chain is still moving.
+        // Each front-ring change gets its own stroke; rear shifts compensate.
+        next=engaged.front===50 ? 8 : engaged.front===38 ? 2 : 0;
+      } else if (cadence>86 && commandRate>drive.actualRate*.99 && next<GEAR_STEPS.length-1) {
+        next++;
+        if (commandRate>drive.actualRate*1.25 && next+1<GEAR_STEPS.length && GEAR_STEPS[next+1].front===engaged.front) next++;
+      } else if (cadence<61 && next>0 && drive.rateVelocity<.12) {
+        next--;
+        if (commandRate<drive.actualRate*.65 && next>0 && GEAR_STEPS[next-1].front===engaged.front) next--;
+      }
+      selectGear(next,seconds,GEAR_STEPS[next].front===engaged.front ? (Math.abs(next-drive.gear)>1 ? .62 : .46) : .96);
+    }
+    if (drive.shift) {
+      drive.shift.elapsed += dt;
+      const u = Math.min(1,drive.shift.elapsed/drive.shift.duration), blend=ease(u);
+      const from = GEAR_STEPS[drive.shift.from], to = GEAR_STEPS[drive.shift.to];
+      // Interpolate the ratio itself logarithmically. Front/rear compensation
+      // cannot briefly reverse the ratio or kick the pedals at either end.
+      const ratio=Math.exp(Math.log(from.front/from.rear)+(Math.log(to.front/to.rear)-Math.log(from.front/from.rear))*blend);
+      drive.effectiveFront=from.front+(to.front-from.front)*blend;
+      drive.effectiveRear=drive.effectiveFront/ratio;
+      gearOpacity(blend);
+      if (u===1) {
+        drive.gear = drive.shift.to;
+        drive.shift = null;
+        drive.lastShiftAt = seconds;
+        set(byId('selectedCog'),'d',toothedOutline(to.rear,pitchRadius(to.rear)));
+        set(byId('selectedFrontCog'),'d',toothedOutline(to.front,pitchRadius(to.front)));
+        gearOpacity(0);
+      }
+    } else if (sceneDirty) {
+      set(byId('selectedCog'),'d',toothedOutline(engaged.rear,pitchRadius(engaged.rear)));
+      set(byId('selectedFrontCog'),'d',toothedOutline(engaged.front,pitchRadius(engaged.front)));
+      gearOpacity(0);
+    }
+    // The ratio ladder ranges from 26:52 to 50:10 without cross-chaining.
+    // The top gear reaches about 79 rpm at the unchanged 6.00x maximum.
+    const cadenceRateLimit = MAX_CADENCE*drive.effectiveFront/(drive.effectiveRear*BASE_WHEEL_OMEGA);
+    const previousRate = drive.actualRate;
+    if (playing) {
+      let requested=commandRate;
+      const maneuver=riderPose.maneuver;
+      if (riderPose.mode==='launching' && maneuver && !maneuver.wasAttached) {
+        const transfer=clamp01((maneuver.elapsed-maneuver.releaseAt)/maneuver.footDuration);
+        const lowRoll=Math.max(maneuver.initialRate,.14);
+        requested=Math.min(requested,lowRoll+Math.max(0,commandRate-lowRoll)*ease((transfer-.72)/.28));
+      }
+      const target=Math.min(requested,cadenceRateLimit);
+      const offset=drive.actualRate-target, decay=Math.exp(-7*dt), step=(drive.rateVelocity+7*offset)*dt;
+      drive.actualRate=Math.max(0,target+(offset+step)*decay);
+      drive.rateVelocity=(drive.rateVelocity-7*step)*decay;
+      if (Math.abs(drive.actualRate-target)+Math.abs(drive.rateVelocity)<.00001) {
+        drive.actualRate=target; drive.rateVelocity=0;
+      }
+    } else {
+      drive.actualRate=commandRate;
+      drive.rateVelocity=dt>0 ? (drive.actualRate-previousRate)/dt : 0;
+    }
+    const wheelOmega = BASE_WHEEL_OMEGA*(previousRate+drive.actualRate)*.5;
+    const previousCrankOmega = drive.crankOmega;
+    let crankStep=0;
+    if (drive.indexing) {
+      const indexing=drive.indexing, before=ease(indexing.elapsed/indexing.duration);
+      indexing.elapsed=Math.min(indexing.duration,indexing.elapsed+dt);
+      const u=indexing.elapsed/indexing.duration;
+      crankStep=indexing.delta*(ease(u)-before);
+      drive.crankOmega=indexing.delta/indexing.duration*30*u*u*(1-u)*(1-u);
+      if (u===1) drive.indexing=null;
+    } else if (playing) {
+      const target=Math.min(MAX_CADENCE,BASE_WHEEL_OMEGA*drive.actualRate*drive.effectiveRear/drive.effectiveFront);
+      if (drive.engaging) {
+        drive.engaging.elapsed+=dt;
+        const u=clamp01(drive.engaging.elapsed/drive.engaging.duration);
+        drive.crankOmega=drive.engaging.from+(target-drive.engaging.from)*ease(u);
+        if (u===1) drive.engaging=null;
+      } else drive.crankOmega=target;
+      crankStep=(previousCrankOmega+drive.crankOmega)*.5*dt;
+    } else if (drive.coast) {
+      const coast=drive.coast;
+      const integral=u => u-2.5*u*u*u*u+3*u*u*u*u*u-u*u*u*u*u*u;
+      const before=integral(coast.elapsed/coast.duration);
+      coast.elapsed=Math.min(coast.duration,coast.elapsed+dt);
+      const u=coast.elapsed/coast.duration;
+      crankStep=coast.omega*coast.duration*(integral(u)-before);
+      drive.crankOmega=coast.omega*(1-ease(u));
+      if (u===1) drive.coast=null;
+    } else {
+      drive.crankOmega=0;
+    }
+    drive.wheelAngle += wheelOmega*dt;
+    drive.crankAngle += crankStep;
+    drive.cassetteAngle += crankStep*drive.effectiveFront/drive.effectiveRear;
+    drive.chainTravel += crankStep*pitchRadius(drive.effectiveFront);
+    drive.clothTime += dt*Math.min(1.8,drive.actualRate);
+    time += wheelOmega/BASE_WHEEL_OMEGA*dt;
+    currentRate = drive.actualRate;
+    updateChainGeometry(drive.effectiveFront,drive.effectiveRear);
+    if (Math.abs(crankStep)>1e-9 || sceneDirty) {
+      hardware.chainringRotor.setRotate(drive.crankAngle*180/Math.PI,0,0);
+      hardware.cassetteRotor.setRotate(drive.cassetteAngle*180/Math.PI,0,0);
+      hardware.upperPulleyRotor.setRotate(-drive.chainTravel/pitchRadius(13)*180/Math.PI,0,0);
+      hardware.lowerPulleyRotor.setRotate(drive.chainTravel/pitchRadius(15)*180/Math.PI,0,0);
+      const offset = -drive.chainTravel%(CHAIN_PITCH*2);
+      chainPaths.forEach(path => set(path,'stroke-dashoffset',offset+(path.id==='chainWindows' ? -1.15 : path.id==='chainPins' ? 1.2 : 0)));
+    }
+    if (stamp-drive.lastReadout>90) {
+      const step = GEAR_STEPS[drive.shift ? drive.shift.to : drive.gear];
+      const frontNumber = FRONT_RINGS.indexOf(step.front)+1, rearNumber = REAR_TEETH.indexOf(step.rear)+1;
+      const status=drive.shift ? 'SHIFT' : drive.indexing ? 'READY' : playing ? 'AUTO' : riderPose.mode==='parked' ? 'PARKED' : 'COAST';
+      byId('gearReadout').textContent = `${status} · F${frontNumber} / R${rearNumber}`;
+      byId('ratioReadout').textContent = `${step.front}T → ${step.rear}T`;
+      byId('cadenceReadout').textContent = drive.indexing ? 'SET PEDAL' : `${Math.round(Math.abs(drive.crankOmega)*60/TAU)} RPM`;
+      drive.lastReadout = stamp;
+    }
+  }
+
+  function drawLeg(phase,near,bob) {
+    const hipX = (near ? 651 : 642)+riderPose.bodyX, hipY = 491+bob+riderPose.bodyY;
+    const pedalX = CRANK_X+PEDAL_RADIUS*Math.cos(phase), pedalY = CRANK_Y+PEDAL_RADIUS*Math.sin(phase);
+    // The pedal stays on its circular crank path after the near foot releases it.
+    const footX = near ? riderPose.nearX : pedalX, footY = near ? riderPose.nearY : pedalY;
+    const dx = footX-hipX, dy = footY-hipY, distance = Math.hypot(dx,dy);
+    const upper = 115, lower = 123;
+    const along = (upper*upper-lower*lower+distance*distance)/(2*distance);
+    const height = Math.sqrt(Math.max(0,upper*upper-along*along));
+    const kneeX = hipX+along*dx/distance+height*dy/distance;
+    const kneeY = hipY+along*dy/distance-height*dx/distance;
+    const path = `M${point(hipX,hipY)} Q${point(kneeX+2,kneeY-7)} ${point(kneeX,kneeY)} L${point(footX,footY-7)}`;
+    set(near ? node.nearLeg : node.farLeg,'d',path);
+    if (near) set(node.legHighlight,'d',path);
+    set(near ? node.nearCrank : node.farCrank,'d',`M${CRANK_X} ${CRANK_Y}L${point(pedalX,pedalY)}`);
+    const side = near ? 'near' : 'far';
+    pedalPositions[side].x.value = pedalX-(near ? 19.5 : 18.5);
+    pedalPositions[side].y.value = pedalY+3;
+    footTransforms[side][0].setTranslate(footX,footY-4);
+    footTransforms[side][1].setRotate(near ? riderPose.nearAngle : -5+5*Math.sin(phase),0,0);
+  }
+  function drawRiderWing() {
+    const x = riderPose.bodyX, y = riderPose.bodyY+sceneBob;
+    const p = (px,py,weight=1) => point(px+x*weight,py+y*weight);
+    // The shoulder follows the body; the fingers stay on the handlebar.
+    set(node.wingShape,'d',`M${p(635,410)}Q${p(672,404)} ${p(700,439,.78)}C${p(715,457,.68)} ${p(739,465,.45)} ${p(783,474,.18)}L818 481Q841 482 854 496Q862 505 852 509L836 507 826 510 814 502 783 497C${p(740,490,.35)} ${p(708,488,.64)} ${p(684,468,.85)}C${p(661,451)} ${p(648,439)} ${p(629,434)}Z`);
+    set(node.wingContour,'d',`M${p(652,435)}Q${p(688,478,.7)} ${p(738,482,.3)}L796 493`);
+  }
+  function drawScarf() {
+    const lift = riderPose.scarfLift;
+    const flutter = Math.sin(ambientTime*6.1)*5*lift;
+    const flutter2 = Math.sin(ambientTime*6.1-1)*4*lift;
+    const back = (fx,fy,rx,ry,weight=0) => point(rx+(fx-rx)*lift,ry+(fy-ry)*lift+flutter*weight);
+    const front = (fx,fy,rx,ry,weight=0) => point(rx+(fx-rx)*lift,ry+(fy-ry)*lift+flutter2*weight);
+    // At zero airflow, both cloth ribbons hang from the knot under gravity.
+    set(node.scarfTailBack,'d',`M706 358C${back(688,344,696,382,.35)} ${back(651,337,698,417,.75)} ${back(618,348,704,444,1)}L${back(638,358,713,434,1)} ${back(619,370,718,449,1)}C${back(655,363,725,415,.65)} ${back(681,376,722,386,.15)} ${back(704,377,719,367)}Z`);
+    set(node.scarfTailFront,'d',`M710 365C${front(690,370,716,391,.2)} ${front(655,375,717,420,.65)} ${front(624,391,714,451,1)}L${front(646,392,724,442,1)} ${front(636,407,731,457,1)}C${front(665,401,738,422,.65)} ${front(699,390,739,391,.2)} ${front(720,382,725,375)}Z`);
+  }
+  function renderScene(t) {
+    const phase = drive.crankAngle, wheelAngle = (drive.wheelAngle*180/Math.PI)%360;
+    sceneBob = Math.sin(phase*2)*1.5*Math.min(1,Math.abs(drive.crankOmega)/4)*(1-riderPose.bodyY/64);
+    motion.rearSpokes.setRotate(wheelAngle,0,0);
+    motion.frontSpokes.setRotate(wheelAngle,0,0);
+    motion.pelicanBody.setTranslate(riderPose.bodyX,riderPose.bodyY+sceneBob);
+    drawRiderWing();
+    drawLeg(phase+Math.PI,false,sceneBob);
+    drawLeg(phase,true,sceneBob);
+    drawScarf();
+    const contact = 1-smoothRange(0,12,GROUND_Y-riderPose.nearY);
+    set(node.supportShadow,'cx',riderPose.nearX);
+    set(node.supportShadow,'opacity',.14*contact);
+    motion.movingCoast.setTranslate(-((drive.wheelAngle*WHEEL_RADIUS*.024)%1440),0);
+    const travel = drive.wheelAngle*WHEEL_RADIUS;
+    motion.movingRoadside.setTranslate(-(travel%1440),0);
+    roadTransform.setTranslate(-(travel%220),0);
+    motion.windStrokes.setTranslate(-((drive.clothTime*28)%24),0);
+    set(node.windStrokes,'opacity',(.22+Math.sin(drive.clothTime*3)*.1)*(1-Math.exp(-currentRate*2)));
+  }
+
+  function renderAmbient(seconds) {
+    // World velocities use real seconds. The following camera subtracts the
+    // bicycle's travel at each layer's depth; the sun is effectively at infinity.
+    const cameraTravel = drive.wheelAngle*WHEEL_RADIUS;
+    motion.movingClouds.setTranslate(-((seconds*3.5+cameraTravel*.0022)%1440),0);
+    seaTransform.setTranslate(-((cameraTravel*.024+seconds*8)%205),Math.sin(seconds*.7)*1.8);
+    boatTransforms[0].setTranslate(wrap(353-seconds*9-cameraTravel*.024,-100,1470),554);
+    boatTransforms[1].setRotate(0,0,0);
+    const blinkPhase = (seconds+1.4)%5.8;
+    const openness = blinkPhase<.17 ? Math.max(.08,Math.abs(blinkPhase-.085)/.085) : 1;
+    if (openness!==previousEyeScale) {
+      eyeTransforms[1].setScale(1,openness);
+      previousEyeScale = openness;
+    }
+    const wing = Math.sin(seconds*2.7)*5;
+    set(node.gullOne,'d',`M1040 360q11 ${-12+wing} 23 0 10 ${-12+wing} 22 0`);
+    set(node.gullTwo,'d',`M1100 391q8 ${-8-wing*.65} 16 0 8 ${-8-wing*.65} 16 0`);
+    motion.gullOne.setTranslate(wrap(1040-seconds*1.4-cameraTravel*.0028,-90,1530)-1040,Math.sin(seconds*.8)*3);
+    motion.gullTwo.setTranslate(wrap(1100-seconds*.8-cameraTravel*.0015,-90,1530)-1100,Math.sin(seconds*.8-1)*4);
+  }
+
+  // Horizontal shutter blur follows actual velocity, with depth-dependent
+  // exposure. The pelican, bicycle, sky, text and controls remain sharp.
+  const blurLayers = [
+    {layer:byId('distantScenery'),effect:byId('farBlur'),filter:'farMotionBlur',strength:.55},
+    {layer:byId('sailboatLayer'),effect:byId('farBlur'),filter:'farMotionBlur',strength:.55},
+    {layer:byId('coastalForeground'),effect:byId('midBlur'),filter:'midMotionBlur',strength:1.8},
+    {layer:byId('nearScenery'),effect:byId('nearBlur'),filter:'nearMotionBlur',strength:4.1}
+  ];
+  let lastBlurRate = -1;
+  function updateBlur(rate) {
+    const value = Math.round(Math.max(0,rate)*100)/100;
+    if (value===lastBlurRate) return;
+    const wasActive = lastBlurRate>0;
+    for (const item of blurLayers) {
+      if (value===0) item.layer.removeAttribute('filter');
+      else {
+        if (!wasActive) set(item.layer,'filter',`url(#${item.filter})`);
+        item.effect.setStdDeviation(value*item.strength,0);
+      }
+    }
+    lastBlurRate = value;
+  }
+
+  // Gaze uses its own wall-time smoothing, so it continues to work when parked.
+  // The inverse viewport matrix accounts for resizing, scrolling and cropping.
+  const gaze = {x:0,y:0,clientX:0,clientY:0,tracked:false,moving:true};
+  let inverseViewport = null;
+  let coordinateSpaceDirty = true;
+  function invalidateCoordinateSpace() {
+    coordinateSpaceDirty = true;
+    gaze.moving = true;
+    schedule();
+  }
+  function updateGaze(elapsed) {
+    let targetX = 0, targetY = 0;
+    if (gaze.tracked) {
+      if (coordinateSpaceDirty) {
+        const matrix = landscape.getScreenCTM();
+        inverseViewport = matrix ? matrix.inverse() : null;
+        coordinateSpaceDirty = false;
+      }
+      if (inverseViewport) {
+        const m = inverseViewport;
+        const x = m.a*gaze.clientX+m.c*gaze.clientY+m.e;
+        const y = m.b*gaze.clientX+m.d*gaze.clientY+m.f;
+        const dx = x-758-riderPose.bodyX, dy = y-275-sceneBob-riderPose.bodyY, distance = Math.hypot(dx,dy);
+        const strength = 1-Math.exp(-distance/145);
+        targetX = dx/(distance || 1)*3.8*strength;
+        targetY = dy/(distance || 1)*4.4*strength;
+      }
+    }
+    const blend = 1-Math.exp(-elapsed*40);
+    gaze.x += (targetX-gaze.x)*blend;
+    gaze.y += (targetY-gaze.y)*blend;
+    gaze.moving = Math.abs(targetX-gaze.x)+Math.abs(targetY-gaze.y)>.008;
+    if (!gaze.moving) { gaze.x = targetX; gaze.y = targetY; }
+    pupilTransform.setTranslate(gaze.x,gaze.y);
+  }
+  document.addEventListener('pointermove',event => {
+    gaze.clientX = event.clientX;
+    gaze.clientY = event.clientY;
+    gaze.tracked = true;
+    gaze.moving = true;
+    schedule();
+  },{passive:true});
+  function restGaze() { gaze.tracked = false; gaze.moving = true; schedule(); }
+  document.addEventListener('pointerout',event => { if (!event.relatedTarget) restGaze(); },{passive:true});
+  window.addEventListener('blur',restGaze);
+  window.addEventListener('scroll',invalidateCoordinateSpace,{passive:true,capture:true});
+  window.addEventListener('resize',invalidateCoordinateSpace,{passive:true});
+
+  // One uncapped, display-synchronized loop; no 60 Hz interval or fixed step.
+  function tick(stamp) {
+    frameId = null;
+    if (document.hidden || vpnViewOpen) { lastFrame = null; return; }
+    const ambientElapsed = lastFrame===null ? 0 : Math.max(0,(stamp-lastFrame)/1000);
+    const elapsed = Math.min(ambientElapsed,.1);
+    lastFrame = stamp;
+    ambientTime += ambientElapsed;
+    const previousTime = time;
+    const sample = sampleClock(stamp);
+    const commandRate = sample.rate;
+    if (sample.finished) {
+      clockStart = stamp;
+      clockRate = commandRate;
+      ramp = null;
+      updatePlayback();
+    }
+    updateDrivetrain(elapsed,stamp,commandRate);
+    const poseChanged = updateRiderPose(elapsed);
+    if (time!==previousTime || sceneDirty || poseChanged || riderPose.scarfLift>.0001) {
+      renderScene(time);
+      sceneDirty = false;
+    }
+    renderAmbient(ambientTime);
+    updateBlur(currentRate);
+    updateGaze(elapsed);
+    // Natural background motion continues even when the bicycle is parked.
+    schedule();
+  }
+  function schedule() {
+    if (!document.hidden && !vpnViewOpen && frameId===null) frameId = requestAnimationFrame(tick);
+  }
+
+  const rideView=byId('rideView'), vpnView=byId('vpnView'), vpnButton=byId('vpnButton');
+  let vpnOpenedAt=null, rideScroll={x:0,y:0};
+  function showVpnView() {
+    if (vpnViewOpen) return;
+    vpnViewOpen=true;
+    vpnOpenedAt=performance.now();
+    rideScroll={x:window.scrollX,y:window.scrollY};
+    if (frameId!==null) cancelAnimationFrame(frameId);
+    frameId=null; lastFrame=null;
+    rideView.hidden=true; vpnView.hidden=false;
+    document.body.classList.add('vpn-open');
+    vpnButton.setAttribute('aria-expanded','true');
+    window.scrollTo(0,0);
+    byId('vpnBack').focus({preventScroll:true});
+  }
+  function restoreRideView() {
+    if (!vpnViewOpen) return;
+    const suspendedFor=performance.now()-vpnOpenedAt;
+    clockStart+=suspendedFor;
+    drive.lastShiftAt+=suspendedFor/1000;
+    if (drive.shift) drive.shift.start+=suspendedFor/1000;
+    vpnViewOpen=false; vpnOpenedAt=null; lastFrame=null;
+    vpnView.hidden=true; rideView.hidden=false;
+    document.body.classList.remove('vpn-open');
+    vpnButton.setAttribute('aria-expanded','false');
+    sceneDirty=true;
+    invalidateCoordinateSpace();
+    window.scrollTo(rideScroll.x,rideScroll.y);
+    vpnButton.focus({preventScroll:true});
+  }
+  vpnButton.addEventListener('click',showVpnView);
+  byId('vpnBack').addEventListener('click',restoreRideView);
+  document.addEventListener('keydown',event=>{ if (vpnViewOpen && event.key==='Escape') restoreRideView(); });
+
+  const themes = {
+    day:{color:'#f8f4e9',message:'A GOOD DAY FOR A LITTLE RIDE'},
+    sunset:{color:'#f6e6d9',message:'GOLDEN HOUR. ONE MORE MILE.'},
+    night:{color:'#162932',message:'MOONLIGHT AND AN OPEN ROAD.'}
+  };
+  function setTheme(name) {
+    if (!themes[name]) return;
+    document.documentElement.dataset.theme = name;
+    timeButtons.forEach(button => set(button,'aria-pressed',String(button.dataset.time===name)));
+    byId('weatherText').textContent = themes[name].message;
+    document.querySelector('meta[name="theme-color"]').content = themes[name].color;
+    motion.sun.setTranslate(0,name==='sunset' ? 65 : 0);
+  }
+  timeButtons.forEach(button => button.addEventListener('click',() => setTheme(button.dataset.time)));
+  playButton.addEventListener('click',togglePlayback);
+  speedInput.addEventListener('input',() => {
+    speed = Number(speedInput.value);
+    byId('speedValue').textContent = speed.toFixed(2)+'×';
+    speedInput.setAttribute('aria-valuetext',speed.toFixed(2)+' times normal riding speed, automatic front and rear gear selection');
+    if (playing) {
+      const delay=drive.indexing ? Math.max(0,drive.indexing.duration-drive.indexing.elapsed)+.1 : 0;
+      changeRate(speed,1800,delay*1000);
+    }
+  });
+  document.addEventListener('keydown',event => {
+    if (vpnViewOpen) return;
+    if (event.code==='Space' && !event.repeat && !['INPUT','BUTTON','TEXTAREA','SELECT','A'].includes(document.activeElement.tagName)) {
+      event.preventDefault(); togglePlayback();
+    }
+  });
+  document.addEventListener('visibilitychange',() => {
+    if (vpnViewOpen) return;
+    if (document.hidden) {
+      hiddenAt = performance.now();
+      if (frameId!==null) cancelAnimationFrame(frameId);
+      frameId = null;
+      lastFrame = null;
+    } else {
+      if (hiddenAt!==null) {
+        const hiddenDuration = performance.now()-hiddenAt;
+        clockStart += hiddenDuration;
+        if (drive.shift) drive.shift.start += hiddenDuration/1000;
+        drive.lastShiftAt += hiddenDuration/1000;
+      }
+      hiddenAt = null;
+      invalidateCoordinateSpace();
+    }
+  });
+  const smallScreen = window.matchMedia('(max-width:680px)');
+  function fitScene() {
+    set(landscape,'viewBox',smallScreen.matches ? '330 80 780 740' : '0 0 1440 820');
+    invalidateCoordinateSpace();
+  }
+  smallScreen.addEventListener('change',fitScene);
+  if ('ResizeObserver' in window) new ResizeObserver(invalidateCoordinateSpace).observe(stage);
+  fitScene();
+  setTheme('day');
+  updateDrivetrain(0,performance.now(),currentRate);
+  renderScene(0);
+  renderAmbient(0);
+  updateBlur(currentRate);
+  updatePlayback();
+  schedule();
+})();
+
+</script>
+<a href="/games/" title="返回小游戏列表" style="position:fixed;left:10px;bottom:10px;z-index:99999;display:flex;align-items:center;justify-content:center;height:34px;padding:0 12px;border-radius:999px;background:rgba(248,244,233,.86);border:1px solid #dcded0;color:#263e3c;text-decoration:none;font:14px/1 -apple-system,PingFang SC,sans-serif;opacity:.82;box-shadow:0 2px 10px rgba(38,62,60,.08)">← 返回</a>
+</body>
+</html>

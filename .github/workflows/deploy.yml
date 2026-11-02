@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: "0 */6 * * *"
+    - cron: "*/15 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -36,6 +36,13 @@ jobs:
         run: node scripts/pull-github.mjs
         env:
           GH_USER: ${{ vars.GH_USER }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Fetch releases (mirror downloads)
+        run: node scripts/pull-releases.mjs
+        env:
+          GH_USER: ${{ vars.GH_USER }}
+          RELEASE_REPOS: ${{ vars.RELEASE_REPOS != '' && vars.RELEASE_REPOS || 'mcai' }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Fetch Aiven content

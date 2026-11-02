@@ -1,0 +1,224 @@
+{
+  "mcai": [
+    {
+      "tag": "forge-26.1-v1.0.0",
+      "name": "mcAI Forge 26.1 — Minecraft 26.1.2 (Forge 64.1.5)",
+      "published_at": "2026-11-02T04:51:53Z",
+      "html_url": "https://github.com/MFHRY/mcai/releases/tag/forge-26.1-v1.0.0",
+      "prerelease": false,
+      "body": "# mcAI Forge 26.1 — Minecraft 26.1.2\n\nThe **Minecraft 26.1 edition** of mcAI: Forge **64.1.5**, Minecraft **26.1.2**,\n**Java 25**.\n\nThis is the third edition of the same mod — `main` is Fabric 1.21.1,\n`forge-1.20.1` is the 1.20.1 Forge line, and this branch (`forge-26.1`) targets\nthe 2026 versioning line. Each edition keeps its own version number, so this\nrelease is the first of the 26.1 line. Every feature of the other two editions\nis present; nothing was dropped to make the port work.\n\n---\n\n## What it does\n\nType `!ai <question>` in the chat bar to ask an AI. Press `H` to send a\nscreenshot, `R` to send only a region you drag, `G` to have it analyse a build\nor a redstone circuit, `V` to ask what the block or mob under your crosshair is.\n\nIt is **client-side**: `!ai` messages are swallowed on the client and never reach\nthe server, so it works on any server — including ones you do not control.\n\nBring your own endpoint: any **OpenAI-compatible** API, **Google Gemini**,\n**Anthropic Claude**, or a **local model** through Ollama / LM Studio (no key, no\ncost, works offline).\n\n| | |\n| --- | --- |\n| `!ai <question>` | Ask in chat. The message never leaves your client. |\n| `H` / `R` / `G` / `V` | Screenshot / region screenshot / build-and-redstone analysis / crosshair inspect. |\n| `/ai inv [question]` | Your inventory as text, analysed — about a tenth the cost of a screenshot. |\n| `/ai read` | Translate the sign you look at or the book you hold — text, not an image. |\n| `/ai craft [item]` | What you can craft right now, computed locally: **zero tokens**. |\n| `/ai where [question]` | Coordinates, biome, light, dimension and health as context. |\n| `/ai tl [lang] <text>` · `/ai tlang <lang>` | Translate, and set the default target language. |\n| `/ai remember` · `/ai memories` · `/ai forget` | Long-term facts carried in every request. |\n| `/ai cost` · `/ai budget <CNY>` · `/ai chart` | Spending, a hard daily cap, and a 7-day usage chart. |\n| `/ai cache on\\|off\\|clear` | Asking the same question twice costs nothing the second time. |\n| `/ai provider auto\\|openai\\|gemini\\|claude` | Pick the API protocol, or infer it from your URL. |\n| `/ai retry <0-5>` | Automatic retry with backoff on network failures and 429/5xx. |\n| `/ai avatar on\\|off\\|edit\\|image <path>` | HUD widget: usage bubble on `B`, position, your own PNG. |\n| `/ai config` | Every option, grouped and searchable, editable in game. |\n| `ESC` or `/ai cancel` | Really aborts the request in flight. |\n| `/ai speak <text>` · `/ai tts on` | Reads answers aloud with the OS voice. |\n\nEvery answer carries the **real cost** of that call, computed from the usage the\nprovider returned, and clicking anywhere in an answer copies it.\n\n**8 languages:** English, 简体中文, 繁體中文, 日本語, 한국어, Русский, Español, Français —\nchosen automatically from your game language.\n\n---\n\n## What 26.1 broke, and what was changed\n\n26.1 is not a recompile of 1.20.1. The full reference is in\n[`PORTING-26.1.md`](https://github.com/MFHRY/mcai/blob/forge-26.1/PORTING-26.1.md);\nthe short version:\n\n**Toolchain.** ForgeGradle 7 and Gradle 9.5 — the `mappings channel:` block is\ngone, the Forge artifact arrives through the mavenizer, and Java 25 is both the\ntoolchain and the bytecode level, because Mojang ships Java 25 to players from\n26.1 on.\n\n**EventBus 7.** There is no global event bus any more: every event owns its own\nbus, and cancellable events take a predicate where returning `true` cancels.\n`!ai` interception and item right-clicks are wired that way, so the\n\"works on any server\" property survives verbatim.\n\n**Rendering.** `GuiGraphics` became `GuiGraphicsExtractor`, `render` became\n`extractRenderState`, `drawString` became `text`, `drawCenteredString` became\n`centeredText`, `blit` now takes a target rect plus normalised UVs, and\n`pose()` returns a 2D `Matrix3x2fStack` instead of a `PoseStack`. All three\ncustom screens and the HUD widget were ported to the new calls.\n\n**Screenshots are asynchronous.** `Screenshot.takeScreenshot` ",
+      "assets": [
+        {
+          "name": "mcai-forge-26.1-1.0.0-sources.jar",
+          "size": 285882,
+          "path": "/downloads/mcai/forge-26.1-v1.0.0/mcai-forge-26.1-1.0.0-sources.jar",
+          "url": "https://github.com/MFHRY/mcai/releases/download/forge-26.1-v1.0.0/mcai-forge-26.1-1.0.0-sources.jar"
+        },
+        {
+          "name": "mcai-forge-26.1-1.0.0.jar",
+          "size": 353560,
+          "path": "/downloads/mcai/forge-26.1-v1.0.0/mcai-forge-26.1-1.0.0.jar",
+          "url": "https://github.com/MFHRY/mcai/releases/download/forge-26.1-v1.0.0/mcai-forge-26.1-1.0.0.jar"
+        }
+      ]
+    },
+    {
+      "tag": "forge-v1.0.1",
+      "name": "mcAI Forge 1.0.1 — Minecraft 1.20.1",
+      "published_at": "2026-10-16T13:45:23Z",
+      "html_url": "https://github.com/MFHRY/mcai/releases/tag/forge-v1.0.1",
+      "prerelease": false,
+      "body": "# mcAI Forge 1.0.1 — Minecraft 1.20.1\n\nFixes the 1.0.0 jar, which shipped **without `pack.mcmeta`** and therefore had no\nworking resources at all.\n\n## Fixed\n\n**Item models, textures and all 8 language files did not load.**\n\n1.0.0 produced this in the log:\n\n```\nWARN Pack: Missing metadata in pack mod:mcai\nWARN ModelBakery: Unable to load model: 'mcai:ai_model_switcher#inventory'\n     java.io.FileNotFoundException: mcai:models/item/ai_model_switcher.json\n```\n\nThe models **were** in the jar. Forge needs `pack.mcmeta` for a mod's resource\npack to be accepted; without it the whole pack is skipped, so every `mcai:`\nresource — models, textures, translations — disappeared. Added. Verified against\na known-good Forge 1.20.1 mod (FerriteCore) that ships the same file.\n\nBecause the 1.0.0 item models never resolved, the two switcher items would have\nshown as the purple/black missing texture. Language strings would have shown as\nraw keys such as `mcai.cmd.status`.\n\n## Added\n\n**Switchable screen background** for `/ai config`, the region-select screen and\nthe send-preview screen — `/ai config` → **Screen background**:\n\n| | |\n| --- | --- |\n| **Dim (vanilla)** | dark gradient over the game. Default — identical to before. |\n| **Dirt** | classic tiled dirt background. |\n| **Transparent** | no background; the game shows through. |\n| **Custom image** | tiles any local PNG/JPG/WEBP you point it at. |\n\nThere is deliberately **no \"blurred\" option on 1.20.1**: menu blur\n(`Screen.applyBlur` → `GameRenderer.renderBlur`) is a 1.21 API. It does not exist\nin 1.20.1 — the ESC pause menu is not blurred there either.\n\nA bad image path never breaks the screen: it logs a warning and falls back to the\ndark gradient.\n\n## Better logging\n\n1.0.0 gave no way to tell whether the client-side modules had actually loaded. Now\neach stage logs:\n\n```\nmcAI client modules: registering event listeners\nmcAI client modules: 8 listeners registered (tick, commands, hud, chat, join, leave, item-use)\nmcAI key mappings registered: H, G, R, V (screenshots) and B (widget bubble)\nmcAI registered the /ai client command tree\nmcAI: joined a world, scope = ...\n```\n\n## Requirements\n\nMinecraft **1.20.1** · Forge **47.x** · **Java 17**\n\n## Status\n\nCompiles clean; 1.0.0 was also confirmed to load in a real game (mod\nconstructed, items registered, a world entered). The background feature in this\nbuild has **not** been run yet.\n\n## 中文\n\n**修复**：1.0.0 的 jar 漏了 `pack.mcmeta`，导致模组资源包被跳过——物品模型、贴图、\n8 个语言文件**全部不加载**。物品会显示成紫黑缺失贴图，文字会显示成 `mcai.cmd.status`\n这样的原始键名。已补上。\n\n**新增**：`/ai config`、框选截图、发送预览三个界面支持**可切换背景**——暗色渐变（原版默认）/\n泥土 / 透明 / 自定义图片。**1.20.1 没有\"模糊\"选项**：菜单模糊是 1.21 才有的 API，\n1.20.1 的 ESC 菜单本身也不模糊。\n\n**日志**：补齐了客户端各环节的诊断日志，出问题能直接从日志定位。\n",
+      "assets": [
+        {
+          "name": "mcai-forge-1.0.1-sources.jar",
+          "size": 280492,
+          "path": "/downloads/mcai/forge-v1.0.1/mcai-forge-1.0.1-sources.jar",
+          "url": "https://github.com/MFHRY/mcai/releases/download/forge-v1.0.1/mcai-forge-1.0.1-sources.jar"
+        },
+        {
+          "name": "mcai-forge-1.0.1.jar",
+          "size": 350853,
+          "path": "/downloads/mcai/forge-v1.0.1/mcai-forge-1.0.1.jar",
+          "url": "https://github.com/MFHRY/mcai/releases/download/forge-v1.0.1/mcai-forge-1.0.1.jar"
+        }
+      ]
+    },
+    {
+      "tag": "forge-v1.0.0",
+      "name": "mcAI Forge 1.0.0 — Minecraft 1.20.1",
+      "published_at": "2026-10-16T12:31:11Z",
+      "html_url": "https://github.com/MFHRY/mcai/releases/tag/forge-v1.0.0",
+      "prerelease": false,
+      "body": "# mcAI Forge 1.0.0 — Minecraft 1.20.1\n\nThe **Forge** edition of mcAI, for **Minecraft 1.20.1**.\n\nThis is its own version line: the Fabric edition is at 1.25.x, this one starts at\n1.0.0. They are the same mod on different loaders, not the same jar — and the\nForge build has a shorter history, so inheriting the Fabric version number would\nmisrepresent it.\n\n---\n\n## What it does\n\nType `!ai <question>` in the Minecraft chat bar to ask an AI. Press `H` to send a\nscreenshot, `R` to send only a region you drag, `V` to ask what the block or mob\nunder your crosshair is.\n\nIt is **client-side**: the chat and screenshot paths never leave your client, so\nit works on any server — including servers you do not control. Forge 1.20.1 has a\nnative client-command API (`RegisterClientCommandsEvent`), so the whole `/ai`\nfamily works without a mixin and without installing anything server-side.\n\nBring your own endpoint:\n\n- any **OpenAI-compatible** API,\n- **Google Gemini**, or\n- **Anthropic Claude**,\n- or a **local model** via Ollama / LM Studio — no key, no cost, works offline.\n\n## Features\n\n| | |\n| --- | --- |\n| `!ai <question>` | Ask in chat. The message is swallowed client-side and never sent to the server. |\n| `H` / `R` / `G` / `V` | Screenshot / region screenshot / build-and-redstone analysis / crosshair inspect. |\n| `/ai inv [question]` | Your inventory as text, analysed. About a tenth the cost of a screenshot. |\n| `/ai read` | Translate the sign you look at or the book you hold — text, not an image. |\n| `/ai craft [item]` | What you can craft right now, computed locally: **zero tokens**. |\n| `/ai where [question]` | Coordinates, biome, light, dimension and health as context. |\n| `/ai tl [lang] <text>` · `/ai tlang <lang>` | Translate, and set the default target language. |\n| `/ai remember` · `/ai memories` · `/ai forget` | Long-term facts carried in every request. |\n| `/ai cost` · `/ai budget <CNY>` · `/ai chart` | Spending, a hard daily cap, and a 7-day usage chart. |\n| `/ai cache on\\|off\\|clear` | Asking the same question twice costs nothing the second time. |\n| `/ai provider auto\\|openai\\|gemini\\|claude` | Pick the API protocol, or let it infer from your URL. |\n| `/ai retry <0-5>` | Automatic retry with backoff on network failures and 429/5xx. |\n| `/ai avatar on\\|off\\|edit\\|image <path>` | HUD widget: usage bubble on `B`, position, your own PNG. |\n| `/ai config` | Every option, grouped and searchable, editable in game. |\n| `ESC` or `/ai cancel` | Really aborts the request in flight. |\n| `/ai speak <text>` · `/ai tts on` | Reads answers aloud with the OS voice. |\n\nEvery answer carries the **real cost** of that call, computed from the usage the\nprovider returned, and clicking anywhere in an answer copies it.\n\n**8 languages:** English, 简体中文, 繁體中文, 日本語, 한국어, Русский, Español, Français —\nselected automatically from your game language, including the language the AI\nanswers in.\n\n## Differences from the Fabric edition\n\n- **No Mod Menu integration.** Mod Menu is a Fabric mod with no Forge equivalent;\n  `/ai config` and Forge's own mod list both open the settings screen.\n- **Version numbering** starts at 1.0.0 instead of 1.25.x, as explained above.\n- Everything else is intended to be identical.\n\n## Requirements\n\n- **Minecraft 1.20.1**\n- **Minecraft Forge 47.x** (built against `1.20.1-47.4.28`)\n- **Java 17** (1.20.1 runs on 17; the Fabric edition needs 21)\n- An API key for one of the supported endpoints, **or** a local model\n\n---\n\n## ⚠️ Please read: this build has not been run\n\nThe Forge port was written and compiled **without ever launching Minecraft** — the\ndevelopment machine has no working game setup. Everything below is verified:\n\n- ✅ it compiles against Forge 47.4.28 / Mojang official mappings\n- ✅ every Minecraft API name was converted from Yarn to Mojang mappings and the\n  result was checked for leftovers\n- ✅ no Fabric API import remains anywhere in the tree\n\nWhat is **not** verified is anything that only shows up at runtime: whether the\nclient-",
+      "assets": [
+        {
+          "name": "mcai-forge-1.0.0-sources.jar",
+          "size": 275416,
+          "path": "/downloads/mcai/forge-v1.0.0/mcai-forge-1.0.0-sources.jar",
+          "url": "https://github.com/MFHRY/mcai/releases/download/forge-v1.0.0/mcai-forge-1.0.0-sources.jar"
+        },
+        {
+          "name": "mcai-forge-1.0.0.jar",
+          "size": 345651,
+          "path": "/downloads/mcai/forge-v1.0.0/mcai-forge-1.0.0.jar",
+          "url": "https://github.com/MFHRY/mcai/releases/download/forge-v1.0.0/mcai-forge-1.0.0.jar"
+        }
+      ]
+    },
+    {
+      "tag": "v1.25.1",
+      "name": "mcAI 1.25.1",
+      "published_at": "2026-10-15T13:57:34Z",
+      "html_url": "https://github.com/MFHRY/mcai/releases/tag/v1.25.1",
+      "prerelease": false,
+      "body": "# mcAI 1.25.1\n\nA security-hygiene fix for the text-to-speech feature. Nothing else changed.\n\n---\n\n## Fixed\n\n**TTS no longer launches PowerShell with a Base64-encoded command.**\n\nThe text to speak used to be Base64-encoded and interpolated into\n`powershell.exe -Command \"...\"`. That *was* safe against command injection — the Base64 alphabet\ncontains nothing PowerShell would treat as code — but:\n\n> a Java mod that reads arbitrary files, calls the network, and then runs PowerShell on a Base64 blob\n\nis indistinguishable from malware to an automated scanner, and Modrinth runs one during review.\nIt is also the kind of pattern antivirus engines flag on users' machines.\n\nThe text now goes to the child process over **stdin**, and the command line is a fixed literal\nstring:\n\n```powershell\nAdd-Type -AssemblyName System.Speech\n$s = New-Object System.Speech.Synthesis.SpeechSynthesizer\n$t = [Console]::In.ReadToEnd()\nif ($t.Trim().Length -gt 0) { $s.Speak($t) }\n```\n\nThat is strictly safer — the text never reaches the command line at all, so there is nothing to\nescape — and it no longer resembles obfuscation.\n\n## Unchanged\n\nTTS still speaks the same text, still stays silent if the OS has no speech component, and still\nneeds `/ai tts on` first. Every 1.25 feature (crosshair inspect, inventory analysis, Gemini/Claude,\nautomatic retry, per-call cost, click-to-copy answers, rebindable hotkeys, the searchable config\nscreen, the HUD whale widget, and all 8 languages) is exactly as it was.\n\n---\n\n## 中文版\n\n### 修复\n\n**TTS 不再用 Base64 编码后启动 PowerShell。**\n\n以前待朗读的文本会被 Base64 编码再拼进 `powershell.exe -Command \"...\"`。那样**确实**防住了\n命令注入（Base64 字符集里没有 PowerShell 会当成代码的东西），但是：\n\n> 一个会读任意文件、会联网、还会对 Base64 数据跑 PowerShell 的 Java 模组\n\n在自动化扫描器眼里和恶意软件没有区别——Modrinth 审核时就会跑扫描器，杀软在玩家机器上\n也盯这类模式。\n\n现在文本改走 **stdin**，命令行是一段固定常量（见上方脚本）。这更安全：文本根本不进命令行，\n也就无所谓转义；同时不再命中混淆特征。\n\n### 没有变化的部分\n\n朗读的还是同样的文本，系统没有语音组件时照样静默失败，仍然要先 `/ai tts on`。\n1.25 的全部功能（准星查询、物品栏分析、Gemini/Claude、自动重试、每次调用花费、\n点击复制回答、可改键、可搜索的设置界面、HUD 鲸鱼娘挂件、8 种语言）都完全一致。\n\n---\n\n## 包装 / Packaging\n\n| 文件 | 说明 |\n| --- | --- |\n| `mcai-1.25.1.jar` | 放进 `.minecraft/mods/` 就能用（需要 Fabric API） |\n| `mcai-1.25.1-sources.jar` | 源码，只在你想自己编译/改代码时需要 |\n\n- 需要 **Minecraft 1.21.1 + Fabric Loader + [Fabric API](https://modrinth.com/mod/fabric-api)**\n- 客户端和服务端都要装（`environment: \"*\"`）\n- 内置 8 种语言的界面：English / 简体中文 / 繁體中文 / 日本語 / 한국어 / Русский / Español / Français\n",
+      "assets": [
+        {
+          "name": "mcai-1.25.1-sources.jar",
+          "size": 279140,
+          "path": "/downloads/mcai/v1.25.1/mcai-1.25.1-sources.jar",
+          "url": "https://github.com/MFHRY/mcai/releases/download/v1.25.1/mcai-1.25.1-sources.jar"
+        },
+        {
+          "name": "mcai-1.25.1.jar",
+          "size": 346988,
+          "path": "/downloads/mcai/v1.25.1/mcai-1.25.1.jar",
+          "url": "https://github.com/MFHRY/mcai/releases/download/v1.25.1/mcai-1.25.1.jar"
+        }
+      ]
+    },
+    {
+      "tag": "v1.25",
+      "name": "mcAI 1.25",
+      "published_at": "2026-10-15T13:40:35Z",
+      "html_url": "https://github.com/MFHRY/mcai/releases/tag/v1.25",
+      "prerelease": false,
+      "body": "# mcAI 1.25\n\nTen changes, most of them about **spending less** and **asking more naturally**.\n\n---\n\n## New\n\n### Ask in more ways\n\n- **Crosshair inspect (`V`)** — look at a block or mob and press `V`. The mod sends its name\n  *and* its registry id (`modid:block`), so the model can tell two different mods' \"copper\n  block\" apart, and knows it is looking at modded content at all. Mobs also carry their health,\n  which is the number that actually decides whether to fight.\n- **One-command inventory analysis (`/ai inv [question]`)** — your inventory as a compact text\n  list, plus your own question. The same information sent as a screenshot costs roughly ten\n  times as much.\n- **Gemini and Claude support** — the request/response layer is now split per vendor and\n  normalises everything back into one shape, so token stats, costing and history keep working\n  unchanged. `api_provider` defaults to `auto` and infers the protocol from your `api_url`;\n  `/ai provider gemini` forces it if the guess is wrong.\n\n### Spend less\n\n- **What each call actually cost** — appended to every answer, computed from the `usage` the\n  provider really returned rather than from the pre-flight estimate. Previously you only saw a\n  rough number *before* sending, and never the real one afterwards.\n- **Automatic retry** — network failures and 408/425/429/5xx are retried with exponential\n  backoff (default 2 retries, `/ai retry 0..5`). Other 4xx responses are deliberately **not**\n  retried: the request itself is wrong, and retrying only makes you wait longer for the same error.\n\n### Use it more comfortably\n\n- **Click any answer to copy it.** Coordinates and 「item names」 keep their own click actions;\n  clicking anywhere else copies the whole reply.\n- **Rebindable hotkeys** — `H` / `G` / `R` / `V` can all be changed from the in-game config\n  screen. The binding is still stored by vanilla in `options.txt`; no second copy is kept in\n  `mcai.json`, because two sources of truth for one keybind is a bug factory.\n- **Searchable, grouped config screen** — `/ai config` is now split into collapsible sections\n  with a search box, instead of one long list.\n- **A whale companion on your HUD** — squashes when you hold `Q`, and pops a bubble with\n  today's spend, budget remaining, the peak/off-peak countdown, current model and persona,\n  cache hits and your account balance. Toggle the bubble with `B`, position it with\n  `/ai avatar edit`, point it at your own PNG with `/ai avatar image <path>`, hide it with\n  `/ai avatar off`. Not mouse-driven on purpose: a HUD element cannot receive clicks in vanilla,\n  and this mod ships no mixin to change that. **No artwork is bundled** — bring your own, which\n  also keeps this project's CC0 licence covering nothing but code.\n\n### Also\n\n- The on-join guide and `/ai help` now list **every** command. In 1.23 and 1.24 the built-in\n  guide had fallen behind the command list, so translation, the chat trigger prefix, and all of\n  1.24's commands were undiscoverable in game. The on-join message is now a short version and\n  points at `/ai help` for the full list.\n\n---\n\n## 中文版\n\n十项改动，大部分围绕**少花钱**和**问得更自然**。\n\n### 新增\n\n**更多提问方式**\n\n- **准星查询（V 键）**——看着方块或生物按 V。发送的是名字**加上注册 ID**（`modid:block`），\n  模型能分清两个模组各自的\"铜块\"，也知道自己面对的是模组内容。生物额外带血量。\n- **物品栏一键分析（`/ai inv [问题]`）**——把背包整理成文字清单再提问，\n  同样的信息发截图大约贵十倍。\n- **支持 Gemini / Claude**——请求响应按厂商拆开再归一化，统计和计费不受影响。\n  `/ai provider auto|openai|gemini|claude`，默认 `auto` 按接口地址判断。\n\n**更省钱**\n\n- **每次调用的真实花费**——附在每条回答末尾，按服务商实际返回的 `usage` 结算。\n- **失败自动重试**——网络异常和 408/425/429/5xx 按指数退避重试，其余 4xx 刻意不重试。\n\n**更顺手**\n\n- **点一下复制整段回答**（坐标和物品名保留各自的点击行为）\n- **快捷键可自定义**：`H` / `G` / `R` / `V`，在 `/ai config` 里改\n- **设置界面分组 + 搜索**\n- **HUD 鲸鱼娘挂件**：按住 `Q` 会 Q 弹。气泡显示花费 / 预算 / 峰谷倒计时 / 模型人格 /\n  缓存命中 / 账户余额。气泡用 `B` 开关，位置用 `/ai avatar edit`，头像用\n  `/ai avatar image <PNG 路径>` 指定你自己的图，`/ai avatar off` 隐藏。\n  （刻意不做鼠标交互：原版 HUD 元素收不到点击，本模组也不打算为此引入 mixin。）\n  **不内置任何美术素材**——用你自己的图，本项目的 CC0 也就只覆盖代码。\n\n### 说明\n\n- 没有删除或改名任何配置项，旧的 `config/mcai.json` 可以直接用。\n- 挂件默认图是本项目原创的（`tools/",
+      "assets": [
+        {
+          "name": "mcai-1.25-sources.jar",
+          "size": 278509,
+          "path": "/downloads/mcai/v1.25/mcai-1.25-sources.jar",
+          "url": "https://github.com/MFHRY/mcai/releases/download/v1.25/mcai-1.25-sources.jar"
+        },
+        {
+          "name": "mcai-1.25.jar",
+          "size": 346850,
+          "path": "/downloads/mcai/v1.25/mcai-1.25.jar",
+          "url": "https://github.com/MFHRY/mcai/releases/download/v1.25/mcai-1.25.jar"
+        }
+      ]
+    },
+    {
+      "tag": "v1.24",
+      "name": "mcAI 1.24",
+      "published_at": "2026-10-15T12:25:25Z",
+      "html_url": "https://github.com/MFHRY/mcai/releases/tag/v1.24",
+      "prerelease": false,
+      "body": "# mcAI 1.24\n\nThe biggest update since 1.20: **13 new features**, most of them about spending less money\nand sending less of your screen to a third party.\n\n## New\n\n**Cost control**\n\n- **Selectable region screenshots (`R`)** — drag a box and only that part is sent. Image\n  tokens scale with pixel count, so framing 40% of the screen costs 40% of the image.\n- **Pre-send preview** — see the exact processed image (cropped, masked, resized) before it\n  leaves your machine. Off by default: `/ai preview on`.\n- **Privacy mask** — the chat area is blacked out before upload, so chat logs and player\n  names never reach the provider. Off by default: `/ai mask on`.\n- **Spend estimate before every request** — one dim line telling you roughly what this\n  question will cost.\n- **Budget warning at 80%** — previously the only feedback was being blocked *after* the\n  budget was gone.\n- **Local answer cache** — asking the same question twice costs nothing the second time.\n\n**Better answers**\n\n- **Modlist + version awareness** — the system prompt now carries the game version and the\n  loaded mod list, so the model stops answering \"that does not exist in vanilla\" when you\n  are clearly running a modpack. `/ai env off` disables it.\n- **Long-term memory** — `/ai remember <text>` keeps facts (base coordinates, current\n  project) in every request. `/ai memories`, `/ai forget <n>`, `/ai forget all`.\n\n**Control and safety**\n\n- **Cancel a request** — `ESC` (or `/ai cancel`). Previously a request could only be waited\n  out or timed out at 60–90 seconds, and the model kept generating — and billing — the\n  whole time. Cancelling now really aborts the HTTP exchange.\n- **Danger alert** — optionally screenshot and ask for advice when health is low with\n  hostile mobs nearby. `/ai danger on`. Fires only on the moment health crosses the\n  threshold, then enforces a cooldown, so it cannot spam.\n- **Clickable coordinates in answers** — coordinates are copied to the clipboard on click;\n  「item names」 are offered as a chat suggestion. Clicking only copies or fills the box,\n  never executes anything.\n- **Multi-turn context is now per world/server** — fixes a real bug: history used to be a\n  single global queue, so after leaving a singleplayer world and joining a server the AI\n  still remembered the previous world's coordinates.\n- **Mod Menu integration** — the settings screen is now reachable from Mod Menu, not just\n  from `/ai config`. Mod Menu stays an *optional* dependency.\n- **Text-to-speech** — read answers out loud via the OS speech synthesizer\n  (`/ai tts on`, `/ai speak <text>`).\n\n## Fixed\n\n- `fabric.mod.json` still advertised \"(English / Chinese)\" after 1.23 added 繁體中文 and\n  日本語. It now lists all four languages.\n- The vision path used a bare system prompt with no persona; chat and screenshots now build\n  the system prompt through the same code, so they cannot drift apart.\n\n> **Packaging note:** only `mcai-1.24.jar` goes in `mods`. Do not put the `-sources.jar`\n> there — it carries a `fabric.mod.json` with the same mod id and an unexpanded\n> `${version}`, so Fabric sees two mods named `mcai`.\n\n- Minecraft 1.21.1, Fabric Loader >= 0.19.5, Java 21\n- Optional: **Mod Menu** (adds the settings button in the mod list)\n- Your `mcai.json` is fully compatible — every new option has a working default.\n\n---\n\n# mcAI 1.24（中文）\n\n自 1.20 以来最大的一次更新：**13 个新功能**，其中大部分围绕\"少花钱\"和\"少把画面交给第三方\"。\n\n## 新增\n\n**费用控制**\n\n- **框选截图（`R`）**：拖框，只把框住的部分发出去。图片 token 与像素数成正比，\n  框住 40% 的面积就只花 40% 的图片费用。\n- **发送前预览**：在图片离开你的电脑之前，先看到**处理之后**的真实样子\n  （已裁剪、已遮罩、已缩放）。默认关闭，`/ai preview on` 打开。\n- **隐私遮罩**：上传前把聊天栏那块涂黑，聊天记录和玩家名不会送到服务商。\n  默认关闭，`/ai mask on` 打开。\n- **每次请求前给花费预估**：一行暗色提示，告诉你这一问大概要花多少钱。\n- **预算 80% 提醒**：以前唯一的提示是\"钱花完了被拦下\"，中途完全没有预警。\n- **本地回答缓存**：同一个问题问第二遍不再花钱。\n\n**回答质量**\n\n- **模组与版本感知**：系统提示词会带上游戏版本和已加载的模组列表，\n  玩整合包时它不会再回答\"原版没有这个东西\"。`/ai env off` 可关。\n- **长期记忆**：`/ai remember <内容>` 记下基地坐标、正在建的东西等，之后每次提问都会带上。\n  `/ai memories` 查看，`/ai forget <序号>` / `/ai forget all` 删除。\n\n**控制与安全**\n\n- **中止请求**：按 `ESC`（或 `/ai cancel",
+      "assets": [
+        {
+          "name": "mcai-1.24-sources.jar",
+          "size": 180786,
+          "path": "/downloads/mcai/v1.24/mcai-1.24-sources.jar",
+          "url": "https://github.com/MFHRY/mcai/releases/download/v1.24/mcai-1.24-sources.jar"
+        },
+        {
+          "name": "mcai-1.24.jar",
+          "size": 221107,
+          "path": "/downloads/mcai/v1.24/mcai-1.24.jar",
+          "url": "https://github.com/MFHRY/mcai/releases/download/v1.24/mcai-1.24.jar"
+        }
+      ]
+    },
+    {
+      "tag": "v1.23",
+      "name": "mcAI 1.23",
+      "published_at": "2026-10-14T14:24:34Z",
+      "html_url": "https://github.com/MFHRY/mcai/releases/tag/v1.23",
+      "prerelease": false,
+      "body": "# mcAI 1.23\n\n**Two new languages.** Nothing else changed — no behaviour changes, no config changes.\n\n## New\n\n- **繁體中文 (`zh_tw`)** — a full Traditional Chinese translation, 258 strings. Written for\n  Taiwanese conventions rather than a character-by-character conversion: 螢幕 / 設定 /\n  儲存 / 伺服器 / 網路 / 生態域 / 座標. The AI system prompts are localized too, so the\n  model answers in Traditional Chinese.\n- **日本語 (`ja_jp`)** — a full Japanese translation, 258 strings. The AI system prompts,\n  persona suffixes and translation prompts are localized as well, so the model answers in\n  Japanese without you having to change any setting.\n\nThe mod now ships **four** languages in one jar:\n\n| File | Language |\n| --- | --- |\n| `en_us.json` | English |\n| `zh_cn.json` | 简体中文 |\n| `zh_tw.json` | 繁體中文 |\n| `ja_jp.json` | 日本語 |\n\nIt follows your Minecraft language setting automatically — nothing to configure.\n\n> **Packaging note:** only `mcai-1.23.jar` goes in `mods`. Do not put the `-sources.jar`\n> there — it carries a `fabric.mod.json` with the same mod id and an unexpanded\n> `${version}`, so Fabric sees two mods named `mcai`.\n\n- Minecraft 1.21.1, Fabric Loader >= 0.19.5, Java 21\n- Your `mcai.json` is fully compatible — nothing to reconfigure.\n\n---\n\n# mcAI 1.23（中文）\n\n**只新增两个语言，其他一律没动**——行为没有变化，配置文件也没有变化。\n\n## 新增\n\n- **繁體中文（`zh_tw`）**：完整的繁體中文翻译，258 条。是按台湾用语习惯写的，**不是逐字转换**：\n  螢幕 / 設定 / 儲存 / 伺服器 / 網路 / 生態域 / 座標。AI 系统提示词也一并本地化，\n  模型会直接用繁體中文回答。\n- **日本語（`ja_jp`）**：完整的日语翻译，258 条。AI 系统提示词、人格后缀和翻译提示词\n  也一并本地化，切到日语后模型直接用日语回答，不需要改任何设置。\n\n现在同一个 jar 里带 **四种语言**：\n\n| 文件 | 语言 |\n| --- | --- |\n| `en_us.json` | English |\n| `zh_cn.json` | 简体中文 |\n| `zh_tw.json` | 繁體中文 |\n| `ja_jp.json` | 日本語 |\n\n跟随游戏语言自动切换，不需要任何配置。\n\n> **打包提醒：** 只有 `mcai-1.23.jar` 放进 `mods`。不要把 `-sources.jar` 放进去——\n> 它带着同一个 mod id 且版本号是未替换的 `${version}`，Fabric 会看到两个叫 `mcai` 的 mod。\n\n- Minecraft 1.21.1，Fabric Loader >= 0.19.5，Java 21\n- `mcai.json` 完全兼容，不需要重新配置。\n",
+      "assets": [
+        {
+          "name": "mcai-1.23-sources.jar",
+          "size": 142229,
+          "path": "/downloads/mcai/v1.23/mcai-1.23-sources.jar",
+          "url": "https://github.com/MFHRY/mcai/releases/download/v1.23/mcai-1.23-sources.jar"
+        },
+        {
+          "name": "mcai-1.23.jar",
+          "size": 181448,
+          "path": "/downloads/mcai/v1.23/mcai-1.23.jar",
+          "url": "https://github.com/MFHRY/mcai/releases/download/v1.23/mcai-1.23.jar"
+        }
+      ]
+    },
+    {
+      "tag": "v1.22",
+      "name": "mcAI 1.22",
+      "published_at": "2026-10-11T01:59:39Z",
+      "html_url": "https://github.com/MFHRY/mcai/releases/tag/v1.22",
+      "prerelease": false,
+      "body": "# mcAI 1.22\n\nA cleanup + quality-of-life release on top of 1.21: three new features, plus the internal\nfixes found while reviewing the codebase.\n\n## New\n\n- **Configurable trigger prefix** — `!ai` is no longer hardcoded. `/ai prefix <value>`\n  (e.g. `/ai prefix @ai`) changes what starts an AI chat; `/ai status` shows the current\n  value.\n- **AI translation** — `/ai tl <text>` translates to the default target language,\n  `/ai tl <lang> <text>` to a specific one (`/ai translate` is an alias), and\n  `/ai tlang <lang>` sets the default target language.\n- **Persona management** — `/ai persona` shows the current persona, `/ai persona list`\n  lists all presets (default / builder / redstone / survival / english).\n\n## Fixed\n\n- Anthropic model ids in the model catalog were empty strings; real ids are now filled in,\n  and blank ids are rejected outright.\n- `TokenStats` writes through the same copy-on-write `ConfigManager.update` as everything\n  else; the daily rollover read path no longer mutates config.\n- `ApiKeyManager` returns a `PickedKey` handle so exactly the key used in a request gets\n  blacklisted on failure; the dead-key set is now thread-safe.\n- The 8-second cooldown is only consumed after every validation passes (config ready, key\n  present, budget OK) — no more \"cooldown eaten by a request that never ran\".\n- `ConfigManager` waits for the initial disk load before applying edits, removing a startup\n  race that could overwrite `mcai.json`.\n- Removed the never-enabled `ExampleMixin` and its mixins config.\n- Dead code cleaned from `VisionHandler` / `ChatHandler`.\n- `RecipeHelper` craftability now uses bipartite maximum matching instead of greedy\n  consumption, so substitutable materials (e.g. planks) are handled correctly.\n- `ItemSwitchHandler` only sends the c2s payload when the channel is actually open.\n- README usage-CSV sample rows updated to the real 5-column format.\n- `ChatHandler` moved into the client package (the only client-only class that lived in the\n  common package).\n\n> **Packaging note:** only `mcai-1.22.jar` goes in `mods`. Do not put the `-sources.jar`\n> there — it carries a `fabric.mod.json` with the same mod id and an unexpanded\n> `${version}`, so Fabric sees two mods named `mcai`.\n\n- Minecraft 1.21.1, Fabric Loader >= 0.19.5, Java 21\n- Your `mcai.json` is fully compatible — nothing to reconfigure.\n\n---\n\n# mcAI 1.22（中文）\n\n在 1.21 基础上的一次「内部清理 + 三个新功能」更新。\n\n## 新增\n\n- **可配置触发前缀**：`!ai` 不再写死，`/ai prefix <值>`（如 `/ai prefix @ai`）即可修改，\n  `/ai status` 会显示当前值。\n- **AI 翻译**：`/ai tl <文本>` 翻成默认目标语言，`/ai tl <语言> <文本>` 指定语言\n  （`/ai translate` 是别名），`/ai tlang <语言>` 设置默认目标语言。\n- **人格管理**：`/ai persona` 查看当前人格，`/ai persona list` 列出全部预设\n  （default / builder / redstone / survival / english）。\n\n## 修复\n\n- 模型目录里 Anthropic 的 5 个模型 id 原本是空字符串，已补成真实 id，并加入空值校验。\n- `TokenStats` 统一走 `ConfigManager.update` 的写时复制；跨天清理由“读时清零”改为只读判断。\n- `ApiKeyManager` 返回 `PickedKey` 句柄，失败时精确拉黑本次请求用掉的那把 key；\n  失效 key 集合改为线程安全。\n- 8 秒冷却移到**所有校验通过之后**才消耗，不再出现“配置没填好还先扣冷却”的问题。\n- `ConfigManager` 会先等磁盘配置加载完成再应用修改，消除启动竞态覆盖 `mcai.json` 的隐患。\n- 移除从未启用的 `ExampleMixin` 及 mixins 配置。\n- 清理 `VisionHandler` / `ChatHandler` 中的死代码。\n- `RecipeHelper` 可合成判定改用**二分图最大匹配**，正确处理可替代材料（如木板）。\n- `ItemSwitchHandler` 只在对应网络通道可用时才发包。\n- README 中用量 CSV 示例改成真实的 5 列格式。\n- `ChatHandler` 移入 client 包（common 包里唯一的客端专属类）。\n\n> **打包提醒：** 只有 `mcai-1.22.jar` 放进 `mods`。不要把 `-sources.jar` 放进去——\n> 它带着同一个 mod id 且版本号是未替换的 `${version}`，Fabric 会看到两个叫 `mcai` 的 mod。\n\n- Minecraft 1.21.1，Fabric Loader >= 0.19.5，Java 21\n- `mcai.json` 完全兼容，不需要重新配置。\n",
+      "assets": [
+        {
+          "name": "mcai-1.22-sources.jar",
+          "size": 128252,
+          "path": "/downloads/mcai/v1.22/mcai-1.22-sources.jar",
+          "url": "https://github.com/MFHRY/mcai/releases/download/v1.22/mcai-1.22-sources.jar"
+        },
+        {
+          "name": "mcai-1.22.jar",
+          "size": 167615,
+          "path": "/downloads/mcai/v1.22/mcai-1.22.jar",
+          "url": "https://github.com/MFHRY/mcai/releases/download/v1.22/mcai-1.22.jar"
+        }
+      ]
+    },
+    {
+      "tag": "v1.21",
+      "name": "mcAI 1.21",
+      "published_at": "2026-10-09T13:19:19Z",
+      "html_url": "https://github.com/MFHRY/mcai/releases/tag/v1.21",
+      "prerelease": false,
+      "body": "# mcAI 1.21\n\n> ## ⚠️ If you are on 1.20, please update.\n>\n> **1.20 has four real bugs, listed below.** None of them can damage your world or your\n> account, but several features simply did nothing, and one of them (`/ai config`) has been\n> broken since 1.1.0. **1.21 fixes all of them and adds in-game switches so you never have\n> to hand-edit `mcai.json` again.**\n>\n> Your `mcai.json` is fully compatible — nothing to reconfigure.\n\n---\n\n## The bugs in 1.20, and what actually caused them\n\n### 1. `/ai config` did nothing at all — *broken since 1.1.0*\n\nTyping `/ai config` produced no reaction. This was **not** a problem with the settings\nscreen itself.\n\nA client command runs *inside* the chat screen, and the chat screen closes itself with\n`setScreen(null)` **after** the command returns — which immediately overwrote the screen the\ncommand had just opened. The screen is now opened on the next client tick, once the chat\nscreen is gone.\n\nSo this was broken in 1.1.0 too; it just had not been noticed yet.\n\n### 2. Streaming output was invisible\n\nThe streamed answer was written to the action bar, but the \"AI is thinking…\" spinner was\n**also** writing to the action bar every 3 ticks. The two overwrote each other several times\na second, so all you ever saw was the spinner.\n\nThe spinner now yields the action bar while a stream is live. (Streaming itself was working\nthe whole time — you just could not see it.)\n\n### 3. Streaming lost the chain of thought\n\nThe normal path printed `[Thinking]` above the answer. The streaming path collected only the\nanswer and never printed the reasoning. Reasoning is now accumulated and rendered through the\nsame formatter, so both paths look and behave the same.\n\n### 4. The new features could only be turned on by editing `mcai.json`\n\nThis is what made several features look broken. **Death recap is off by default** (it sends\nyour screen away automatically, so it must be opt-in) — but with no in-game switch, \"off by\ndefault\" meant \"appears to do nothing, forever\". Same story for the daily budget, the\ncontext length and the Discord webhook.\n\n**Fixed: everything is now reachable from inside the game.**\n\n```\n/ai death on|off           Death recap\n/ai streaming on|off       Streaming output\n/ai recipe on|off          Local recipe answers\n/ai budget <CNY>           Daily budget (0 = unlimited)\n/ai history <turns>        Conversation turns kept in memory\n/ai discord <url|clear>    Discord webhook\n```\n\n…and `/ai config` now works and contains the three switches plus the budget and\ncontext-length fields.\n\n### Also fixed\n\n- `/ai craft <item>` now looks up a recipe **by name** (`/ai craft diamond pickaxe`). In 1.20\n  the lookup helper existed but was never connected to a command, so \"recipe matching\" did\n  nothing. `/ai craft` with no argument still lists what your inventory can build right now.\n- The recipe scan now logs how many recipes it examined, so a genuine failure can be told\n  apart from \"you really do not have the materials\".\n\n### One packaging note\n\n**Do not put the `-sources.jar` in your `mods` folder.** It ships a `fabric.mod.json` with the\nsame mod id and an unexpanded `${version}`, so Fabric sees two mods named `mcai` and warns\nthat the version cannot be parsed. Only `mcai-1.21.jar` goes in `mods`.\n\n---\n\n## Everything from 1.20 is still here\n\nThis release is a bug-fix release: no feature was removed.\n\n- Local models (Ollama / LM Studio) need no API key — free and offline\n- Cost estimate in CNY from the official DeepSeek price table (peak / off-peak) with a hard\n  daily budget\n- Multiple API keys with automatic failover on 401 / 402 / 429\n- Multi-turn context, kept in memory only, `/ai clear` to forget\n- Persona presets: `/ai persona builder | redstone | survival | english`\n- `H` screenshot, `G` build/redstone analysis, `/ai describe` screen reading\n- Automatic crop to the open container GUI (image tokens drop to roughly a quarter)\n- `/ai read` sign and book translation (text only, so it is cheap and accurate)\n-",
+      "assets": [
+        {
+          "name": "mcai-1.21-sources.jar",
+          "size": 124039,
+          "path": "/downloads/mcai/v1.21/mcai-1.21-sources.jar",
+          "url": "https://github.com/MFHRY/mcai/releases/download/v1.21/mcai-1.21-sources.jar"
+        },
+        {
+          "name": "mcai-1.21.jar",
+          "size": 163860,
+          "path": "/downloads/mcai/v1.21/mcai-1.21.jar",
+          "url": "https://github.com/MFHRY/mcai/releases/download/v1.21/mcai-1.21.jar"
+        }
+      ]
+    },
+    {
+      "tag": "v1.20",
+      "name": "mcAI 1.20",
+      "published_at": "2026-10-09T12:52:59Z",
+      "html_url": "https://github.com/MFHRY/mcai/releases/tag/v1.20",
+      "prerelease": false,
+      "body": "# mcAI 1.20\n\nThis is the biggest update so far: **16 new modules**, and the mod is now useful even\nwithout paying for an API.\n\n## New: it can be free\n\n- **Local models need no API key.** Point the endpoint at Ollama or LM Studio\n  (`http://localhost:11434/v1`) and mcAI works offline, for free.\n- **`/ai craft` costs nothing.** It reads the recipe table the server already sent you and\n  lists what you can build from your inventory right now. Asking `!ai how do I craft X` is\n  answered locally too — no tokens, no network.\n- **Discord broadcasts cost nothing** (webhook only, no model call).\n\n## New: you can see what you spend\n\n- **Cost in CNY, from the official DeepSeek price table**, with peak / off-peak rates\n  applied automatically by Beijing time. `/ai cost` shows the rate and today's total.\n- **A hard daily budget.** Set `daily_budget_yuan` and requests are refused once you reach\n  it, instead of finding out at the end of the month.\n- **`/ai chart`** draws your last 7 days of usage as a bar chart in chat.\n\n## New: it keeps working when things go wrong\n\n- **Multiple API keys with automatic failover.** Add `backup_api_keys` and mcAI rotates to\n  the next one on 401 / 402 / 429.\n\n## New: it remembers the conversation\n\n- **Multi-turn context**, kept **in memory only** — nothing is written to disk, and\n  `/ai clear` forgets it. Off by default? No: set `history_turns` to `0` to disable.\n- **Persona presets**: `/ai persona builder|redstone|survival|english`.\n- **Streaming output**: the answer appears live on the action bar as it is generated.\n\n## New: more ways to use the camera\n\n- **`G` key** — analyse the build or redstone circuit you are looking at.\n- **`/ai describe`** — read the screen out loud, for players who cannot see it well.\n- **Automatic GUI crop**: when you press `H` with a chest or inventory open, only the\n  container is sent. Image tokens drop to roughly a quarter and the model reads the slots\n  more reliably.\n- **Death recap**: screenshot the death screen, get told what killed you and what to do\n  differently. Optional, **off by default**. Can also post to a Discord webhook.\n\n## New: cheaper ways to ask about text and places\n\n- **`/ai read`** — translate the sign you are looking at, or the book you are holding.\n  This sends **text, not an image**, so it is far cheaper and far more accurate than OCR.\n- **`/ai where`** — sends your coordinates, biome, light level, dimension and health as\n  context, so you can ask \"what should I look for here?\".\n- **`/ai task`** — generates tasks from what is actually in your inventory.\n\n## Everything is still bilingual\n\nAll 224 user-facing strings exist in both English and Chinese, in the same jar.\n\n---\n\n# mcAI 1.20（中文）\n\n这是目前为止最大的一次更新：**16 个新模块**，而且不花钱也能用了。\n\n## 新增：可以不花钱\n\n- **本地模型不需要 API Key。** 把接口地址指向 Ollama 或 LM Studio\n  （`http://localhost:11434/v1`）就能离线、免费使用。\n- **`/ai craft` 不花一分钱。** 它读取服务器已经同步给你的配方表，列出你现在背包里\n  的材料能做出的东西。用 `!ai 怎么做某某` 提问也会被本地直接回答——不消耗 token、\n  不用联网。\n- **Discord 播报不花钱**（只发 webhook，不调用模型）。\n\n## 新增：能看见花费\n\n- **按官方 DeepSeek 价格表估算人民币花费**，并自动按北京时间套用高峰 / 空闲两档单价。\n  `/ai cost` 会显示当前单价和今日合计。\n- **每日硬预算。** 设置 `daily_budget_yuan` 后，一旦达到上限就直接拒绝新请求，\n  而不是等到月底才发现超支。\n- **`/ai chart`** 在聊天栏画出最近 7 天的用量柱状图。\n\n## 新增：出错时不中断\n\n- **多 Key 自动降级。** 填上 `backup_api_keys`，遇到 401 / 402 / 429 会自动切到下一个。\n\n## 新增：能记住上下文\n\n- **多轮上下文**，**只存在内存里**——不写盘，`/ai clear` 立即忘记。\n  把 `history_turns` 设为 `0` 即可关闭。\n- **人格预设**：`/ai persona builder|redstone|survival|english`。\n- **流式输出**：回答会随着生成实时显示在头顶 Action Bar。\n\n## 新增：更多看画面的方式\n\n- **`G` 键** —— 分析你正在看的建筑或红石电路。\n- **`/ai describe`** —— 把屏幕内容念出来，方便看不清屏幕的玩家。\n- **自动裁剪界面**：开着箱子或背包按 `H` 时，只把容器那一块发出去。图片 token 大约\n  降到四分之一，模型也更容易看清格子里的东西。\n- **死亡复盘**：截取死亡画面，告诉你被什么杀了、下次该注意什么。可选，**默认关闭**。\n  也可以同时播报到 Discord webhook。\n\n## 新增：更便宜地问文字和位置\n\n- **`/ai read`** —— 翻译准星指向的告示牌，或你手中的成书。发的是**文本而不是图片**，\n  所以比 OCR 便宜得多、也准得多。\n- **`/ai where`** —— 把坐标、群系、光照、维度、生命值作为上下文发出去，\n  于是可以问\"这附近我该找什么？\"。\n- **`/ai task`** —— 根据你背包里真实有的东西生成任务。\n\n## 仍然是双语的\n\n224 条面向玩家的文案在中英文里都存在，同一个 jar。\n",
+      "assets": [
+        {
+          "name": "mcai-1.20-sources.jar",
+          "size": 119117,
+          "path": "/downloads/mcai/v1.20/mcai-1.20-sources.jar",
+          "url": "https://github.com/MFHRY/mcai/releases/download/v1.20/mcai-1.20-sources.jar"
+        },
+        {
+          "name": "mcai-1.20.jar",
+          "size": 157553,
+          "path": "/downloads/mcai/v1.20/mcai-1.20.jar",
+          "url": "https://github.com/MFHRY/mcai/releases/download/v1.20/mcai-1.20.jar"
+        }
+      ]
+    }
+  ]
+}

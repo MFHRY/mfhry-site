@@ -1,0 +1,1465 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FX 梭哈模拟器 · 多品种杠杆外汇</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0b0e11;
+    color: #eaecef;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    min-height: 100vh;
+    user-select: none;
+  }
+  .app {
+    width: 100%;
+    max-width: 960px;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    max-height: 900px;
+  }
+
+  /* 顶栏 */
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: #12161c;
+    border-bottom: 1px solid #1e2329;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+  .pair-tabs { display: flex; gap: 4px; }
+  .pair-tab {
+    background: #1e2329;
+    border: 1px solid #2b3139;
+    color: #b7bdc6;
+    padding: 5px 10px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: .3px;
+    transition: all .12s;
+    font-family: inherit;
+    white-space: nowrap;
+  }
+  .pair-tab:hover { background: #2b3139; }
+  .pair-tab.active { background: #f0b90b; border-color: #f0b90b; color: #0b0e11; }
+
+  .price-big {
+    font-size: 18px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    flex: 1;
+    min-width: 110px;
+    letter-spacing: .5px;
+    transition: color .1s;
+  }
+  .price-big.up { color: #0ecb81; }
+  .price-big.down { color: #f6465d; }
+
+  .top-stats { display: flex; gap: 14px; font-size: 11px; color: #848e9c; text-align: right; align-items: center; }
+  .top-stats b { display: block; color: #eaecef; font-size: 13px; font-variant-numeric: tabular-nums; margin-top: 2px; }
+
+  .btn-recharge {
+    background: linear-gradient(135deg, #f0b90b, #f8d12f);
+    border: none;
+    color: #0b0e11;
+    padding: 7px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+    font-family: inherit;
+    white-space: nowrap;
+    letter-spacing: .3px;
+    transition: filter .12s;
+    animation: glowPulse 2.5s ease-in-out infinite;
+  }
+  .btn-recharge:hover { filter: brightness(1.1); }
+  .btn-recharge:active { transform: scale(.97); }
+  @keyframes glowPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(240,185,11,.35); }
+    50% { box-shadow: 0 0 0 5px rgba(240,185,11,0); }
+  }
+
+  /* 图表区 */
+  .chart-wrap {
+    flex: 1 1 38%;
+    min-height: 190px;
+    position: relative;
+    background: #0b0e11;
+    border-bottom: 1px solid #1e2329;
+  }
+  #chartCanvas { display: block; width: 100%; height: 100%; }
+  .chart-badge {
+    position: absolute; top: 8px; left: 10px;
+    font-size: 10px; color: #5e6673; background: rgba(18,22,28,.8);
+    padding: 2px 6px; border-radius: 3px; pointer-events: none;
+    letter-spacing: .3px;
+  }
+
+  /* 每跳涨跌指示器 */
+  .tick-widget {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    background: rgba(18,22,28,.9);
+    border: 1px solid #1e2329;
+    border-radius: 4px;
+    padding: 5px 8px 6px;
+    font-size: 10px;
+    pointer-events: none;
+    min-width: 104px;
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
+  }
+  .tick-widget .tw-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+    font-variant-numeric: tabular-nums;
+  }
+  .tick-widget .tw-dir { font-weight: 800; letter-spacing: .3px; }
+  .tick-widget .tw-dir.up { color: #0ecb81; }
+  .tick-widget .tw-dir.down { color: #f6465d; }
+  .tick-widget .tw-dir.flat { color: #848e9c; }
+  .tick-widget .tw-delta { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .tick-widget .tw-delta.up { color: #0ecb81; }
+  .tick-widget .tw-delta.down { color: #f6465d; }
+  .tick-widget .tw-delta.flat { color: #848e9c; }
+  .tick-progress {
+    height: 3px;
+    background: #1e2329;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .tick-progress-fill {
+    height: 100%;
+    width: 0%;
+    background: #f0b90b;
+    border-radius: 2px;
+    transition: background .2s;
+  }
+
+  /* 账户信息条 */
+  .account-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: #1e2329;
+    flex-shrink: 0;
+  }
+  .acct-cell {
+    background: #12161c;
+    padding: 8px 10px;
+    text-align: center;
+  }
+  .acct-cell .label { font-size: 10px; color: #848e9c; margin-bottom: 3px; }
+  .acct-cell .val { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .val.pos { color: #0ecb81; }
+  .val.neg { color: #f6465d; }
+
+  /* 主操作区 */
+  .trade-panel { flex: 1 1 40%; display: flex; flex-direction: column; background: #0b0e11; overflow: hidden; }
+
+  /* 周期切换 */
+  .mode-row {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 12px; border-bottom: 1px solid #1e2329;
+    flex-shrink: 0; flex-wrap: wrap;
+  }
+  .mode-row label { font-size: 11px; color: #848e9c; white-space: nowrap; margin-right: 2px; }
+  .mode-btn {
+    background: #1e2329; border: 1px solid #2b3139; color: #b7bdc6;
+    padding: 5px 12px; border-radius: 3px; font-size: 12px;
+    cursor: pointer; font-weight: 700; font-family: inherit;
+    transition: all .12s; letter-spacing: .2px;
+  }
+  .mode-btn:hover { background: #2b3139; }
+  .mode-btn.active { background: #0ecb81; border-color: #0ecb81; color: #0b0e11; }
+  .mode-btn.swing.active { background: #0ecb81; border-color: #0ecb81; color: #0b0e11; }
+  .mode-hint { font-size: 10px; color: #5e6673; margin-left: auto; white-space: nowrap; }
+
+  .leverage-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px; border-bottom: 1px solid #1e2329; flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+  .leverage-row label { font-size: 11px; color: #848e9c; white-space: nowrap; }
+  .lev-btn {
+    background: #1e2329; border: 1px solid #2b3139; color: #b7bdc6;
+    padding: 4px 10px; border-radius: 3px; font-size: 12px; cursor: pointer;
+    font-weight: 600; transition: all .12s; font-family: inherit;
+  }
+  .lev-btn:hover { background: #2b3139; }
+  .lev-btn.active { background: #f0b90b; border-color: #f0b90b; color: #0b0e11; }
+  .lev-btn.danger { color: #f6465d; }
+  .lev-btn.danger.active { background: #f6465d; border-color: #f6465d; color: #fff; }
+
+  .lot-row { display: flex; align-items: center; gap: 8px; padding: 0 12px 6px; flex-shrink: 0; }
+  .lot-row label { font-size: 11px; color: #848e9c; white-space: nowrap; }
+  .lot-row input {
+    flex: 1; background: #1e2329; border: 1px solid #2b3139; color: #eaecef;
+    padding: 6px 10px; border-radius: 3px; font-size: 13px; font-variant-numeric: tabular-nums;
+    outline: none; font-family: inherit; min-width: 0;
+  }
+  .lot-row input:focus { border-color: #f0b90b; }
+  .margin-hint { font-size: 10px; color: #848e9c; white-space: nowrap; }
+
+  /* 快捷手数 */
+  .quick-lot-row {
+    display: flex;
+    gap: 5px;
+    padding: 0 12px 8px;
+    flex-shrink: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .quick-lot-row::-webkit-scrollbar { display: none; }
+  .quick-lot-btn {
+    background: #1e2329;
+    border: 1px solid #2b3139;
+    color: #b7bdc6;
+    padding: 4px 0;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all .12s;
+    flex: 1 0 auto;
+    min-width: 44px;
+    font-variant-numeric: tabular-nums;
+  }
+  .quick-lot-btn:hover { background: #2b3139; }
+  .quick-lot-btn.active {
+    background: rgba(240,185,11,.15);
+    border-color: #f0b90b;
+    color: #f0b90b;
+  }
+
+  /* 止盈止损 */
+  .tpsl-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 12px 8px;
+    flex-shrink: 0;
+  }
+  .tpsl-row label { font-size: 11px; color: #848e9c; white-space: nowrap; }
+  .tpsl-row input {
+    flex: 1;
+    background: #1e2329;
+    border: 1px solid #2b3139;
+    color: #eaecef;
+    padding: 5px 8px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    outline: none;
+    font-family: inherit;
+    min-width: 0;
+  }
+  .tpsl-row input:focus { border-color: #f0b90b; }
+  .tpsl-row input::placeholder { color: #474d57; font-size: 11px; }
+  .tpsl-unit { font-size: 10px; color: #5e6673; }
+
+  .btn-row { display: flex; gap: 8px; padding: 0 12px 8px; flex-shrink: 0; }
+  .btn {
+    flex: 1; border: none; border-radius: 4px; padding: 12px 0;
+    font-size: 15px; font-weight: 800; cursor: pointer; letter-spacing: 1px;
+    transition: filter .1s, transform .05s; font-family: inherit;
+  }
+  .btn:active { transform: scale(.98); }
+  .btn:disabled { opacity: .35; cursor: not-allowed; filter: none !important; }
+  .btn-long { background: #0ecb81; color: #0b0e11; }
+  .btn-long:hover:not(:disabled) { filter: brightness(1.12); }
+  .btn-short { background: #f6465d; color: #fff; }
+  .btn-short:hover:not(:disabled) { filter: brightness(1.12); }
+  .btn-allin {
+    background: linear-gradient(135deg, #f0b90b, #f8d12f);
+    color: #0b0e11; flex: 0 0 auto; padding: 12px 14px; font-size: 13px;
+    animation: pulse 1.8s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(240,185,11,.5); }
+    50% { box-shadow: 0 0 0 6px rgba(240,185,11,0); }
+  }
+
+  /* 持仓 */
+  .position-panel {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 12px 12px;
+    border-top: 1px solid #1e2329;
+  }
+  .pos-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 0 6px; font-size: 11px; color: #848e9c;
+  }
+  .pos-empty { text-align: center; color: #474d57; font-size: 12px; padding: 24px 0; }
+  .pos-card {
+    background: #12161c; border: 1px solid #1e2329; border-radius: 4px;
+    padding: 7px 10px; margin-bottom: 6px; font-size: 12px;
+  }
+  .pos-card .row1 { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .pos-card .left { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .pos-pair { color: #848e9c; font-size: 11px; font-weight: 700; letter-spacing: .3px; }
+  .pos-card .side { font-weight: 800; font-size: 11px; padding: 1px 7px; border-radius: 3px; }
+  .side.long { background: rgba(14,203,129,.15); color: #0ecb81; }
+  .side.short { background: rgba(246,70,93,.15); color: #f6465d; }
+  .pos-card .pnl { font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .pos-card .row2 { display: flex; justify-content: space-between; align-items: center; color: #848e9c; font-size: 11px; gap: 8px; }
+  .pos-tpsl {
+    display: flex; gap: 12px;
+    margin-top: 4px;
+    font-size: 10px; color: #5e6673;
+    font-variant-numeric: tabular-nums;
+  }
+  .pos-tpsl .tp { color: #0ecb81; }
+  .pos-tpsl .sl { color: #f6465d; }
+  .btn-close-pos {
+    background: transparent; border: 1px solid #2b3139; color: #b7bdc6;
+    padding: 2px 8px; border-radius: 3px; font-size: 10px; cursor: pointer;
+    font-family: inherit; flex-shrink: 0;
+  }
+  .btn-close-pos:hover { border-color: #f6465d; color: #f6465d; }
+
+  /* ===== 充值弹窗 ===== */
+  .modal-mask {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.68);
+    -webkit-backdrop-filter: blur(3px);
+    backdrop-filter: blur(3px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 16px;
+  }
+  .modal-mask.show { display: flex; }
+  .modal {
+    background: #12161c;
+    border: 1px solid #2b3139;
+    border-radius: 8px;
+    width: 100%;
+    max-width: 380px;
+    padding: 18px;
+    box-shadow: 0 18px 50px rgba(0,0,0,.65);
+    animation: modalIn .18s ease-out;
+  }
+  @keyframes modalIn {
+    from { transform: translateY(12px) scale(.97); opacity: 0; }
+    to { transform: none; opacity: 1; }
+  }
+  .modal-title {
+    font-size: 16px; font-weight: 800; letter-spacing: .5px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .modal-title span:first-child::before {
+    content: '';
+    display: inline-block;
+    width: 3px; height: 15px;
+    background: #f0b90b;
+    border-radius: 2px;
+    margin-right: 8px;
+    vertical-align: -2px;
+  }
+  .modal-close-x {
+    background: transparent; border: none; color: #5e6673;
+    font-size: 20px; line-height: 1; cursor: pointer; font-family: inherit;
+    padding: 0 2px;
+  }
+  .modal-close-x:hover { color: #eaecef; }
+  .modal-balance {
+    margin: 12px 0 4px;
+    font-size: 12px;
+    color: #848e9c;
+  }
+  .modal-balance b {
+    color: #f0b90b;
+    font-size: 16px;
+    font-variant-numeric: tabular-nums;
+    margin-left: 4px;
+  }
+  .amount-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin: 12px 0;
+  }
+  .amount-btn {
+    background: #1e2329;
+    border: 1px solid #2b3139;
+    color: #eaecef;
+    padding: 10px 4px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all .12s;
+    font-variant-numeric: tabular-nums;
+  }
+  .amount-btn:hover { background: #2b3139; border-color: #3a4149; }
+  .amount-btn.active {
+    background: rgba(240,185,11,.15);
+    border-color: #f0b90b;
+    color: #f0b90b;
+  }
+  .custom-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #1e2329;
+    border: 1px solid #2b3139;
+    border-radius: 4px;
+    padding: 0 12px;
+    margin-bottom: 14px;
+    transition: border-color .12s;
+  }
+  .custom-row:focus-within { border-color: #f0b90b; }
+  .custom-row span { color: #848e9c; font-weight: 700; font-size: 14px; }
+  .custom-row input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #eaecef;
+    font-size: 14px;
+    padding: 10px 0;
+    font-family: inherit;
+    font-variant-numeric: tabular-nums;
+    min-width: 0;
+  }
+  .custom-row input::-webkit-outer-spin-button,
+  .custom-row input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .modal-actions { display: flex; gap: 8px; }
+  .modal-btn {
+    flex: 1;
+    border: none;
+    border-radius: 4px;
+    padding: 11px 0;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+    font-family: inherit;
+    transition: filter .12s, background .12s;
+    letter-spacing: .3px;
+    white-space: nowrap;
+  }
+  .modal-btn.ghost {
+    background: #1e2329;
+    color: #b7bdc6;
+    border: 1px solid #2b3139;
+  }
+  .modal-btn.ghost:hover { background: #2b3139; }
+  .modal-btn.ghost.danger { color: #f6465d; }
+  .modal-btn.primary {
+    background: linear-gradient(135deg, #f0b90b, #f8d12f);
+    color: #0b0e11;
+  }
+  .modal-btn.primary:hover { filter: brightness(1.1); }
+  .modal-tip {
+    font-size: 10px;
+    color: #5e6673;
+    margin-top: 10px;
+    line-height: 1.5;
+    text-align: center;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    background: rgba(18,22,28,.96); border: 1px solid #2b3139;
+    padding: 16px 28px; border-radius: 6px; font-size: 15px; font-weight: 700;
+    z-index: 1100; opacity: 0; pointer-events: none; transition: opacity .2s;
+    text-align: center; line-height: 1.55; white-space: pre-line;
+    max-width: 90vw;
+  }
+  .toast.show { opacity: 1; }
+  .toast.win { border-color: #0ecb81; color: #0ecb81; }
+  .toast.lose { border-color: #f6465d; color: #f6465d; }
+  .toast.liquidated { border-color: #f0b90b; color: #f0b90b; font-size: 16px; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-thumb { background: #2b3139; border-radius: 2px; }
+</style>
+</head>
+<body>
+<a href="/games/" title="返回小游戏列表" style="position:fixed;left:10px;top:50%;transform:translateY(-50%);z-index:9999;width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:#eaecef;text-decoration:none;font:16px/1 -apple-system,sans-serif;opacity:.6">←</a>
+<div class="app">
+
+  <!-- 顶栏 -->
+  <div class="topbar">
+    <div class="pair-tabs" id="pairTabs">
+      <button class="pair-tab active" data-pair="EUR/USD">EUR/USD</button>
+      <button class="pair-tab" data-pair="USD/JPY">USD/JPY</button>
+      <button class="pair-tab" data-pair="EUR/JPY">EUR/JPY</button>
+    </div>
+    <div class="price-big" id="bigPrice">1.08500</div>
+    <div class="top-stats">
+      <div>点差<b id="spreadVal">0.8 pip</b></div>
+      <div>保证金率<b id="marginLevelTop">--</b></div>
+      <button class="btn-recharge" id="btnRecharge">＋ 充值</button>
+    </div>
+  </div>
+
+  <!-- K线图 -->
+  <div class="chart-wrap">
+    <canvas id="chartCanvas"></canvas>
+    <div class="chart-badge" id="chartBadge">EUR/USD · 短线 · 0.2s 跳 · K线 5s</div>
+
+    <!-- 每跳涨跌指示器 -->
+    <div class="tick-widget">
+      <div class="tw-line">
+        <span class="tw-dir flat" id="tickDir">— 持平</span>
+        <span class="tw-delta flat" id="tickDelta">0.0 pip</span>
+      </div>
+      <div class="tick-progress"><div class="tick-progress-fill" id="tickFill"></div></div>
+    </div>
+  </div>
+
+  <!-- 账户信息 -->
+  <div class="account-bar">
+    <div class="acct-cell"><div class="label">净值 (Equity)</div><div class="val" id="equityVal">$10,000.00</div></div>
+    <div class="acct-cell"><div class="label">可用保证金</div><div class="val" id="freeMarginVal">$10,000.00</div></div>
+    <div class="acct-cell"><div class="label">已用保证金</div><div class="val" id="usedMarginVal">$0.00</div></div>
+    <div class="acct-cell"><div class="label">浮动盈亏</div><div class="val" id="floatingPnlVal">$0.00</div></div>
+  </div>
+
+  <!-- 交易面板 -->
+  <div class="trade-panel">
+    <!-- 周期切换 -->
+    <div class="mode-row" id="modeRow">
+      <label>周期</label>
+      <button class="mode-btn active" data-mode="scalp">短线 · 0.2s</button>
+      <button class="mode-btn swing" data-mode="swing">长线 · 2s</button>
+      <span class="mode-hint" id="modeHint">高频 · 噪声多</span>
+    </div>
+
+    <div class="leverage-row" id="levRow">
+      <label>杠杆</label>
+      <button class="lev-btn active" data-lev="10">10x</button>
+      <button class="lev-btn" data-lev="20">20x</button>
+      <button class="lev-btn" data-lev="50">50x</button>
+      <button class="lev-btn" data-lev="100">100x</button>
+      <button class="lev-btn danger" data-lev="500">500x</button>
+    </div>
+    <div class="lot-row">
+      <label>手数</label>
+      <input type="number" id="lotInput" value="0.10" min="0.01" max="10000" step="0.01">
+      <span class="margin-hint" id="marginHint">所需保证金 ≈ $10.85</span>
+    </div>
+    <div class="quick-lot-row" id="quickLotRow">
+      <button class="quick-lot-btn" data-lot="0.01">0.01</button>
+      <button class="quick-lot-btn active" data-lot="0.1">0.1</button>
+      <button class="quick-lot-btn" data-lot="0.5">0.5</button>
+      <button class="quick-lot-btn" data-lot="1">1</button>
+      <button class="quick-lot-btn" data-lot="5">5</button>
+      <button class="quick-lot-btn" data-lot="10">10</button>
+      <button class="quick-lot-btn" data-lot="50">50</button>
+      <button class="quick-lot-btn" data-lot="100">100</button>
+      <button class="quick-lot-btn" data-lot="500">500</button>
+    </div>
+
+    <!-- 止盈止损 -->
+    <div class="tpsl-row">
+      <label>止盈</label>
+      <input type="number" id="tpInput" placeholder="pip，可留空" min="0" step="1">
+      <span class="tpsl-unit">pip</span>
+      <label>止损</label>
+      <input type="number" id="slInput" placeholder="pip，可留空" min="0" step="1">
+      <span class="tpsl-unit">pip</span>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-long" id="btnLong">做多 ▲</button>
+      <button class="btn btn-short" id="btnShort">做空 ▼</button>
+      <button class="btn btn-allin" id="btnAllin">梭哈</button>
+    </div>
+    <div class="position-panel">
+      <div class="pos-header"><span>当前持仓</span><span id="posCount">0 笔</span></div>
+      <div id="posList"><div class="pos-empty">暂无持仓，选择杠杆后下单</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- 充值弹窗 -->
+<div class="modal-mask" id="rechargeMask">
+  <div class="modal">
+    <div class="modal-title">
+      <span>账户充值</span>
+      <button class="modal-close-x" id="closeRechargeX">×</button>
+    </div>
+    <div class="modal-balance">当前余额<b id="rechargeBalance">$10,000.00</b></div>
+    <div class="amount-grid" id="amountGrid">
+      <button class="amount-btn" data-amt="1000">$1,000</button>
+      <button class="amount-btn" data-amt="5000">$5,000</button>
+      <button class="amount-btn" data-amt="10000">$10,000</button>
+      <button class="amount-btn" data-amt="50000">$50,000</button>
+      <button class="amount-btn" data-amt="100000">$100,000</button>
+      <button class="amount-btn" data-amt="500000">$500,000</button>
+    </div>
+    <div class="custom-row">
+      <span>$</span>
+      <input type="number" id="customAmt" placeholder="自定义金额" min="1" step="100">
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn ghost danger" id="resetAccountBtn">重置账户</button>
+      <button class="modal-btn ghost" id="cancelRecharge">取消</button>
+      <button class="modal-btn primary" id="confirmRecharge">确认充值</button>
+    </div>
+    <div class="modal-tip">充值即时到账，计入已结算余额 · 重置账户将清空持仓并恢复初始 $10,000</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  // ============ 常量 ============
+  const CONTRACT_SIZE = 100000;    // 1 标准手 = 100,000 基础货币
+  const LIQ_LEVEL = 50;            // 保证金水平 ≤ 50% 触发强平
+  const MAX_RECHARGE = 1e9;        // 单次充值上限
+  const MAX_LOTS = 10000;          // 单手数上限
+
+  // 每跳基础波动（短线基准）
+  const BASE_VOL_EU = 0.000055;
+  const BASE_VOL_JP = 0.0055;
+
+  // 三个货币对规格
+  const PAIRS = {
+    'EUR/USD': { name: '欧元 / 美元', digits: 5, pip: 0.0001, spreadPips: 0.8, quote: 'USD', initPrice: 1.08500 },
+    'USD/JPY': { name: '美元 / 日元', digits: 3, pip: 0.01,   spreadPips: 0.8, quote: 'JPY', initPrice: 150.000 },
+    'EUR/JPY': { name: '欧元 / 日元', digits: 3, pip: 0.01,   spreadPips: 1.2, quote: 'JPY', initPrice: 162.750 },
+  };
+  const PAIR_KEYS = Object.keys(PAIRS);
+
+  // 周期模式配置
+  const MODES = {
+    scalp: {
+      key: 'scalp',
+      name: '短线',
+      tickMs: 200,            // 0.2 秒一跳
+      volMul: 1,              // 基础波动倍数
+      trendMul: 1,            // 趋势强度倍数
+      candleTicks: 25,        // 25 跳 = 5 秒一根 K 线
+      trendSwitchMin: 90,     // 趋势持续 90~215 跳（18~43 秒）
+      trendSwitchRnd: 125,
+      badge: '短线 · 0.2s 跳 · K线 5s',
+      hint: '高频 · 噪声多 · 适合快进快出',
+    },
+    swing: {
+      key: 'swing',
+      name: '长线',
+      tickMs: 2000,           // 2 秒一跳
+      volMul: 5,              // 波动放大 5 倍（大周期）
+      trendMul: 2.5,          // 趋势强度放大 2.5 倍
+      candleTicks: 15,        // 15 跳 = 30 秒一根 K 线
+      trendSwitchMin: 20,     // 趋势持续 20~40 跳（40~80 秒）
+      trendSwitchRnd: 20,
+      badge: '长线 · 2s 跳 · K线 30s',
+      hint: '低频 · 趋势强 · 适合挂单拿波段',
+    },
+  };
+
+  // ============ 状态 ============
+  const state = {
+    prices:     { 'EUR/USD': 1.08500, 'USD/JPY': 150.000, 'EUR/JPY': 162.750 },
+    prevPrices: { 'EUR/USD': 1.08500, 'USD/JPY': 150.000, 'EUR/JPY': 162.750 },
+    activePair: 'EUR/USD',
+    balance: 10000,
+    leverage: 10,
+    mode: 'scalp',
+    positions: [],   // { id, pair, side, lots, entryPrice, margin, lev, tpPrice, slPrice }
+    nextId: 1,
+    liquidating: false,
+    lastTickAt: Date.now(),
+  };
+
+  // K 线存储（每个货币对独立）
+  const candleStore = {};
+  PAIR_KEYS.forEach(k => {
+    candleStore[k] = { candles: [], current: null, bucket: 0 };
+  });
+
+  // ============ DOM ============
+  const $ = id => document.getElementById(id);
+  const bigPriceEl    = $('bigPrice');
+  const equityValEl   = $('equityVal');
+  const freeMarginEl  = $('freeMarginVal');
+  const usedMarginEl  = $('usedMarginVal');
+  const floatingPnlEl = $('floatingPnlVal');
+  const marginLevelTopEl = $('marginLevelTop');
+  const marginHintEl  = $('marginHint');
+  const lotInput      = $('lotInput');
+  const posListEl     = $('posList');
+  const posCountEl    = $('posCount');
+  const toastEl       = $('toast');
+  const btnLong       = $('btnLong');
+  const btnShort      = $('btnShort');
+  const btnAllin      = $('btnAllin');
+  const canvas        = $('chartCanvas');
+  const ctx           = canvas.getContext('2d');
+  const spreadValEl   = $('spreadVal');
+  const chartBadgeEl  = $('chartBadge');
+  const pairTabsEl    = $('pairTabs');
+  const quickLotRowEl = $('quickLotRow');
+  const modeRowEl     = $('modeRow');
+  const modeHintEl    = $('modeHint');
+  const tpInput       = $('tpInput');
+  const slInput       = $('slInput');
+
+  // 涨跌指示器 DOM
+  const tickDirEl   = $('tickDir');
+  const tickDeltaEl = $('tickDelta');
+  const tickFillEl  = $('tickFill');
+
+  // 充值相关 DOM
+  const btnRecharge      = $('btnRecharge');
+  const rechargeMask     = $('rechargeMask');
+  const rechargeBalanceEl= $('rechargeBalance');
+  const customAmtInput   = $('customAmt');
+  const amountGridEl     = $('amountGrid');
+
+  // ============ 工具 ============
+  function fmtUsd(v, showPlus) {
+    const sign = v < 0 ? '-' : (showPlus && v > 0 ? '+' : '');
+    return sign + '$' + Math.abs(v).toLocaleString('en-US', {
+      minimumFractionDigits: 2, maximumFractionDigits: 2
+    });
+  }
+  function fmtPrice(p, pair) { return p.toFixed(PAIRS[pair].digits); }
+
+  function showToast(msg, type, duration = 1800) {
+    toastEl.textContent = msg;
+    toastEl.className = 'toast show ' + (type || '');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { toastEl.className = 'toast'; }, duration);
+  }
+
+  function randn() {
+    const u1 = Math.random(), u2 = Math.random();
+    return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+  }
+
+  function curMode() { return MODES[state.mode]; }
+  function candleMs() { const m = curMode(); return m.tickMs * m.candleTicks; }
+
+  // ============ 价格模拟 ============
+  let trendEu = 0, trendJp = 0, trendTimer = 0;
+
+  function nextTick() {
+    state.lastTickAt = Date.now();
+    const mode = curMode();
+    const volEu = BASE_VOL_EU * mode.volMul;
+    const volJp = BASE_VOL_JP * mode.volMul;
+
+    trendTimer++;
+    if (trendTimer > mode.trendSwitchMin + Math.random() * mode.trendSwitchRnd) {
+      trendEu = (Math.random() - 0.5) * volEu * 0.35 * mode.trendMul;
+      trendJp = (Math.random() - 0.5) * volJp * 0.35 * mode.trendMul;
+      trendTimer = 0;
+    }
+
+    let dEu = randn() * volEu + trendEu;
+    if (Math.random() < 0.012) dEu += (Math.random() - 0.5) * volEu * 11;
+
+    let dJp = randn() * volJp + trendJp;
+    if (Math.random() < 0.012) dJp += (Math.random() - 0.5) * volJp * 11;
+
+    PAIR_KEYS.forEach(k => { state.prevPrices[k] = state.prices[k]; });
+
+    state.prices['EUR/USD'] = Math.max(0.5, state.prices['EUR/USD'] + dEu);
+    state.prices['USD/JPY'] = Math.max(50,  state.prices['USD/JPY'] + dJp);
+    state.prices['EUR/JPY'] = state.prices['EUR/USD'] * state.prices['USD/JPY'];
+
+    PAIR_KEYS.forEach(k => updateCandles(k, state.prices[k]));
+
+    checkTpSl();
+    checkLiquidation();
+    render();
+  }
+
+  function updateCandles(pair, price) {
+    const store = candleStore[pair];
+    const now = Date.now();
+    const cm = candleMs();
+    const bucket = Math.floor(now / cm) * cm;
+
+    if (!store.current || bucket > store.bucket) {
+      if (store.current) {
+        store.candles.push(store.current);
+        if (store.candles.length > 120) store.candles.shift();
+      }
+      store.current = { o: price, h: price, l: price, c: price };
+      store.bucket = bucket;
+    } else {
+      const c = store.current;
+      c.c = price;
+      if (price > c.h) c.h = price;
+      if (price < c.l) c.l = price;
+    }
+  }
+
+  function seedHistory(pair) {
+    const store = candleStore[pair];
+    const spec = PAIRS[pair];
+    const mode = curMode();
+    // 种子 K 线的波动幅度：随模式放大（√volMul）
+    const seedVol = spec.pip * 8 * Math.sqrt(mode.volMul);
+    store.candles = [];
+    let p = state.prices[pair];
+    for (let i = 0; i < 50; i++) {
+      const o = p;
+      const c = o + (Math.random() - 0.5) * seedVol;
+      const h = Math.max(o, c) + Math.random() * seedVol * 0.25;
+      const l = Math.min(o, c) - Math.random() * seedVol * 0.25;
+      store.candles.push({ o, h, l, c });
+      p = c;
+    }
+    store.current = { o: p, h: p, l: p, c: p };
+    store.bucket = Math.floor(Date.now() / candleMs()) * candleMs();
+  }
+
+  // ============ 保证金与盈亏计算 ============
+  function notionalPerLot(pair) {
+    if (pair === 'USD/JPY') return CONTRACT_SIZE;
+    if (pair === 'EUR/USD') return CONTRACT_SIZE * state.prices['EUR/USD'];
+    if (pair === 'EUR/JPY') return CONTRACT_SIZE * state.prices['EUR/USD'];
+    return CONTRACT_SIZE;
+  }
+
+  function requiredMargin(lots, pair, lev) {
+    return lots * notionalPerLot(pair) / lev;
+  }
+
+  function calcPositionPnl(pos) {
+    const pair = pos.pair;
+    const spec = PAIRS[pair];
+    const mid = state.prices[pair];
+    const halfSpread = spec.spreadPips * spec.pip / 2;
+
+    const exitPrice = pos.side === 'long' ? mid - halfSpread : mid + halfSpread;
+    const diff = pos.side === 'long'
+      ? exitPrice - pos.entryPrice
+      : pos.entryPrice - exitPrice;
+
+    const pnlQuote = diff * pos.lots * CONTRACT_SIZE;
+
+    if (spec.quote === 'USD') return pnlQuote;
+    return pnlQuote / state.prices['USD/JPY'];
+  }
+
+  function getFloatingPnl() {
+    return state.positions.reduce((s, p) => s + calcPositionPnl(p), 0);
+  }
+  function getEquity() { return state.balance + getFloatingPnl(); }
+  function getUsedMargin() { return state.positions.reduce((s, p) => s + p.margin, 0); }
+  function getFreeMargin() { return getEquity() - getUsedMargin(); }
+  function getMarginLevel() {
+    const used = getUsedMargin();
+    if (used <= 0) return Infinity;
+    return (getEquity() / used) * 100;
+  }
+
+  // ============ 止盈止损检查 ============
+  function checkTpSl() {
+    if (state.positions.length === 0) return;
+
+    const toClose = [];
+    for (const pos of state.positions) {
+      const spec = PAIRS[pos.pair];
+      const mid = state.prices[pos.pair];
+      const halfSpread = spec.spreadPips * spec.pip / 2;
+      const exitPrice = pos.side === 'long' ? mid - halfSpread : mid + halfSpread;
+
+      let hit = null;
+      if (pos.tpPrice != null) {
+        if ((pos.side === 'long' && exitPrice >= pos.tpPrice) ||
+            (pos.side === 'short' && exitPrice <= pos.tpPrice)) hit = 'tp';
+      }
+      if (!hit && pos.slPrice != null) {
+        if ((pos.side === 'long' && exitPrice <= pos.slPrice) ||
+            (pos.side === 'short' && exitPrice >= pos.slPrice)) hit = 'sl';
+      }
+      if (hit) toClose.push({ id: pos.id, hit });
+    }
+    if (toClose.length === 0) return;
+
+    let totalPnl = 0;
+    let tpCount = 0, slCount = 0;
+
+    for (const { id, hit } of toClose) {
+      const idx = state.positions.findIndex(p => p.id === id);
+      if (idx === -1) continue;
+      const pos = state.positions[idx];
+      const pnl = calcPositionPnl(pos);
+      state.balance = Math.max(0, state.balance + pnl);
+      state.positions.splice(idx, 1);
+      totalPnl += pnl;
+      if (hit === 'tp') tpCount++; else slCount++;
+    }
+
+    if (toClose.length === 1) {
+      const only = toClose[0];
+      showToast(
+        (only.hit === 'tp' ? '✅ 止盈触发 ' : '🛑 止损触发 ') + fmtUsd(totalPnl, true),
+        totalPnl >= 0 ? 'win' : 'lose',
+        1800
+      );
+    } else {
+      const label = [tpCount ? tpCount + ' 笔止盈' : '', slCount ? slCount + ' 笔止损' : ''].filter(Boolean).join(' / ');
+      showToast(
+        '自动平仓 ' + label + '\n合计 ' + fmtUsd(totalPnl, true),
+        totalPnl >= 0 ? 'win' : 'lose',
+        2000
+      );
+    }
+  }
+
+  // ============ 交易 ============
+  function openPosition(side, lots) {
+    lots = Math.round(lots * 100) / 100;
+    if (lots < 0.01) { showToast('最小手数 0.01', 'lose', 1200); return; }
+
+    const pair = state.activePair;
+    const spec = PAIRS[pair];
+    const lev = state.leverage;
+    const mid = state.prices[pair];
+    const halfSpread = spec.spreadPips * spec.pip / 2;
+    const entry = side === 'long' ? mid + halfSpread : mid - halfSpread;
+
+    const margin = requiredMargin(lots, pair, lev);
+
+    if (margin > getFreeMargin()) {
+      showToast('可用保证金不足\n可点击右上角「充值」', 'lose', 1800);
+      return;
+    }
+
+    // 止盈止损（pip → 绝对价格）
+    const tpPips = parseFloat(tpInput.value) || 0;
+    const slPips = parseFloat(slInput.value) || 0;
+    let tpPrice = null, slPrice = null;
+    if (tpPips > 0) {
+      tpPrice = side === 'long' ? entry + tpPips * spec.pip : entry - tpPips * spec.pip;
+    }
+    if (slPips > 0) {
+      slPrice = side === 'long' ? entry - slPips * spec.pip : entry + slPips * spec.pip;
+    }
+
+    state.positions.push({
+      id: state.nextId++,
+      pair, side, lots,
+      entryPrice: entry,
+      margin,
+      lev,
+      tpPrice,
+      slPrice,
+    });
+
+    let msg = (side === 'long' ? '做多' : '做空') + ' ' + pair + ' ' + lots.toFixed(2) + ' 手\n@ ' + fmtPrice(entry, pair);
+    if (tpPrice != null) msg += ' · 止盈 ' + tpPips + ' pip';
+    if (slPrice != null) msg += ' · 止损 ' + slPips + ' pip';
+
+    showToast(msg, side === 'long' ? 'win' : 'lose', 1400);
+    render();
+  }
+
+  function closePosition(id) {
+    const idx = state.positions.findIndex(p => p.id === id);
+    if (idx === -1) return;
+    const pos = state.positions[idx];
+    const pnl = calcPositionPnl(pos);
+
+    state.balance = Math.max(0, state.balance + pnl);
+    state.positions.splice(idx, 1);
+
+    showToast(
+      '平仓' + (pnl >= 0 ? '盈利 ' : '亏损 ') + fmtUsd(pnl),
+      pnl >= 0 ? 'win' : 'lose',
+      1500
+    );
+    render();
+    checkLiquidation();
+  }
+
+  function checkLiquidation() {
+    if (state.liquidating) return;
+    if (state.positions.length === 0) return;
+    if (getMarginLevel() > LIQ_LEVEL) return;
+
+    state.liquidating = true;
+    const level = getMarginLevel();
+
+    const sorted = [...state.positions].sort((a, b) => calcPositionPnl(a) - calcPositionPnl(b));
+    let closedCount = 0;
+
+    for (const pos of sorted) {
+      const pnl = calcPositionPnl(pos);
+      state.balance = Math.max(0, state.balance + pnl);
+      const i = state.positions.findIndex(p => p.id === pos.id);
+      if (i !== -1) state.positions.splice(i, 1);
+      closedCount++;
+      if (getMarginLevel() > LIQ_LEVEL) break;
+    }
+
+    showToast(
+      '⚠️ 爆仓！保证金水平 ' + level.toFixed(0) + '% ≤ 50%\n强制平仓 ' + closedCount + ' 笔',
+      'liquidated', 2800
+    );
+
+    state.liquidating = false;
+    render();
+
+    if (state.balance < 100 && state.positions.length === 0) {
+      setTimeout(() => {
+        showToast('余额不足 $100\n点击右上角「充值」或重置账户', 'liquidated', 2800);
+      }, 2700);
+    }
+  }
+
+  function resetAccount() {
+    state.balance = 10000;
+    state.positions = [];
+    state.prices['EUR/USD'] = 1.08500;
+    state.prices['USD/JPY'] = 150.000;
+    state.prices['EUR/JPY'] = 1.08500 * 150.000;
+    PAIR_KEYS.forEach(k => { state.prevPrices[k] = state.prices[k]; });
+    state.nextId = 1;
+    state.lastTickAt = Date.now();
+    PAIR_KEYS.forEach(seedHistory);
+    render();
+  }
+
+  // ============ 充值逻辑 ============
+  function openRecharge() {
+    rechargeBalanceEl.textContent = fmtUsd(state.balance);
+    customAmtInput.value = '';
+    amountGridEl.querySelectorAll('.amount-btn').forEach(b => b.classList.remove('active'));
+    rechargeMask.classList.add('show');
+    setTimeout(() => customAmtInput.focus(), 60);
+  }
+
+  function closeRecharge() {
+    rechargeMask.classList.remove('show');
+  }
+
+  function doRecharge(rawAmt) {
+    const amt = Math.floor(Number(rawAmt) || 0);
+    if (amt <= 0) {
+      showToast('请输入有效的充值金额', 'lose', 1400);
+      return;
+    }
+    const capped = Math.min(amt, MAX_RECHARGE);
+    state.balance += capped;
+    closeRecharge();
+    render();
+    showToast('充值成功 +' + fmtUsd(capped) + '\n当前余额 ' + fmtUsd(state.balance), 'win', 2000);
+  }
+
+  // ============ 渲染 ============
+  function render() {
+    const pair = state.activePair;
+    const spec = PAIRS[pair];
+    const price = state.prices[pair];
+    const prev = state.prevPrices[pair];
+    const mode = curMode();
+
+    const equity = getEquity();
+    const used = getUsedMargin();
+    const free = equity - used;
+    const floating = getFloatingPnl();
+    const level = getMarginLevel();
+
+    bigPriceEl.textContent = fmtPrice(price, pair);
+    bigPriceEl.className = 'price-big ' + (price >= prev ? 'up' : 'down');
+    spreadValEl.textContent = spec.spreadPips + ' pip';
+    chartBadgeEl.textContent = pair + ' · ' + mode.badge;
+
+    // 涨跌指示器
+    const deltaPips = (price - prev) / spec.pip;
+    let dir = 'flat';
+    if (deltaPips > 0.001) dir = 'up';
+    else if (deltaPips < -0.001) dir = 'down';
+
+    tickDirEl.textContent = dir === 'up' ? '▲ 上涨' : dir === 'down' ? '▼ 下跌' : '— 持平';
+    tickDirEl.className = 'tw-dir ' + dir;
+    tickDeltaEl.textContent = (deltaPips >= 0 ? '+' : '') + deltaPips.toFixed(1) + ' pip';
+    tickDeltaEl.className = 'tw-delta ' + dir;
+    tickFillEl.style.background = dir === 'up' ? '#0ecb81' : dir === 'down' ? '#f6465d' : '#f0b90b';
+
+    // 账户条
+    equityValEl.textContent = fmtUsd(equity);
+    equityValEl.className = 'val ' + (equity >= 0 ? '' : 'neg');
+    freeMarginEl.textContent = fmtUsd(Math.max(0, free));
+    freeMarginEl.className = 'val ' + (free >= 0 ? '' : 'neg');
+    usedMarginEl.textContent = fmtUsd(used);
+    floatingPnlEl.textContent = fmtUsd(floating, true);
+    floatingPnlEl.className = 'val ' + (floating > 0 ? 'pos' : floating < 0 ? 'neg' : '');
+
+    marginLevelTopEl.textContent = used > 0 ? level.toFixed(0) + '%' : '--';
+    marginLevelTopEl.style.color = level <= LIQ_LEVEL ? '#f6465d' : level < 200 ? '#f0b90b' : '#eaecef';
+
+    const lots = parseFloat(lotInput.value) || 0;
+    const m = requiredMargin(lots, pair, state.leverage);
+    marginHintEl.textContent = '所需保证金 ≈ ' + fmtUsd(m);
+
+    const canOpen = free > 0 && !state.liquidating;
+    btnLong.disabled = !canOpen;
+    btnShort.disabled = !canOpen;
+    btnAllin.disabled = !canOpen;
+
+    if (rechargeMask.classList.contains('show')) {
+      rechargeBalanceEl.textContent = fmtUsd(state.balance);
+    }
+
+    syncQuickLotActive(lots);
+    renderPositions();
+    drawChart();
+  }
+
+  function syncQuickLotActive(lots) {
+    quickLotRowEl.querySelectorAll('.quick-lot-btn').forEach(b => {
+      b.classList.toggle('active', Math.abs(Number(b.dataset.lot) - lots) < 0.0001);
+    });
+  }
+
+  // 持仓：结构变化重建 DOM，否则只更新盈亏文本
+  let renderedPosIds = '';
+  const posPnlEls = new Map();
+
+  function renderPositions() {
+    posCountEl.textContent = state.positions.length + ' 笔';
+
+    if (state.positions.length === 0) {
+      if (renderedPosIds !== '') {
+        posListEl.innerHTML = '<div class="pos-empty">暂无持仓，选择杠杆后下单</div>';
+        renderedPosIds = '';
+        posPnlEls.clear();
+      }
+      return;
+    }
+
+    const ids = state.positions.map(p => p.id).join(',');
+
+    if (ids !== renderedPosIds) {
+      renderedPosIds = ids;
+      posPnlEls.clear();
+
+      posListEl.innerHTML = state.positions.map(p => {
+        const tpslHtml = (p.tpPrice != null || p.slPrice != null)
+          ? `<div class="pos-tpsl">
+               ${p.tpPrice != null ? '<span class="tp">止盈 ' + fmtPrice(p.tpPrice, p.pair) + '</span>' : ''}
+               ${p.slPrice != null ? '<span class="sl">止损 ' + fmtPrice(p.slPrice, p.pair) + '</span>' : ''}
+             </div>`
+          : '';
+        return `
+          <div class="pos-card">
+            <div class="row1">
+              <span class="left">
+                <span class="pos-pair">${p.pair}</span>
+                <span class="side ${p.side}">${p.side === 'long' ? '多' : '空'}</span>
+                <span>${p.lots.toFixed(2)} 手</span>
+              </span>
+              <span class="pnl val" data-pnl="${p.id}">$0.00</span>
+            </div>
+            <div class="row2">
+              <span>@ ${fmtPrice(p.entryPrice, p.pair)} · 保证金 ${fmtUsd(p.margin)} · ${p.lev}x</span>
+              <button class="btn-close-pos" data-close="${p.id}">平仓</button>
+            </div>
+            ${tpslHtml}
+          </div>`;
+      }).join('');
+
+      state.positions.forEach(p => {
+        posPnlEls.set(p.id, posListEl.querySelector('[data-pnl="' + p.id + '"]'));
+      });
+    }
+
+    state.positions.forEach(p => {
+      const el = posPnlEls.get(p.id);
+      if (!el) return;
+      const pnl = calcPositionPnl(p);
+      el.textContent = fmtUsd(pnl, true);
+      el.className = 'pnl val ' + (pnl >= 0 ? 'pos' : 'neg');
+    });
+  }
+
+  // 平仓按钮事件委托
+  posListEl.addEventListener('click', e => {
+    const btn = e.target.closest('[data-close]');
+    if (!btn) return;
+    closePosition(Number(btn.dataset.close));
+  });
+
+  // ============ Canvas K 线图 ============
+  function resizeCanvas() {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = rect.height + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    drawChart();
+  }
+
+  function drawChart() {
+    const pair = state.activePair;
+    const spec = PAIRS[pair];
+    const store = candleStore[pair];
+
+    const rect = canvas.parentElement.getBoundingClientRect();
+    const W = rect.width, H = rect.height;
+    if (W === 0 || H === 0) return;
+
+    ctx.clearRect(0, 0, W, H);
+
+    const all = [...store.candles];
+    if (store.current) all.push(store.current);
+    if (all.length === 0) return;
+
+    const padTop = 42, padBottom = 18, padRight = 66, padLeft = 8;
+    const chartW = W - padLeft - padRight;
+    const chartH = H - padTop - padBottom;
+
+    let min = Infinity, max = -Infinity;
+    all.forEach(c => { if (c.l < min) min = c.l; if (c.h > max) max = c.h; });
+    const range = (max - min) || spec.pip;
+    const padRange = range * 0.12;
+    min -= padRange; max += padRange;
+
+    const priceToY = p => padTop + (1 - (p - min) / (max - min)) * chartH;
+    const gap = chartW / all.length;
+    const candleW = Math.max(2, Math.min(10, gap * 0.65));
+
+    // 网格 + 右侧价格刻度
+    ctx.strokeStyle = '#1e2329';
+    ctx.lineWidth = 1;
+    ctx.font = '10px -apple-system, monospace';
+    ctx.fillStyle = '#5e6673';
+    ctx.textAlign = 'left';
+    for (let i = 0; i <= 5; i++) {
+      const p = min + (max - min) * (i / 5);
+      const y = priceToY(p);
+      ctx.beginPath();
+      ctx.moveTo(padLeft, y);
+      ctx.lineTo(padLeft + chartW, y);
+      ctx.stroke();
+      ctx.fillText(p.toFixed(spec.digits), padLeft + chartW + 6, y + 3);
+    }
+
+    // 蜡烛
+    all.forEach((c, i) => {
+      const x = padLeft + i * gap + gap / 2;
+      const isUp = c.c >= c.o;
+      const color = isUp ? '#0ecb81' : '#f6465d';
+
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x, priceToY(c.h));
+      ctx.lineTo(x, priceToY(c.l));
+      ctx.stroke();
+
+      const bodyTop = priceToY(Math.max(c.o, c.c));
+      const bodyBot = priceToY(Math.min(c.o, c.c));
+      ctx.fillStyle = color;
+      ctx.fillRect(x - candleW / 2, bodyTop, candleW, Math.max(1, bodyBot - bodyTop));
+    });
+
+    // 当前价虚线
+    const cur = state.prices[pair];
+    const lastY = priceToY(cur);
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = '#f0b90b';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padLeft, lastY);
+    ctx.lineTo(padLeft + chartW, lastY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 当前价标签
+    const label = cur.toFixed(spec.digits);
+    ctx.font = 'bold 10px monospace';
+    const tw = ctx.measureText(label).width;
+    ctx.fillStyle = '#f0b90b';
+    ctx.fillRect(padLeft + chartW + 2, lastY - 8, tw + 12, 16);
+    ctx.fillStyle = '#0b0e11';
+    ctx.fillText(label, padLeft + chartW + 7, lastY + 3.5);
+  }
+
+  // ============ 倒计时进度条（自动适配当前周期） ============
+  function tickProgressLoop() {
+    const elapsed = Date.now() - state.lastTickAt;
+    const pct = Math.min(1, elapsed / curMode().tickMs);
+    tickFillEl.style.width = (pct * 100).toFixed(1) + '%';
+    requestAnimationFrame(tickProgressLoop);
+  }
+
+  // ============ 定时器管理（切换周期时重启） ============
+  let tickTimerId = null;
+  function startTickTimer() {
+    stopTickTimer();
+    tickTimerId = setInterval(nextTick, curMode().tickMs);
+  }
+  function stopTickTimer() {
+    if (tickTimerId) { clearInterval(tickTimerId); tickTimerId = null; }
+  }
+
+  // ============ 周期切换 ============
+  function switchMode(key) {
+    if (!MODES[key] || key === state.mode) return;
+    state.mode = key;
+
+    modeRowEl.querySelectorAll('.mode-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.mode === key);
+    });
+    modeHintEl.textContent = curMode().hint;
+
+    // 重置趋势与 K 线（不同周期的 K 线不可混用）
+    trendEu = 0; trendJp = 0; trendTimer = 0;
+    PAIR_KEYS.forEach(k => seedHistory(k));
+
+    // 重启行情定时器
+    startTickTimer();
+    state.lastTickAt = Date.now();
+
+    render();
+    showToast('已切换至「' + curMode().name + '」模式\n' + curMode().hint, 'liquidated', 1800);
+  }
+
+  // ============ 事件 ============
+  // 周期切换
+  modeRowEl.addEventListener('click', e => {
+    const btn = e.target.closest('.mode-btn');
+    if (!btn) return;
+    switchMode(btn.dataset.mode);
+  });
+
+  // 货币对切换
+  pairTabsEl.addEventListener('click', e => {
+    const btn = e.target.closest('.pair-tab');
+    if (!btn) return;
+    const pair = btn.dataset.pair;
+    if (!PAIRS[pair] || pair === state.activePair) return;
+
+    state.activePair = pair;
+    pairTabsEl.querySelectorAll('.pair-tab').forEach(b => {
+      b.classList.toggle('active', b.dataset.pair === pair);
+    });
+    render();
+  });
+
+  // 杠杆
+  document.querySelectorAll('.lev-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.lev-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.leverage = Number(btn.dataset.lev);
+      render();
+    });
+  });
+
+  // 手数输入
+  lotInput.addEventListener('input', () => {
+    let v = parseFloat(lotInput.value);
+    if (isNaN(v) || v < 0) v = 0;
+    if (v > MAX_LOTS) { v = MAX_LOTS; lotInput.value = String(MAX_LOTS); }
+    render();
+  });
+
+  // 快捷手数
+  quickLotRowEl.addEventListener('click', e => {
+    const btn = e.target.closest('.quick-lot-btn');
+    if (!btn) return;
+    lotInput.value = btn.dataset.lot;
+    render();
+  });
+
+  // 做多 / 做空
+  btnLong.addEventListener('click', () => openPosition('long', parseFloat(lotInput.value) || 0));
+  btnShort.addEventListener('click', () => openPosition('short', parseFloat(lotInput.value) || 0));
+
+  // 梭哈
+  btnAllin.addEventListener('click', () => {
+    const free = getFreeMargin();
+    if (free <= 0) { showToast('没有可用保证金\n可点击「充值」', 'lose', 1600); return; }
+
+    const pair = state.activePair;
+    const maxLots = Math.floor((free * state.leverage / notionalPerLot(pair)) * 100) / 100;
+    const lots = Math.max(0.01, Math.min(maxLots, MAX_LOTS));
+
+    lotInput.value = lots.toFixed(2);
+    const side = Math.random() < 0.5 ? 'long' : 'short';
+    openPosition(side, lots);
+  });
+
+  // ---- 充值弹窗事件 ----
+  btnRecharge.addEventListener('click', openRecharge);
+  $('closeRechargeX').addEventListener('click', closeRecharge);
+  $('cancelRecharge').addEventListener('click', closeRecharge);
+
+  rechargeMask.addEventListener('click', e => {
+    if (e.target === rechargeMask) closeRecharge();
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && rechargeMask.classList.contains('show')) closeRecharge();
+  });
+
+  amountGridEl.addEventListener('click', e => {
+    const btn = e.target.closest('.amount-btn');
+    if (!btn) return;
+    customAmtInput.value = btn.dataset.amt;
+    amountGridEl.querySelectorAll('.amount-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+
+  customAmtInput.addEventListener('input', () => {
+    amountGridEl.querySelectorAll('.amount-btn').forEach(b => b.classList.remove('active'));
+  });
+
+  customAmtInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') doRecharge(customAmtInput.value);
+  });
+
+  $('confirmRecharge').addEventListener('click', () => doRecharge(customAmtInput.value));
+
+  $('resetAccountBtn').addEventListener('click', () => {
+    resetAccount();
+    closeRecharge();
+    showToast('账户已重置\n余额 $10,000 · 持仓已清空', 'liquidated', 2200);
+  });
+
+  window.addEventListener('resize', resizeCanvas);
+
+  // ============ 启动 ============
+  state.lastTickAt = Date.now();
+  PAIR_KEYS.forEach(seedHistory);
+  resizeCanvas();
+  render();
+  tickProgressLoop();
+  startTickTimer();
+
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,119 @@
+// 抓取 X（推特）单条推文：文字 + 配图（图片直接下载成 base64，存进 D1）
+export interface TweetPhoto {
+  mime: string;
+  b64: string;
+  size: number;
+}
+
+export interface TweetData {
+  url: string;
+  id?: string;
+  author?: string;
+  handle?: string;
+  text?: string;
+  date?: string;
+  photos?: TweetPhoto[];
+  error?: string;
+}
+
+const MAX_PHOTO = 380 * 1024;
+
+const decode = (s: string) =>
+  s
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&mdash;/g, '—')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+export function tweetId(url: string) {
+  const m = /(?:x\.com|twitter\.com)\/[^/]+\/status\/(\d+)/i.exec(url);
+  return m ? m[1] : null;
+}
+
+function token(id: string) {
+  return (Number(id) / 1e15 * Math.PI).toString(36).replace(/0/g, '').replace(/\./g, '');
+}
+
+export async function fetchTweet(url: string): Promise<TweetData> {
+  const id = tweetId(url);
+  if (!id) return { url, error: '不是有效的 X 链接' };
+  const canon = `https://x.com/i/status/${id}`;
+
+  let author = '';
+  let handle = '';
+  let text = '';
+  let date = '';
+  try {
+    const r = await fetch(
+      `https://publish.twitter.com/oembed?omit_script=1&dnt=1&url=${encodeURIComponent(canon)}`
+    );
+    if (r.ok) {
+      const j: any = await r.json();
+      const html = String(j.html || '');
+      author = j.author_name || '';
+      handle = (String(j.author_url || '').split('/').pop() || '').trim();
+      text = decode((html.match(/<p[^>]*>([\s\S]*?)<\/p>/) || [])[1] || '');
+      date = decode((/<a[^>]*>([^<]+)<\/a>\s*<\/blockquote>/.exec(html) || [])[1] || '');
+    }
+  } catch {
+    // 继续尝试 syndication
+  }
+
+  const photos: TweetPhoto[] = [];
+  try {
+    const s = await fetch(`https://cdn.syndication.twimg.com/tweet-result?id=${id}&lang=en&token=${token(id)}`, {
+      signal: AbortSignal.timeout(8000),
+      headers: {
+        'user-agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+        accept: 'application/json, text/plain, */*',
+        referer: 'https://platform.twitter.com/',
+        origin: 'https://platform.twitter.com',
+      },
+    });
+    if (s.ok) {
+      const j: any = await s.json();
+      if (!text && j.text) text = String(j.text);
+      if (!author && j.user?.name) author = String(j.user.name);
+      if (!handle && j.user?.screen_name) handle = String(j.user.screen_name);
+      if (!date && j.created_at) date = String(j.created_at).slice(0, 10);
+
+      const list: string[] = [];
+      for (const p of j.photos || []) if (p?.url) list.push(String(p.url));
+      for (const m of j.mediaDetails || []) {
+        const u = m?.media_url_https || m?.url;
+        if (u) list.push(String(u));
+      }
+      const uniq = [...new Set(list)].slice(0, 4);
+
+      for (const u of uniq) {
+        try {
+          const src = u.includes('?') ? `${u}&name=small` : `${u}?name=small`;
+          const ir = await fetch(src, { signal: AbortSignal.timeout(8000) });
+          if (!ir.ok) continue;
+          const buf = new Uint8Array(await ir.arrayBuffer());
+          if (buf.length > MAX_PHOTO) continue;
+          const mime = ir.headers.get('content-type') || 'image/jpeg';
+          if (!/^image\//.test(mime)) continue;
+          let bin = '';
+          for (let i = 0; i < buf.length; i += 0x8000) {
+            bin += String.fromCharCode.apply(null, Array.from(buf.subarray(i, i + 0x8000)) as any);
+          }
+          photos.push({ mime, b64: btoa(bin), size: buf.length });
+        } catch {
+          // 单张失败不影响整体
+        }
+      }
+    }
+  } catch {
+    // 拿不到配图就算了
+  }
+
+  if (!text && !photos.length && !author) return { url: canon, error: '抓取失败' };
+  return { url: canon, id, author, handle, text, date, photos };
+}

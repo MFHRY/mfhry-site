@@ -1,0 +1,76 @@
+[
+  {
+    "slug": "gold-miner",
+    "title": "黄金矿工",
+    "desc": "经典甩钩玩法：60 秒内抓金块、钻石和福袋冲分，抓石头会拖慢你。",
+    "tag": "休闲",
+    "emoji": "⛏️",
+    "href": "/games/gold-miner/",
+    "status": "play"
+  },
+  {
+    "slug": "2048",
+    "title": "2048",
+    "desc": "方向键滑动合并数字，一路合到 2048。手机可以滑动操作。",
+    "tag": "益智",
+    "emoji": "🔢",
+    "href": "/games/2048/",
+    "status": "play"
+  },
+  {
+    "slug": "snake",
+    "title": "贪吃蛇",
+    "desc": "经典贪吃蛇：吃果子变长，越吃越快，别撞墙也别咬到自己。",
+    "tag": "街机",
+    "emoji": "🐍",
+    "href": "/games/snake/",
+    "status": "play"
+  },
+  {
+    "slug": "breakout",
+    "title": "打砖块",
+    "desc": "鼠标移动挡板，把砖块全部打掉。三颗球，逐关加速。",
+    "tag": "街机",
+    "emoji": "🧱",
+    "href": "/games/breakout/",
+    "status": "play"
+  },
+  {
+    "slug": "is7",
+    "title": "合成 IS-7",
+    "desc": "合并玩法：小坦克两两相撞合成更大的，一路合到 IS-7 重坦。需要联网加载。",
+    "tag": "休闲",
+    "emoji": "🪖",
+    "href": "/games/is7/",
+    "status": "play",
+    "note": "在线加载"
+  },
+  {
+    "slug": "fx-sim",
+    "title": "FX 梭哈模拟器",
+    "desc": "多品种杠杆外汇模拟：选货币对、看 K 线、开多开空，体验保证金和爆仓的速度。",
+    "tag": "模拟",
+    "emoji": "💱",
+    "href": "/games/fx-sim/",
+    "status": "play"
+  },
+  {
+    "slug": "cs16",
+    "title": "CS 1.6",
+    "desc": "play-cs.com 的浏览器版反恐精英：直接进服务器开打，不用装客户端。",
+    "tag": "FPS",
+    "emoji": "🎯",
+    "href": "/games/cs16/",
+    "status": "play",
+    "note": "第三方站"
+  },
+  {
+    "slug": "pelican",
+    "title": "鹈鹕的休息日",
+    "desc": "一只骑自行车的鹈鹕沿路前行，白天 / 日落 / 夜晚三种光景，节奏可调、能暂停。",
+    "tag": "治愈",
+    "emoji": "🚲",
+    "href": "/games/pelican/",
+    "status": "play"
+  }
+]

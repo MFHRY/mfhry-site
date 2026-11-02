@@ -106,7 +106,57 @@ grant select on all tables in schema public to site_reader;
 
 头像同理，改 `site.json` 的 `avatar` 字段。
 
-## 常见问题
+## 项目详情页与下载镜像
+
+每个仓库自动生成一个详情页：`/projects/<仓库名>`（例如 `/projects/mcai`）。
+
+`scripts/pull-releases.mjs` 在构建时：
+
+1. 拉取最新 10 个 release；
+2. 把附件下载到 `public/downloads/<仓库>/<tag>/`（**国内直连本站即可下载，不用访问 GitHub**）；
+3. 生成 `src/data/releases.json` 供页面渲染。
+
+- 单个文件 > 24 MB 不下载，保留 GitHub 外链，页面上会标「GitHub 外链」；
+- 已存在的文件按大小比对，不会重复下载；
+- `public/downloads/` 在 `.gitignore` 里，不进仓库，由每次构建重新拉取。
+
+要镜像别的仓库，设置变量 `RELEASE_REPOS=mcai,other-repo`。
+
+### 更新频率
+
+`.github/workflows/deploy.yml` 里是 `*/15 * * * *`，即**每 15 分钟**检查一次新版本。
+
+想做到「发版后立刻更新」，在 mcai 仓库加一个 workflow 主动触发本站构建：
+
+```yaml
+# .github/workflows/notify-site.yml （放在 mcai 仓库）
+name: notify-site
+on:
+  release:
+    types: [published]
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          curl -sS -X POST \
+            -H "Authorization: Bearer ${{ secrets.SITE_PAT }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/MFHRY/mfhry-site/dispatches \
+            -d '{"event_type":"release"}'
+```
+
+并在本站的 `deploy.yml` 里加一个触发条件：
+
+```yaml
+on:
+  repository_dispatch:
+    types: [release]
+```
+
+`SITE_PAT` 需要 `repo` 权限的 fine-grained token，存在 mcai 仓库的 Secrets 里。
+
+
 
 **项目列表是空的** — 检查 `GH_USER` 是否配置，以及仓库是不是公开的。
 

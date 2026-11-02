@@ -30,7 +30,7 @@ const LANG_COLORS = {
 const color = LANG_COLORS[repo.lang] ?? 'currentColor';
 const updated = repo.updated ? String(repo.updated).slice(0, 10) : '';
 ---
-<a class="card" href={repo.url} target="_blank" rel="noreferrer noopener">
+<a class="card" href={`/projects/${repo.name}`}>
   <div class="card-head">
     <h3>{repo.name}</h3>
     <span class="stars" title="Stars">★ {repo.stars}</span>

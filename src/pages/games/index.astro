@@ -1,0 +1,28 @@
+---
+import Base from '../../layouts/Base.astro';
+import games from '../../data/games.json';
+
+const playable = games.filter((g) => g.status === 'play').length;
+---
+<Base title="小游戏">
+  <h1>小游戏</h1>
+  <p class="muted">{playable} 个可以玩，大部分纯前端实现，点开即玩。</p>
+
+  <div class="games">
+    {games.map((g) => (
+      <div class:list={['game', { soon: g.status !== 'play' }]}>
+        <a class="gwrap" href={g.href ?? undefined} aria-disabled={g.status !== 'play'}>
+          <div class="cover">
+            <span>{g.emoji}</span>
+            <em>{g.tag}</em>
+          </div>
+          <div class="ginfo">
+            <h3>{g.title}{g.note && <span class="badge">{g.note}</span>}</h3>
+            <p>{g.desc}</p>
+            <span class="play">{g.status === 'play' ? '开始玩 →' : '准备中'}</span>
+          </div>
+        </a>
+      </div>
+    ))}
+  </div>
+</Base>

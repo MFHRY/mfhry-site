@@ -1,0 +1,111 @@
+---
+import Base from '../../layouts/Base.astro';
+import releasesData from '../../data/releases.json';
+import repos from '../../data/repos.json';
+
+export function getStaticPaths() {
+  return repos.map((repo) => ({ params: { name: repo.name }, props: { repo } }));
+}
+
+const { repo } = Astro.props;
+const releases = (releasesData[repo.name] ?? []).filter((r: any) => !r.prerelease);
+
+// 同一个仓库可以有多条版本线（比如 mcai 的 Fabric / Forge 1.20.1 / Forge 26.1）
+const TRACKS: Record<string, { label: string; match: (tag: string) => boolean }[]> = {
+  mcai: [
+    { label: 'Fabric · Minecraft 1.21.1', match: (t: string) => !t.startsWith('forge-') },
+    {
+      label: 'Forge · Minecraft 26.1',
+      match: (t: string) => t.startsWith('forge-26.1-'),
+    },
+    {
+      label: 'Forge · Minecraft 1.20.1',
+      match: (t: string) => t.startsWith('forge-') && !t.startsWith('forge-26.1-'),
+    },
+  ],
+};
+
+const defs = TRACKS[repo.name] ?? [{ label: '下载', match: () => true }];
+const tracks = defs
+  .map((d) => ({ label: d.label, list: releases.filter((r: any) => d.match(r.tag)) }))
+  .filter((t) => t.list.length > 0);
+
+const date = (s: string) => (s ? new Date(s).toISOString().slice(0, 10) : '');
+const mb = (n: number) => `${(n / 1024 / 1024).toFixed(2)} MB`;
+const kb = (n: number) => (n > 1024 * 1024 ? mb(n) : `${Math.round(n / 1024)} KB`);
+---
+<Base title={repo.name}>
+  <p class="crumb"><a href="/projects">← 项目</a></p>
+
+  <h1>{repo.name}</h1>
+  <p class="muted">{repo.desc || '暂无描述'}</p>
+
+  <div class="facts">
+    <span>{repo.lang || 'Other'}</span>
+    {repo.license && <span>{repo.license}</span>}
+    <span>★ {repo.stars}</span>
+    <span>更新于 {date(repo.updated)}</span>
+  </div>
+
+  {repo.readme && <p class="lead">{repo.readme}</p>}
+
+  <div class="actions">
+    <a class="btn primary" href={repo.url} target="_blank" rel="noreferrer">在 GitHub 查看源码</a>
+  </div>
+
+  {tracks.length === 0 && (
+    <section class="block"><p class="muted">这个项目还没有发布 release。</p></section>
+  )}
+
+  {tracks.map((track) => {
+    const latest = track.list[0];
+    const older = track.list.slice(1);
+    return (
+      <section class="block">
+        <div class="block-head">
+          <h2>{track.label}</h2>
+          <span class="muted">最新 {latest.tag} · {date(latest.published_at)}</span>
+        </div>
+
+        <p class="hint">文件已镜像到本站，国内直连即可下载，无需访问 GitHub。</p>
+
+        <ul class="assets">
+          {latest.assets.map((a: any) => (
+            <li>
+              <a class="asset" href={a.path ?? a.url} download={a.path ? '' : undefined}>
+                <span class="aname">{a.name}</span>
+                <span class="asize">{kb(a.size)}{a.path ? '' : ' · GitHub 外链'}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+
+        {latest.body && (
+          <details class="notes"><summary>更新说明</summary><pre>{latest.body}</pre></details>
+        )}
+
+        {older.length > 0 && (
+          <ul class="versions" style="margin-top:14px">
+            {older.map((r: any) => (
+              <li>
+                <details>
+                  <summary><span class="tag">{r.tag}</span><span class="muted">{date(r.published_at)}</span></summary>
+                  <ul class="assets">
+                    {r.assets.map((a: any) => (
+                      <li>
+                        <a class="asset" href={a.path ?? a.url} download={a.path ? '' : undefined}>
+                          <span class="aname">{a.name}</span>
+                          <span class="asize">{kb(a.size)}{a.path ? '' : ' · GitHub 外链'}</span>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    );
+  })}
+</Base>
