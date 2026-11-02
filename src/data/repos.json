@@ -1,5 +1,23 @@
 [
   {
+    "name": "mfhry-site",
+    "desc": "mfhry.store 的源码：Astro 静态主页 + Cloudflare Pages Functions。",
+    "url": "https://github.com/MFHRY/mfhry-site",
+    "homepage": "https://mfhry.store",
+    "stars": 0,
+    "forks": 0,
+    "lang": "HTML",
+    "topics": [
+      "astro",
+      "cloudflare-pages",
+      "personal-website",
+      "typescript"
+    ],
+    "license": null,
+    "updated": "2026-11-02T05:29:31Z",
+    "readme": "mfhry.store 个人站 极简个人主页 + GitHub 项目展示。纯静态，构建时拉数据，部署在 Cloudflare Pages。 Astro 静态生成 GitHub API：构建时拉公开仓库 → src/data/repos.json Aiven PostgreSQL（可选）：构建时拉文章 → src/data/posts.json Cloudflare Pages：托管 + 自动 HTTPS Cloudflare R2：图片/头像（img.mfhry.store）"
+  },
+  {
     "name": "mcai",
     "desc": "在 Minecraft 里和 AI 聊天、让它看你的屏幕。Fabric 1.21.1 · Forge 1.20.1 · Forge 26.1 三条版本线。",
     "url": "https://github.com/MFHRY/mcai",
@@ -20,17 +38,5 @@
     "license": "CC0-1.0",
     "updated": "2026-11-02T04:51:53Z",
     "readme": "mcAI 在 Minecraft 里和 AI 聊天，还能按键让它看你屏幕。 一个客户端模组：在聊天栏用 !ai 提问、按 H 截取当前画面交给多模态模型识别，并附带思考过程显示、耗时统计和 Token 用量记录。 提供两个加载器版本，功能基本一致： 版本线 Minecraft 加载器 Java 前置 --- --- --- --- --- --- Fabric 版 1.25.x 1.21.1 Fabric Loader 0.19.5+ 21 Fabric API Forge "
-  },
-  {
-    "name": "mfhry-site",
-    "desc": null,
-    "url": "https://github.com/MFHRY/mfhry-site",
-    "homepage": "",
-    "stars": 0,
-    "forks": 0,
-    "lang": null,
-    "topics": [],
-    "license": null,
-    "updated": "2026-10-29T14:46:02Z"
   }
 ]

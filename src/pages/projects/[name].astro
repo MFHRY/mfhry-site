@@ -50,11 +50,22 @@ const kb = (n: number) => (n > 1024 * 1024 ? mb(n) : `${Math.round(n / 1024)} KB
   {repo.readme && <p class="lead">{repo.readme}</p>}
 
   <div class="actions">
-    <a class="btn primary" href={repo.url} target="_blank" rel="noreferrer">在 GitHub 查看源码</a>
+    {repo.homepage && (
+      <a class="btn primary" href={repo.homepage} target="_blank" rel="noreferrer">
+        打开网站
+      </a>
+    )}
+    <a class={repo.homepage ? 'btn' : 'btn primary'} href={repo.url} target="_blank" rel="noreferrer">
+      在 GitHub 查看源码
+    </a>
   </div>
 
   {tracks.length === 0 && (
-    <section class="block"><p class="muted">这个项目还没有发布 release。</p></section>
+    <section class="block">
+      <p class="muted">
+        {repo.homepage ? '这个项目是网站本身，没有 release，直接看上面的「打开网站」。' : '这个项目还没有发布 release。'}
+      </p>
+    </section>
   )}
 
   {tracks.map((track) => {
