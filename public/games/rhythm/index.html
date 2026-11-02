@@ -34,6 +34,7 @@
     font-size:12px;color:var(--muted);cursor:pointer;white-space:nowrap}
   .chip.on{border-color:var(--accent);color:var(--fg);background:rgba(127,209,176,.13)}
   .list{display:grid;gap:5px;margin-top:8px}
+  .gtitle{font-size:11px;color:#6f7883;margin:9px 0 5px;letter-spacing:.03em}
   .item{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;
     border:1px solid #263039;border-radius:9px;background:#141a20;cursor:pointer;font-size:12.5px;line-height:1.45}
   .item:hover{border-color:#3b4a56}
@@ -92,7 +93,7 @@
         <span class="chip" id="localBtn" style="border-style:dashed">＋ 本地 .osz 文件</span>
         <span class="chip" id="hotTip" style="border:0;background:none;color:#8b939c;padding-left:0">热门：</span>
       </div>
-      <div class="row" style="margin-top:7px" id="hot"></div>
+      <div id="hot" style="margin-top:2px"></div>
       <div class="list" id="sets"></div>
 
       <div id="dl" hidden>
@@ -161,18 +162,48 @@
     8: ['a', 's', 'd', 'f', 'j', 'k', 'l', ';'],
   };
   const KEY_LABEL = (k) => (k === ';' ? ';' : k === 'space' ? '空格' : k.length === 1 ? k.toUpperCase() : k);
-  // 二次元常用曲：日文名在镜像里搜不准，统一用能搜到的那串关键词
-  const HOT = [
-    { label: 'アイドル', q: 'idol yoasobi' },
-    { label: 'Bad Apple', q: 'bad apple' },
-    { label: 'One Last Kiss', q: 'one last kiss' },
-    { label: '世界第一的公主殿下', q: 'world is mine' },
-    { label: 'only my railgun', q: 'only my railgun' },
-    { label: '紅蓮華', q: 'Gurenge' },
-    { label: '残酷な天使のテーゼ', q: 'zankoku na tenshi no thesis' },
-    { label: '千本桜', q: 'senbonzakura' },
-    { label: '夜に駆ける', q: 'yoru ni kakeru' },
-    { label: 'Butter-Fly', q: 'Butter-Fly' },
+  // 日文名在镜像里搜不准，chip 上显示日文，实际查英文关键词
+  const GROUPS = [
+    {
+      title: '热门',
+      items: [
+        { label: 'アイドル', q: 'idol yoasobi' },
+        { label: 'Bad Apple', q: 'bad apple' },
+        { label: 'One Last Kiss', q: 'one last kiss' },
+        { label: '世界第一的公主殿下', q: 'world is mine' },
+      ],
+    },
+    {
+      title: 'ボカロ · wowaka / DECO*27 / ハチ',
+      items: [
+        { label: 'ローリンガール', q: 'rolling girl wowaka' },
+        { label: "ワールズエンド・ダンスホール", q: "world's end dancehall wowaka" },
+        { label: '裏表ラバーズ', q: 'ura omote lovers' },
+        { label: 'アンノウン・マザーグース', q: 'unknown mother goose' },
+        { label: 'ゴーストルール', q: 'ghost rule deco27' },
+        { label: 'ヴァンパイア', q: 'vampire deco27' },
+        { label: 'ヒバナ', q: 'hibana deco27' },
+        { label: 'マトリョシカ', q: 'matryoshka hachi' },
+        { label: '砂の惑星', q: 'sand planet hachi' },
+        { label: '六兆年と一夜物語', q: 'rokuchounen to ichiya' },
+        { label: 'KING', q: 'king kanaria' },
+        { label: 'ビターチョコデコレーション', q: 'bitter choco decoration' },
+        { label: 'メルト', q: 'melt supercell' },
+        { label: '独りんぼエンヴィー', q: 'hitorinbo envy' },
+      ],
+    },
+    {
+      title: '动画 OP / ED',
+      items: [
+        { label: '紅蓮華', q: 'Gurenge' },
+        { label: 'only my railgun', q: 'only my railgun' },
+        { label: '残酷な天使のテーゼ', q: 'zankoku na tenshi no thesis' },
+        { label: '千本桜', q: 'senbonzakura' },
+        { label: '夜に駆ける', q: 'yoru ni kakeru' },
+        { label: 'Butter-Fly', q: 'Butter-Fly' },
+        { label: 'Blue Bird', q: 'Blue Bird naruto' },
+      ],
+    },
   ];
 
   let keys = load(LS_KEYS, DEFAULT_KEYS);
@@ -347,7 +378,7 @@
       try {
         const r = await fetch(MIRROR + '/search?query=' + encodeURIComponent(q) + '&limit=12');
         if (!r.ok) throw new Error('镜像返回 ' + r.status);
-        const list = await r.json();
+        const list = rankSets(await r.json(), q);
         renderSets(list);
         $('status').textContent = list.length
           ? '找到 ' + list.length + ' 个谱面集，点一个开始下载（几十 MB）'
@@ -358,6 +389,26 @@
         else await new Promise((r) => setTimeout(r, 800));
       }
     }
+  }
+
+  // 镜像的搜索排序很杂（合集包、翻唱会挤前面），按「歌名/歌手命中」重排，别看 Tags 免得误伤
+  function rankSets(list, q) {
+    const norm = (t) => String(t || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    const toks = norm(q).split(' ').filter((t) => t.length > 1);
+    const bad = /various artists|compilation|favourites|pack|collection|megamix|medley/i;
+    return list.map((s) => {
+      const title = norm(s.Title), artist = norm(s.Artist);
+      let k = 0;
+      for (const t of toks) {
+        if (title.includes(t)) k += 6;
+        else if (artist.includes(t)) k += 3;
+      }
+      k += Math.min(6, Math.log10(1 + (s.Favourites || 0)) * 2);
+      if (bad.test((s.Title || '') + ' ' + (s.Artist || ''))) k -= 5;
+      const lens = (s.ChildrenBeatmaps || []).map((c) => c.TotalLength || 0);
+      if (lens.length && Math.max(...lens) > 480) k -= 4;   // 十几分钟的合集往后排
+      return { s, k };
+    }).sort((a, b) => b.k - a.k).map((x) => x.s);
   }
 
   function renderSets(list) {
@@ -785,12 +836,21 @@
   function renderHot() {
     const wrap = $('hot');
     wrap.innerHTML = '';
-    for (const h of HOT) {
-      const b = document.createElement('span');
-      b.className = 'chip';
-      b.textContent = h.label;
-      b.onclick = () => { $('q').value = h.label; searchSets(h.q); };
-      wrap.appendChild(b);
+    for (const g of GROUPS) {
+      const t = document.createElement('div');
+      t.className = 'gtitle';
+      t.textContent = g.title;
+      wrap.appendChild(t);
+      const row = document.createElement('div');
+      row.className = 'row';
+      for (const h of g.items) {
+        const b = document.createElement('span');
+        b.className = 'chip';
+        b.textContent = h.label;
+        b.onclick = () => { $('q').value = h.label; searchSets(h.q); };
+        row.appendChild(b);
+      }
+      wrap.appendChild(row);
     }
   }
 

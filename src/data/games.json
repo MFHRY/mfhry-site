@@ -38,7 +38,7 @@
   {
     "slug": "rhythm",
     "title": "音游（osu 谱面）",
-    "desc": "下落式音游：直接从 osu! 镜像搜歌现下谱面，二次元曲库（アイドル / Bad Apple / One Last Kiss / World is Mine…），键位、轨道数、判定严格度都能改。",
+    "desc": "下落式音游：直连 osu! 镜像搜歌现下谱面，25 首二次元一键曲单（アイドル、Bad Apple、One Last Kiss、World is Mine、wowaka、DECO*27、ハチ…），也能自己搜歌；键位、轨道数、判定严格度可改。",
     "tag": "音乐",
     "emoji": "🎵",
     "href": "/games/rhythm/",
