@@ -3,7 +3,8 @@
 // POST   /api/score  {game, score, name?}   交成绩（登录按账号、匿名按 IP）
 // DELETE /api/score?id=123                  管理员删掉一条
 import { flagOf, regionName, countryName } from '../lib/geo';
-import { currentUser, type SessionUser } from '../lib/session';
+import { maskEmail } from '../lib/password';
+import { currentUser, publicUser, type SessionUser } from '../lib/session';
 
 const json = (data: any, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -50,13 +51,21 @@ const cleanName = (v: any) =>
 function pack(row: any, rank: number) {
   const cc = row.country || null;
   const logged = !!row.user_login;
+  const provider = row.user_provider || 'github';
+  const isGh = provider === 'github';
   return {
     id: row.id,
     rank,
     score: row.score,
-    // 登录用户显示 GitHub 账号，匿名才露（打码后的）IP
+    // 登录用户显示账号，匿名才露（打码后的）IP
     user: logged
-      ? { login: row.user_login, name: row.user_name || null, avatar: row.user_avatar || null }
+      ? {
+          provider,
+          login: row.user_login,
+          name: row.user_name || null,
+          avatar: isGh ? row.user_avatar || null : null,
+          display: row.user_name || (isGh ? row.user_login : maskEmail(row.user_login)),
+        }
       : null,
     name: logged ? null : row.name || null,
     ip: logged ? '' : maskIp(row.ip),
@@ -71,7 +80,8 @@ function pack(row: any, rank: number) {
 }
 
 const SELECT = `SELECT s.id, s.score, s.ip, s.name, s.country, s.region, s.city, s.updated_at,
-                       u.login AS user_login, u.name AS user_name, u.avatar AS user_avatar
+                       u.login AS user_login, u.name AS user_name, u.avatar AS user_avatar,
+                       u.provider AS user_provider
                   FROM scores s LEFT JOIN users u ON u.id = s.user_id`;
 
 export const onRequestGet = async (ctx: any) => {
@@ -118,7 +128,7 @@ export const onRequestGet = async (ctx: any) => {
     total: Number(total?.c || 0),
     entries,
     me,
-    user: user ? { login: user.login, name: user.name, avatar: user.avatar, admin: user.admin } : null,
+    user: publicUser(user),
   });
 };
 

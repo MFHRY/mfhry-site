@@ -1,7 +1,10 @@
 // 会话：随机会话 token 存 D1，浏览器只拿到 HttpOnly cookie。
+import { maskEmail } from './password';
+
 export type SessionUser = {
   id: number;
-  gh_id: number;
+  provider: string; // 'github' | 'email'
+  gh_id: number | null;
   login: string;
   name: string | null;
   avatar: string | null;
@@ -49,7 +52,7 @@ export async function currentUser(env: any, req: Request): Promise<SessionUser |
   const token = getCookie(req, SESSION_COOKIE);
   if (!token) return null;
   const row: any = await env.DB.prepare(
-    `SELECT u.id, u.gh_id, u.login, u.name, u.avatar, s.expires_at
+    `SELECT u.id, u.provider, u.gh_id, u.login, u.name, u.avatar, s.expires_at
        FROM sessions s JOIN users u ON u.id = s.user_id
       WHERE s.token = ?`
   )
@@ -60,11 +63,13 @@ export async function currentUser(env: any, req: Request): Promise<SessionUser |
 
   return {
     id: row.id,
-    gh_id: row.gh_id,
+    provider: row.provider || 'github',
+    gh_id: row.gh_id ? Number(row.gh_id) : null,
     login: row.login,
     name: row.name || null,
     avatar: row.avatar || null,
-    admin: isAdmin(env, row.login),
+    // 只有 GitHub 账号能当管理员：邮箱没有验证，谁都能注册同名邮箱
+    admin: row.provider === 'github' && isAdmin(env, row.login),
   };
 }
 
@@ -74,7 +79,21 @@ export function isAdmin(env: any, login?: string | null): boolean {
   return !!login && String(login).toLowerCase() === target;
 }
 
+// 榜上、墙上显示的名字：有昵称用昵称，邮箱用户打码，GitHub 用户用 login
+export function displayName(u: { provider?: string; login: string; name?: string | null }): string {
+  if (u.name) return u.name;
+  if (u.provider === 'email') return maskEmail(u.login);
+  return u.login;
+}
+
 export function publicUser(u: SessionUser | null) {
   if (!u) return null;
-  return { login: u.login, name: u.name, avatar: u.avatar, admin: u.admin };
+  return {
+    provider: u.provider,
+    login: u.login,
+    name: u.name,
+    avatar: u.avatar,
+    admin: u.admin,
+    display: displayName(u),
+  };
 }

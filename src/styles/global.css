@@ -890,6 +890,49 @@ a.game:hover {
 
 .ntitle-input { font-size: 16px; font-weight: 600; }
 
+/* 墙上以登录身份发布 */
+.acctbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: -2px 0 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.acctbar button {
+  font: inherit;
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.acctbar button:hover { color: var(--accent); border-color: var(--accent); }
+
+.nick.acct {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--fg);
+}
+
+.nick.acct img.nav { border-radius: 50%; display: block; }
+
+.nick.acct .ini {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  background: var(--accent-soft);
+  color: var(--fg);
+}
+
 /* news gallery + video */
 .ngallery {
   display: grid;

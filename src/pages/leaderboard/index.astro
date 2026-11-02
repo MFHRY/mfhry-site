@@ -39,7 +39,7 @@ import Base from '../../layouts/Base.astro';
 </Base>
 
 <script>
-  type GhUser = { login: string; name: string | null; avatar: string | null };
+  type GhUser = { provider: string; login: string; name: string | null; avatar: string | null; display: string };
 
   type Entry = {
     id: number;
@@ -123,13 +123,17 @@ import Base from '../../layouts/Base.astro';
     const where = [e.flag, e.countryName, e.regionName].filter(Boolean).join(' ');
     const medal = e.rank === 1 ? '🥇' : e.rank === 2 ? '🥈' : e.rank === 3 ? '🥉' : String(e.rank);
     const who = e.user
-      ? `<span class="ghwho">${
-          e.user.avatar
-            ? `<img class="av" src="${esc(e.user.avatar)}" alt="" width="18" height="18" loading="lazy" />`
-            : ''
-        }<a class="gh" href="https://github.com/${esc(e.user.login)}" target="_blank" rel="noopener">${esc(
-          e.user.login
-        )}</a></span>`
+      ? e.user.provider === 'github'
+        ? `<span class="ghwho">${
+            e.user.avatar
+              ? `<img class="av" src="${esc(e.user.avatar)}" alt="" width="18" height="18" loading="lazy" />`
+              : ''
+          }<a class="gh" href="https://github.com/${esc(e.user.login)}" target="_blank" rel="noopener">${esc(
+            e.user.login
+          )}</a></span>`
+        : `<span class="ghwho"><span class="ini">${esc(
+            (e.user.display || e.user.login).slice(0, 1).toUpperCase()
+          )}</span><span class="em">${esc(e.user.display || e.user.login)}</span></span>`
       : `${esc(e.ip)}${e.name ? ` <em class="nm">${esc(e.name)}</em>` : ''}`;
     return `<tr class="${mine ? 'mine' : ''}${e.rank <= 3 ? ' top' : ''}">
       <td class="rank">${medal}</td>
@@ -380,6 +384,20 @@ import Base from '../../layouts/Base.astro';
   .board .gh:hover {
     color: var(--accent);
     border-color: var(--accent);
+  }
+  .board .ghwho .ini {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 11px;
+    background: var(--accent-soft);
+    color: var(--fg);
+    flex: none;
+  }
+  .board .em {
+    color: var(--fg);
   }
   .board .del {
     font: inherit;

@@ -1,5 +1,7 @@
 // 匿名墙 API：GET 列表 / POST 发布（多图 + 视频链接 + IP 归属地 + X 链接）
+// 登录用户（GitHub / 邮箱）发的帖子会带上账号，显示昵称和头像
 import { fetchTweet, tweetId } from '../lib/tweet';
+import { currentUser, displayName, publicUser } from '../lib/session';
 
 const MAX_BODY = 500;
 const MAX_IMAGE = 380 * 1024;
@@ -21,7 +23,11 @@ async function list(ctx: any) {
   const limit = Math.min(Math.max(Number(url.searchParams.get('limit')) || 30, 1), 50);
 
   const rows = await env.DB.prepare(
-    'SELECT id, body, nickname, images, video, x, ip, country, region, city, created_at FROM posts ORDER BY id DESC LIMIT ?'
+    `SELECT p.id, p.body, p.nickname, p.images, p.video, p.x, p.ip, p.country, p.region, p.city, p.created_at,
+            u.id AS u_id, u.login AS u_login, u.name AS u_name, u.avatar AS u_avatar,
+            u.provider AS u_provider, u.gh_id AS u_gh
+       FROM posts p LEFT JOIN users u ON u.id = p.user_id
+      ORDER BY p.id DESC LIMIT ?`
   )
     .bind(limit)
     .all();
@@ -31,6 +37,15 @@ async function list(ctx: any) {
       id: p.id,
       body: p.body,
       nickname: p.nickname || null,
+      user: p.u_id
+        ? {
+            provider: p.u_provider || 'github',
+            login: p.u_login,
+            name: p.u_name || null,
+            avatar: p.u_avatar || null,
+            display: displayName({ provider: p.u_provider, login: p.u_login, name: p.u_name }),
+          }
+        : null,
       created_at: p.created_at,
       images: JSON.parse(p.images || '[]'),
       video: p.video || null,
@@ -57,8 +72,11 @@ async function create(ctx: any) {
   const xUrl = String(p?.x ?? '').trim();
   const imgs: string[] = Array.isArray(p?.images) ? p.images.slice(0, MAX_IMAGES) : [];
 
+  // 登录了就记名，没登录照旧匿名
+  const user = await currentUser(env, request).catch(() => null);
+
   if (!body && !imgs.length && !video && !xUrl) return json({ error: '写点什么吧' }, 400);
-  const nickname = String(p?.nickname ?? '').replace(/[<>]/g, '').trim().slice(0, 20);
+  const nickname = user ? displayName(user) : String(p?.nickname ?? '').replace(/[<>]/g, '').trim().slice(0, 20);
   if (body.length > MAX_BODY) return json({ error: `最多 ${MAX_BODY} 字` }, 400);
   if (video.length > 300 || (video && !/^https?:\/\//i.test(video))) return json({ error: '视频链接不对' }, 400);
   if (xUrl && !tweetId(xUrl)) return json({ error: 'X 链接格式不对' }, 400);
@@ -96,7 +114,7 @@ async function create(ctx: any) {
   }
 
   const ins = await env.DB.prepare(
-    'INSERT INTO posts (body, nickname, ip, images, video, x, country, region, city, asn, colo, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    'INSERT INTO posts (body, nickname, ip, images, video, x, country, region, city, asn, colo, user_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
   )
     .bind(
       body,
@@ -110,6 +128,7 @@ async function create(ctx: any) {
       cf.city || null,
       cf.asn || null,
       cf.colo || null,
+      user ? user.id : null,
       nowSql()
     )
     .run();

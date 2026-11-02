@@ -78,12 +78,15 @@ export const onRequestGet = async (ctx: any) => {
   let userId: number;
   if (existing) {
     userId = existing.id;
-    await env.DB.prepare('UPDATE users SET login = ?, name = ?, avatar = ?, last_seen = ? WHERE id = ?')
+    await env.DB.prepare(
+      "UPDATE users SET login = ?, name = ?, avatar = ?, last_seen = ?, provider = 'github' WHERE id = ?"
+    )
       .bind(login, name, avatar, now, userId)
       .run();
   } else {
     const ins = await env.DB.prepare(
-      'INSERT INTO users (gh_id, login, name, avatar, created_at, last_seen) VALUES (?, ?, ?, ?, ?, ?)'
+      `INSERT INTO users (provider, gh_id, login, name, avatar, created_at, last_seen)
+       VALUES ('github', ?, ?, ?, ?, ?, ?)`
     )
       .bind(ghId, login, name, avatar, now, now)
       .run();

@@ -7,6 +7,10 @@ import Base from '../layouts/Base.astro';
 
   <div class="composer">
     <input id="nick" class="key" type="text" maxlength="20" placeholder="网名（可选，留空即匿名）" />
+    <div id="acctBar" class="acctbar" hidden>
+      <span id="acctWho"></span>
+      <button type="button" id="acctSwitch">退出登录</button>
+    </div>
     <textarea id="body" maxlength="500" placeholder="说点什么…（最多 500 字）"></textarea>
     <input id="video" class="key" type="url" placeholder="视频链接（B 站 / 腾讯 / 优酷 / 西瓜 / AcFun / YouTube / mp4 直链），可留空" />
     <input id="x" class="key" type="url" placeholder="X（推特）链接，可留空，内容会存到本站" />
@@ -26,6 +30,22 @@ import Base from '../layouts/Base.astro';
     const nickEl = $('nick'), bodyEl = $('body'), videoEl = $('video'), xEl = $('x'), fileEl = $('file');
     const sendEl = $('send'), listEl = $('list'), emptyEl = $('empty'), previewEl = $('preview'), hintEl = $('hint');
     let images = [], busy = false;
+
+    // 登录了就用账号身份发，网名输入框收起来
+    fetch('/api/me', { headers: { accept: 'application/json' } })
+      .then((r) => r.json())
+      .then((d) => {
+        if (!d || !d.user) return;
+        const u = d.user;
+        nickEl.hidden = true;
+        $('acctBar').hidden = false;
+        $('acctWho').textContent = '以 ' + (u.display || u.login) + ' 身份发布';
+        $('acctSwitch').onclick = async () => {
+          await fetch('/api/logout', { method: 'POST' });
+          location.reload();
+        };
+      })
+      .catch(() => {});
 
     const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const fmt = (t) => {
@@ -122,9 +142,19 @@ import Base from '../layouts/Base.astro';
           const gallery = (p.images || []).length
             ? '<div class="ngallery">' + p.images.map((id) => '<a href="/api/media/' + id + '" target="_blank" rel="noreferrer"><img loading="lazy" src="/api/media/' + id + '" alt="" /></a>').join('') + '</div>'
             : '';
+          const who = p.user
+            ? '<span class="nick acct" title="登录用户">' +
+              (p.user.avatar
+                ? '<img class="nav" src="' + esc(p.user.avatar) + '" alt="" width="18" height="18" loading="lazy" />'
+                : '<span class="ini">' + esc((p.user.display || p.user.login).slice(0, 1).toUpperCase()) + '</span>') +
+              esc(p.user.display || p.user.login) +
+              '</span>'
+            : p.nickname
+              ? '<span class="nick">' + esc(p.nickname) + '</span>'
+              : '<span class="nick anon">匿名</span>';
           return (
             '<article class="post">' +
-            '<header><span class="pid">#' + p.id + '</span>' + (p.nickname ? '<span class="nick">' + esc(p.nickname) + '</span>' : '<span class="nick anon">匿名</span>') + '<time>' + esc(fmt(p.created_at)) + '</time></header>' +
+            '<header><span class="pid">#' + p.id + '</span>' + who + '<time>' + esc(fmt(p.created_at)) + '</time></header>' +
             '<p class="geo">' + esc(loc(p)) + '</p>' +
             (p.body ? '<p class="pbody" id="pb-' + p.id + '" data-plain="' + esc(p.body) + '" data-tr="0">' + esc(p.body).replace(/\n/g, '<br>') + '</p><button class="trbtn" data-t="pb-' + p.id + '">译</button>' : '') +
             gallery + videoHtml(p.video) + xHtml(p.x, p.id) +
