@@ -39,7 +39,14 @@ import Base from '../../layouts/Base.astro';
 </Base>
 
 <script>
-  type GhUser = { provider: string; login: string; name: string | null; avatar: string | null; display: string };
+  type GhUser = {
+    provider: string;
+    login: string;
+    name: string | null;
+    avatar: string | null;
+    display: string;
+    verified?: boolean;
+  };
 
   type Entry = {
     id: number;
@@ -133,7 +140,9 @@ import Base from '../../layouts/Base.astro';
           )}</a></span>`
         : `<span class="ghwho"><span class="ini">${esc(
             (e.user.display || e.user.login).slice(0, 1).toUpperCase()
-          )}</span><span class="em">${esc(e.user.display || e.user.login)}</span></span>`
+          )}</span><span class="em">${esc(e.user.display || e.user.login)}</span>${
+            e.user.verified ? '<span class="vfy" title="邮箱已验证">✓</span>' : ''
+          }</span>`
       : `${esc(e.ip)}${e.name ? ` <em class="nm">${esc(e.name)}</em>` : ''}`;
     return `<tr class="${mine ? 'mine' : ''}${e.rank <= 3 ? ' top' : ''}">
       <td class="rank">${medal}</td>
@@ -398,6 +407,17 @@ import Base from '../../layouts/Base.astro';
   }
   .board .em {
     color: var(--fg);
+  }
+  .board .vfy {
+    font-size: 11px;
+    color: var(--accent);
+    border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
+    border-radius: 50%;
+    width: 15px;
+    height: 15px;
+    display: inline-grid;
+    place-items: center;
+    line-height: 1;
   }
   .board .del {
     font: inherit;

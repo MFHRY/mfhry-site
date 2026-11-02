@@ -8,6 +8,7 @@ export type SessionUser = {
   login: string;
   name: string | null;
   avatar: string | null;
+  verified: boolean;
   admin: boolean;
 };
 
@@ -52,7 +53,7 @@ export async function currentUser(env: any, req: Request): Promise<SessionUser |
   const token = getCookie(req, SESSION_COOKIE);
   if (!token) return null;
   const row: any = await env.DB.prepare(
-    `SELECT u.id, u.provider, u.gh_id, u.login, u.name, u.avatar, s.expires_at
+    `SELECT u.id, u.provider, u.gh_id, u.login, u.name, u.avatar, u.email_verified, s.expires_at
        FROM sessions s JOIN users u ON u.id = s.user_id
       WHERE s.token = ?`
   )
@@ -68,6 +69,7 @@ export async function currentUser(env: any, req: Request): Promise<SessionUser |
     login: row.login,
     name: row.name || null,
     avatar: row.avatar || null,
+    verified: row.provider === 'github' || Number(row.email_verified) === 1,
     // 只有 GitHub 账号能当管理员：邮箱没有验证，谁都能注册同名邮箱
     admin: row.provider === 'github' && isAdmin(env, row.login),
   };
@@ -93,6 +95,7 @@ export function publicUser(u: SessionUser | null) {
     login: u.login,
     name: u.name,
     avatar: u.avatar,
+    verified: u.verified,
     admin: u.admin,
     display: displayName(u),
   };

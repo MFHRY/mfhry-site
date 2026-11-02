@@ -47,7 +47,7 @@ export const onRequestPost = async (ctx: any) => {
   if (fails && Number(fails.c) >= 8) return json({ error: '试太多次了，15 分钟后再来' }, 429);
 
   const row: any = await env.DB.prepare(
-    'SELECT id, email, pass_hash, salt, iter, name, avatar, provider FROM users WHERE email = ?'
+    'SELECT id, email, pass_hash, salt, iter, name, avatar, provider, email_verified FROM users WHERE email = ?'
   )
     .bind(email)
     .first();
@@ -76,6 +76,7 @@ export const onRequestPost = async (ctx: any) => {
         login: row.email,
         name: row.name || null,
         avatar: row.avatar || null,
+        verified: Number(row.email_verified) === 1,
         admin: false,
       }),
     }),

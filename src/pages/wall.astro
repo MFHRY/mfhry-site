@@ -148,6 +148,7 @@ import Base from '../layouts/Base.astro';
                 ? '<img class="nav" src="' + esc(p.user.avatar) + '" alt="" width="18" height="18" loading="lazy" />'
                 : '<span class="ini">' + esc((p.user.display || p.user.login).slice(0, 1).toUpperCase()) + '</span>') +
               esc(p.user.display || p.user.login) +
+              (p.user.verified ? '<span class="vfy" title="已验证">✓</span>' : '') +
               '</span>'
             : p.nickname
               ? '<span class="nick">' + esc(p.nickname) + '</span>'

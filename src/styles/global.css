@@ -933,6 +933,18 @@ a.game:hover {
   color: var(--fg);
 }
 
+.nick.acct .vfy {
+  font-size: 10px;
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
+  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+  display: inline-grid;
+  place-items: center;
+  line-height: 1;
+}
+
 /* news gallery + video */
 .ngallery {
   display: grid;

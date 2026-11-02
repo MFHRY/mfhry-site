@@ -25,7 +25,7 @@ async function list(ctx: any) {
   const rows = await env.DB.prepare(
     `SELECT p.id, p.body, p.nickname, p.images, p.video, p.x, p.ip, p.country, p.region, p.city, p.created_at,
             u.id AS u_id, u.login AS u_login, u.name AS u_name, u.avatar AS u_avatar,
-            u.provider AS u_provider, u.gh_id AS u_gh
+            u.provider AS u_provider, u.gh_id AS u_gh, u.email_verified AS u_verified
        FROM posts p LEFT JOIN users u ON u.id = p.user_id
       ORDER BY p.id DESC LIMIT ?`
   )
@@ -44,6 +44,7 @@ async function list(ctx: any) {
             name: p.u_name || null,
             avatar: p.u_avatar || null,
             display: displayName({ provider: p.u_provider, login: p.u_login, name: p.u_name }),
+            verified: p.u_provider === 'github' || Number(p.u_verified) === 1,
           }
         : null,
       created_at: p.created_at,

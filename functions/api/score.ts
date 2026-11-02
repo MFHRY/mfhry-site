@@ -65,6 +65,7 @@ function pack(row: any, rank: number) {
           name: row.user_name || null,
           avatar: isGh ? row.user_avatar || null : null,
           display: row.user_name || (isGh ? row.user_login : maskEmail(row.user_login)),
+          verified: isGh || Number(row.user_verified) === 1,
         }
       : null,
     name: logged ? null : row.name || null,
@@ -81,6 +82,7 @@ function pack(row: any, rank: number) {
 
 const SELECT = `SELECT s.id, s.score, s.ip, s.name, s.country, s.region, s.city, s.updated_at,
                        u.login AS user_login, u.name AS user_name, u.avatar AS user_avatar,
+                       u.email_verified AS user_verified,
                        u.provider AS user_provider
                   FROM scores s LEFT JOIN users u ON u.id = s.user_id`;
 

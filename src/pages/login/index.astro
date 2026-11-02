@@ -15,7 +15,10 @@ import Base from '../../layouts/Base.astro';
         <b id="name"></b>
         <span class="muted small" id="login"></span>
       </div>
-      <button id="logout" class="ghost">退出</button>
+      <div class="whoacts">
+        <button id="verifyBtn" class="ghost" hidden>验证邮箱</button>
+        <button id="logout" class="ghost">退出</button>
+      </div>
     </div>
 
     <div id="forms">
@@ -29,12 +32,20 @@ import Base from '../../layouts/Base.astro';
           <button class="mode on" data-mode="login">登录</button>
           <button class="mode" data-mode="register">注册</button>
         </div>
+
         <form id="emailForm" autocomplete="on">
           <label>
             邮箱
             <input type="email" id="email" name="email" required autocomplete="email" placeholder="you@example.com" />
           </label>
-          <label>
+          <label id="codeWrap" hidden>
+            验证码 <span class="muted">（6 位数字，10 分钟内有效）</span>
+            <span class="coderow">
+              <input type="text" id="code" inputmode="numeric" maxlength="6" placeholder="123456" autocomplete="one-time-code" />
+              <button type="button" class="ghost small" id="sendCode">发送验证码</button>
+            </span>
+          </label>
+          <label id="pwWrap">
             密码
             <input type="password" id="password" required autocomplete="current-password" placeholder="至少 8 位" />
           </label>
@@ -43,9 +54,13 @@ import Base from '../../layouts/Base.astro';
             <input type="text" id="nickname" maxlength="16" autocomplete="nickname" placeholder="不填就用邮箱前缀" />
           </label>
           <button class="btn primary" type="submit" id="submitBtn">登录</button>
+          <div class="links">
+            <button type="button" class="link" id="forgot">忘记密码？</button>
+            <button type="button" class="link" id="backToLogin" hidden>← 回到登录</button>
+          </div>
         </form>
-        <p class="muted small">
-          密码用 PBKDF2 加盐存哈希，服务器也不保存明文。忘记密码目前只能重注册。
+        <p class="muted small" id="tip">
+          密码用 PBKDF2 加盐存哈希，服务器也不保存明文。
         </p>
       </section>
 
@@ -58,6 +73,7 @@ import Base from '../../layouts/Base.astro';
       </section>
 
       <p class="err" id="err" hidden></p>
+      <p class="ok" id="ok" hidden></p>
     </div>
   </div>
 
@@ -68,35 +84,139 @@ import Base from '../../layouts/Base.astro';
   const params = new URLSearchParams(location.search);
   const next = params.get('next') && params.get('next')!.startsWith('/') ? params.get('next')! : '/leaderboard/';
 
-  const $who = document.getElementById('who')!;
-  const $forms = document.getElementById('forms')!;
-  const $err = document.getElementById('err')!;
-  const $badge = document.getElementById('badge')!;
-  const $avatar = document.getElementById('avatar')!;
-  const $name = document.getElementById('name')!;
-  const $login = document.getElementById('login')!;
-  const $form = document.getElementById('emailForm') as HTMLFormElement;
-  const $email = document.getElementById('email') as HTMLInputElement;
-  const $password = document.getElementById('password') as HTMLInputElement;
-  const $nickname = document.getElementById('nickname') as HTMLInputElement;
-  const $nameWrap = document.getElementById('nameWrap')!;
-  const $submit = document.getElementById('submitBtn') as HTMLButtonElement;
+  const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
-  let mode: 'login' | 'register' = 'login';
+  const $who = $('who');
+  const $forms = $('forms');
+  const $err = $('err');
+  const $ok = $('ok');
+  const $badge = $('badge');
+  const $avatar = $('avatar');
+  const $name = $('name');
+  const $login = $('login');
+  const $form = $<HTMLFormElement>('emailForm');
+  const $email = $<HTMLInputElement>('email');
+  const $code = $<HTMLInputElement>('code');
+  const $codeWrap = $('codeWrap');
+  const $password = $<HTMLInputElement>('password');
+  const $pwWrap = $('pwWrap');
+  const $nickname = $<HTMLInputElement>('nickname');
+  const $nameWrap = $('nameWrap');
+  const $submit = $<HTMLButtonElement>('submitBtn');
+  const $forgot = $<HTMLButtonElement>('forgot');
+  const $back = $<HTMLButtonElement>('backToLogin');
+  const $send = $<HTMLButtonElement>('sendCode');
+  const $tip = $('tip');
+  const $verifyBtn = $<HTMLButtonElement>('verifyBtn');
+
+  type Mode = 'login' | 'register' | 'reset' | 'verify';
+  let mode: Mode = 'login';
+  let currentUser: any = null;
 
   const showErr = (msg: string) => {
     $err.hidden = !msg;
     $err.textContent = msg;
   };
+  const showOk = (msg: string) => {
+    $ok.hidden = !msg;
+    $ok.textContent = msg;
+  };
+
+  function setMode(m: Mode) {
+    mode = m;
+    showErr('');
+    showOk('');
+    const isReset = m === 'reset';
+    const isVerify = m === 'verify';
+    $codeWrap.hidden = !(isReset || isVerify);
+    $pwWrap.hidden = isVerify;
+    $nameWrap.hidden = m !== 'register';
+    $forgot.hidden = m !== 'login';
+    $back.hidden = m === 'login' || m === 'register';
+    document.querySelectorAll<HTMLButtonElement>('.mode').forEach((b) => {
+      b.classList.toggle('on', b.dataset.mode === m && (m === 'login' || m === 'register'));
+    });
+    document.querySelectorAll<HTMLElement>('.modes').forEach((el) => (el.hidden = m === 'reset' || m === 'verify'));
+
+    if (m === 'login') {
+      $submit.textContent = '登录';
+      $password.autocomplete = 'current-password';
+      $password.placeholder = '至少 8 位';
+      $tip.textContent = '密码用 PBKDF2 加盐存哈希，服务器也不保存明文。';
+    } else if (m === 'register') {
+      $submit.textContent = '注册并登录';
+      $password.autocomplete = 'new-password';
+      $password.placeholder = '至少 8 位';
+      $tip.textContent = '注册后会发一封验证码邮件，验证完墙上会显示 ✓。';
+    } else if (m === 'reset') {
+      $submit.textContent = '改密码';
+      $password.autocomplete = 'new-password';
+      $password.placeholder = '新密码，至少 8 位';
+      $tip.textContent = '先点「发送验证码」，收到 6 位数字后填进来，再设新密码。';
+    } else {
+      $submit.textContent = '验证邮箱';
+      $tip.textContent = '验证码已发到你的邮箱，10 分钟内有效。';
+    }
+  }
+
+  async function sendCode(purpose: 'verify' | 'reset') {
+    const email = $email.value.trim();
+    if (!email) {
+      showErr('先填邮箱');
+      return;
+    }
+    $send.disabled = true;
+    const label = $send.textContent;
+    $send.textContent = '发送中…';
+    try {
+      const res = await fetch('/api/auth/email/send-code', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email, purpose }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d?.error || '发送失败');
+      showErr('');
+      showOk(d.verified ? '这个邮箱已经验证过了' : '验证码发出去了，去邮箱看看（也看下垃圾箱）');
+      $code.focus();
+    } catch (e: any) {
+      showErr(e?.message || '发送失败');
+    } finally {
+      $send.disabled = false;
+      $send.textContent = label;
+    }
+  }
+
+  function paintUser(u: any) {
+    currentUser = u;
+    $who.hidden = false;
+    $forms.hidden = true;
+    $badge.textContent = u.provider === 'github' ? 'GitHub' : '邮箱';
+    $badge.dataset.p = u.provider;
+    $name.textContent = (u.display || u.login) + (u.provider === 'email' && !u.verified ? '（未验证）' : '');
+    $login.textContent = u.provider === 'github' ? '@' + u.login : u.login;
+    $verifyBtn.hidden = !(u.provider === 'email' && !u.verified);
+    if (u.avatar) {
+      $avatar.textContent = '';
+      const img = document.createElement('img');
+      img.src = u.avatar;
+      img.alt = '';
+      img.width = 40;
+      img.height = 40;
+      img.style.borderRadius = '50%';
+      $avatar.appendChild(img);
+    } else {
+      $avatar.textContent = (u.display || u.login).slice(0, 1).toUpperCase();
+    }
+  }
 
   if (params.get('error')) showErr(params.get('error')!);
-  document.getElementById('gologin')!.setAttribute('href', '/api/auth/github/start?next=' + encodeURIComponent(next));
+  $('gologin').setAttribute('href', '/api/auth/github/start?next=' + encodeURIComponent(next));
 
   // 已登录就只显示账号卡片
   fetch('/api/me', { headers: { accept: 'application/json' } })
     .then((r) => r.json())
     .then((d) => {
-      // GitHub 登录没配好就先把那个 tab 收起来，别让人点进去吃 500
       if (d && d.configured === false) {
         const tab = document.querySelector<HTMLElement>('.tab[data-tab="github"]');
         const pane = document.querySelector<HTMLElement>('.pane[data-pane="github"]');
@@ -107,62 +227,82 @@ import Base from '../../layouts/Base.astro';
         $forms.hidden = false;
         return;
       }
-      const u = d.user;
-      $who.hidden = false;
-      $forms.hidden = true;
-      $badge.textContent = u.provider === 'github' ? 'GitHub' : '邮箱';
-      $badge.dataset.p = u.provider;
-      $name.textContent = u.display || u.login;
-      $login.textContent = u.provider === 'github' ? '@' + u.login : u.login;
-      if (u.avatar) {
-        $avatar.textContent = '';
-        const img = document.createElement('img');
-        img.src = u.avatar;
-        img.alt = '';
-        img.width = 40;
-        img.height = 40;
-        img.style.borderRadius = '50%';
-        $avatar.appendChild(img);
-      } else {
-        $avatar.textContent = (u.display || u.login).slice(0, 1).toUpperCase();
-      }
+      paintUser(d.user);
     })
     .catch(() => ($forms.hidden = false));
 
-  document.getElementById('logout')!.addEventListener('click', async () => {
+  $('logout').addEventListener('click', async () => {
     await fetch('/api/logout', { method: 'POST' });
     location.href = '/';
+  });
+
+  $verifyBtn.addEventListener('click', () => {
+    $who.hidden = true;
+    $forms.hidden = false;
+    $email.value = currentUser?.login || '';
+    $email.readOnly = true;
+    setMode('verify');
+    sendCode('verify');
   });
 
   // 顶部两个 tab
   document.querySelectorAll<HTMLButtonElement>('.tab').forEach((t) => {
     t.addEventListener('click', () => {
       document.querySelectorAll('.tab').forEach((x) => x.classList.toggle('on', x === t));
-      document
-        .querySelectorAll<HTMLElement>('.pane')
-        .forEach((p) => (p.hidden = p.dataset.pane !== t.dataset.tab));
+      document.querySelectorAll<HTMLElement>('.pane').forEach((p) => (p.hidden = p.dataset.pane !== t.dataset.tab));
     });
   });
 
-  // 登录 / 注册切换
   document.querySelectorAll<HTMLButtonElement>('.mode').forEach((m) => {
     m.addEventListener('click', () => {
-      mode = m.dataset.mode === 'register' ? 'register' : 'login';
-      document.querySelectorAll('.mode').forEach((x) => x.classList.toggle('on', x === m));
-      $nameWrap.hidden = mode === 'login';
-      $submit.textContent = mode === 'login' ? '登录' : '注册并登录';
-      $password.autocomplete = mode === 'login' ? 'current-password' : 'new-password';
-      showErr('');
+      $email.readOnly = false;
+      setMode(m.dataset.mode === 'register' ? 'register' : 'login');
     });
   });
+
+  $forgot.addEventListener('click', () => {
+    $email.readOnly = false;
+    setMode('reset');
+  });
+  $back.addEventListener('click', () => setMode('login'));
+  $send.addEventListener('click', () => sendCode(mode === 'reset' ? 'reset' : 'verify'));
 
   $form.addEventListener('submit', async (ev) => {
     ev.preventDefault();
     showErr('');
+    showOk('');
     $submit.disabled = true;
     const label = $submit.textContent;
     $submit.textContent = '请稍等…';
     try {
+      if (mode === 'verify') {
+        const res = await fetch('/api/auth/email/verify', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ code: $code.value.trim() }),
+        });
+        const d = await res.json();
+        if (!res.ok) throw new Error(d?.error || '验证失败');
+        location.href = next;
+        return;
+      }
+
+      if (mode === 'reset') {
+        const res = await fetch('/api/auth/email/reset', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ email: $email.value.trim(), code: $code.value.trim(), password: $password.value }),
+        });
+        const d = await res.json();
+        if (!res.ok) throw new Error(d?.error || '改密码失败');
+        setMode('login');
+        showOk('密码改好了，用新密码登录一下');
+        $password.value = '';
+        $submit.disabled = false;
+        $submit.textContent = '登录';
+        return;
+      }
+
       const url = mode === 'login' ? '/api/auth/email/login' : '/api/auth/email/register';
       const res = await fetch(url, {
         method: 'POST',
@@ -175,13 +315,34 @@ import Base from '../../layouts/Base.astro';
       });
       const d = await res.json();
       if (!res.ok) throw new Error(d?.error || '失败了');
+
+      if (mode === 'register') {
+        if (d.mailed) {
+          paintUser(d.user);
+          $who.hidden = true;
+          $forms.hidden = false;
+          $email.value = d.user.login;
+          $email.readOnly = true;
+          $code.value = '';
+          setMode('verify');
+          showOk('注册好了，验证码已发到邮箱');
+        } else {
+          showOk('注册好了，但站长发信还没配好，验证码暂时发不出来');
+          location.href = next;
+        }
+        return;
+      }
+
       location.href = next;
     } catch (e: any) {
       showErr(e?.message || '失败了');
+    } finally {
       $submit.disabled = false;
       $submit.textContent = label;
     }
   });
+
+  setMode('login');
 </script>
 
 <style>
@@ -196,6 +357,11 @@ import Base from '../../layouts/Base.astro';
     display: flex;
     align-items: center;
     gap: 14px;
+  }
+  .whoacts {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
   }
   .badge {
     font-size: 12px;
@@ -217,14 +383,18 @@ import Base from '../../layouts/Base.astro';
     background: var(--accent-soft);
     color: var(--fg);
     font-weight: 600;
+    flex: none;
   }
   .ident {
     display: flex;
     flex-direction: column;
     line-height: 1.35;
+    min-width: 0;
   }
-  .who .ghost {
-    margin-left: auto;
+  .ident b {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .tabs,
   .modes {
@@ -273,10 +443,27 @@ import Base from '../../layouts/Base.astro';
     border: 1px solid var(--border);
     background: var(--bg);
     color: var(--fg);
+    width: 100%;
   }
   input:focus {
     outline: none;
     border-color: var(--accent);
+  }
+  input[readonly] {
+    opacity: 0.7;
+  }
+  .coderow {
+    display: flex;
+    gap: 8px;
+  }
+  .coderow input {
+    letter-spacing: 4px;
+    font-size: 18px;
+    font-variant-numeric: tabular-nums;
+  }
+  .coderow .ghost {
+    flex: none;
+    white-space: nowrap;
   }
   .btn {
     display: inline-flex;
@@ -311,8 +498,34 @@ import Base from '../../layouts/Base.astro';
     color: var(--fg);
     cursor: pointer;
   }
+  .ghost.small {
+    font-size: 13px;
+    padding: 6px 10px;
+  }
   .ghost:hover {
     border-color: var(--accent);
+    color: var(--accent);
+  }
+  .ghost:disabled {
+    opacity: 0.55;
+    cursor: default;
+  }
+  .links {
+    display: flex;
+    gap: 16px;
+    justify-content: space-between;
+  }
+  .link {
+    font: inherit;
+    font-size: 13px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--muted);
+    cursor: pointer;
+    text-align: left;
+  }
+  .link:hover {
     color: var(--accent);
   }
   .small {
@@ -327,6 +540,11 @@ import Base from '../../layouts/Base.astro';
   .err {
     margin-top: 14px;
     color: #d0554a;
+    font-size: 14px;
+  }
+  .ok {
+    margin-top: 14px;
+    color: var(--accent);
     font-size: 14px;
   }
 </style>

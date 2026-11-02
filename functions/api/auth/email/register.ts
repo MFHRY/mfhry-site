@@ -7,6 +7,7 @@ import {
   SESSION_DAYS,
 } from '../../../lib/session';
 import { hashPassword, normalizeEmail, passwordProblem, validEmail } from '../../../lib/password';
+import { issueCode } from '../../../lib/codes';
 
 const json = (data: any, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -62,11 +63,21 @@ export const onRequestPost = async (ctx: any) => {
   const sid = await createSession(env, userId);
   await env.DB.prepare("INSERT INTO auth_fails (ip, kind, created_at) VALUES (?, 'register', ?)").bind(ip, ts).run();
 
+  // 注册完顺手发一封验证码；发不出去也不影响注册（页面会提示重发）
+  let mailed = false;
+  try {
+    const sent = await issueCode(env, email, 'verify');
+    mailed = sent.ok;
+  } catch {
+    /* 发信服务抽风不影响注册 */
+  }
+
   const headers = new Headers({ 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
   headers.append('set-cookie', cookie(SESSION_COOKIE, sid, SESSION_DAYS * 86400));
   return new Response(
     JSON.stringify({
       ok: true,
+      mailed,
       user: publicUser({
         id: userId,
         provider: 'email',
@@ -74,6 +85,7 @@ export const onRequestPost = async (ctx: any) => {
         login: email,
         name: name || null,
         avatar: null,
+        verified: false,
         admin: false,
       }),
     }),
