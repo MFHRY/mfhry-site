@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>乒乓 · mfhry.store</title>
+<style>
+  :root{--bg:#0b0e11;--fg:#eaecef;--muted:#8b939c;--accent:#7fd1b0}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--fg);font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:18px}
+  .wrap{width:min(96vw,620px)}
+  .top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;gap:10px;flex-wrap:wrap}
+  h1{font-size:22px}
+  .stat{background:#161d24;border-radius:10px;padding:6px 14px;font-size:14px}
+  .stat b{color:var(--accent)}
+  .stage{position:relative;border-radius:14px;overflow:hidden;background:#121820}
+  canvas{display:block;width:100%;height:auto;touch-action:none}
+  .overlay{position:absolute;inset:0;background:rgba(0,0,0,.74);display:none;flex-direction:column;
+    align-items:center;justify-content:center;gap:14px;text-align:center;padding:16px}
+  .overlay.on{display:flex}
+  .overlay h2{font-size:20px}
+  button{font:inherit;padding:9px 22px;border-radius:10px;border:1px solid var(--accent);
+    background:transparent;color:var(--fg);cursor:pointer}
+  button:hover{background:rgba(127,209,176,.12)}
+  .hint{margin-top:10px;font-size:12px;color:var(--muted)}
+  .back{display:inline-block;margin-top:8px;font-size:12px;color:var(--muted);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>乒乓</h1>
+    <div class="stat">先到 <b>7</b> 分获胜</div>
+  </div>
+  <div class="stage">
+    <canvas id="cv"></canvas>
+    <div class="overlay" id="ov"><h2 id="ovt">乒乓</h2><button id="btn">开始</button></div>
+  </div>
+  <div class="hint">鼠标 / 手指拖动，或 W S / ↑ ↓ 控制球拍</div>
+  <a class="back" href="/games/">← 返回小游戏</a>
+</div>
+<script>
+(() => {
+  const W = 480, H = 320;
+  const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+  const ov = document.getElementById('ov'), ovt = document.getElementById('ovt'), btn = document.getElementById('btn');
+
+  const PW = 10, PH = 64, R = 6;
+  const player = { x: 18, y: H / 2 - PH / 2 };
+  const ai = { x: W - 28, y: H / 2 - PH / 2 };
+  const ball = { x: W / 2, y: H / 2, vx: 0, vy: 0 };
+  const WIN = 7;
+
+  let scoreP = 0, scoreA = 0, running = false, serveTimer = null, keys = {}, raf = null;
+  let speed = 4.4, scale = 1;
+
+  function fit() {
+    const w = cv.parentElement.clientWidth;
+    scale = w / W;
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    cv.width = W * dpr;
+    cv.height = H * dpr;
+    cv.style.width = w + 'px';
+    cv.style.height = H * scale + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function resetBall(dir) {
+    ball.x = W / 2;
+    ball.y = H / 2;
+    speed = 4.4;
+    const angle = (Math.random() * 0.7 - 0.35);
+    ball.vx = Math.cos(angle) * speed * dir;
+    ball.vy = Math.sin(angle) * speed;
+    clearTimeout(serveTimer);
+    serveTimer = setTimeout(() => { if (running) loop(); }, 500);
+  }
+
+  function serve(dir) {
+    clearTimeout(serveTimer);
+    ball.x = W / 2; ball.y = H / 2;
+    speed = 4.4;
+    const angle = Math.random() * 0.7 - 0.35;
+    ball.vx = Math.cos(angle) * speed * dir;
+    ball.vy = Math.sin(angle) * speed;
+  }
+
+  function point(who) {
+    if (who === 'p') scoreP++; else scoreA++;
+    cancelAnimationFrame(raf); raf = null;
+    if (scoreP >= WIN || scoreA >= WIN) {
+      running = false;
+      ovt.textContent = scoreP >= WIN ? '你赢了 ' + scoreP + ':' + scoreA : '输了 ' + scoreP + ':' + scoreA;
+      btn.textContent = '再来一局';
+      ov.classList.add('on');
+      draw();
+      return;
+    }
+    serve(who === 'p' ? -1 : 1);
+    setTimeout(() => { if (running) loop(); }, 600);
+    draw();
+  }
+
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+  function step() {
+    if (!running) return;
+
+    // 玩家：键盘
+    if (keys.up) player.y -= 6;
+    if (keys.down) player.y += 6;
+    player.y = clamp(player.y, 0, H - PH);
+    ai.y = clamp(ai.y, 0, H - PH);
+
+    // AI
+    const target = ball.y - PH / 2 + (Math.random() * 10 - 5);
+    const diff = target - ai.y;
+    ai.y += clamp(diff, -3.4, 3.4);
+
+    ball.x += ball.vx;
+    ball.y += ball.vy;
+
+    if (ball.y - R < 0) { ball.y = R; ball.vy = Math.abs(ball.vy); }
+    if (ball.y + R > H) { ball.y = H - R; ball.vy = -Math.abs(ball.vy); }
+
+    // 玩家拍
+    if (ball.vx < 0 && ball.x - R <= player.x + PW && ball.x - R >= player.x - PW &&
+        ball.y >= player.y - R && ball.y <= player.y + PH + R) {
+      ball.x = player.x + PW + R;
+      const rel = (ball.y - (player.y + PH / 2)) / (PH / 2);
+      speed = Math.min(9.5, speed * 1.06);
+      const angle = rel * 0.9;
+      ball.vx = Math.cos(angle) * speed;
+      ball.vy = Math.sin(angle) * speed;
+    }
+
+    // AI 拍
+    if (ball.vx > 0 && ball.x + R >= ai.x && ball.x + R <= ai.x + PW + 8 &&
+        ball.y >= ai.y - R && ball.y <= ai.y + PH + R) {
+      ball.x = ai.x - R;
+      const rel = (ball.y - (ai.y + PH / 2)) / (PH / 2);
+      speed = Math.min(9.5, speed * 1.06);
+      const angle = rel * 0.8;
+      ball.vx = -Math.cos(angle) * speed;
+      ball.vy = Math.sin(angle) * speed;
+    }
+
+    if (ball.x < -R * 4) { point('a'); return; }
+    if (ball.x > W + R * 4) { point('p'); return; }
+
+    draw();
+    raf = requestAnimationFrame(step);
+  }
+
+  function loop() {
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(step);
+  }
+
+  function draw() {
+    ctx.fillStyle = '#121820';
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.strokeStyle = 'rgba(255,255,255,.08)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([8, 12]);
+    ctx.beginPath(); ctx.moveTo(W / 2, 0); ctx.lineTo(W / 2, H); ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.fillStyle = 'rgba(234,236,239,.06)';
+    ctx.font = 'bold 76px -apple-system,sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(String(scoreP), W / 2 - 90, 96);
+    ctx.fillText(String(scoreA), W / 2 + 90, 96);
+
+    ctx.fillStyle = '#7fd1b0';
+    ctx.fillRect(player.x, player.y, PW, PH);
+    ctx.fillStyle = '#8b939c';
+    ctx.fillRect(ai.x, ai.y, PW, PH);
+
+    ctx.fillStyle = '#eaecef';
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, R, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function start() {
+    fit();
+    scoreP = 0; scoreA = 0; running = true;
+    player.y = H / 2 - PH / 2;
+    ai.y = H / 2 - PH / 2;
+    ov.classList.remove('on');
+    serve(Math.random() < .5 ? -1 : 1);
+    loop();
+  }
+
+  // 输入
+  cv.addEventListener('mousemove', (e) => {
+    const r = cv.getBoundingClientRect();
+    const y = (e.clientY - r.top) / r.height * H;
+    player.y = clamp(y - PH / 2, 0, H - PH);
+    if (!running) draw();
+  });
+  cv.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    const r = cv.getBoundingClientRect();
+    const y = (e.touches[0].clientY - r.top) / r.height * H;
+    player.y = clamp(y - PH / 2, 0, H - PH);
+    if (!running) draw();
+  }, { passive: false });
+
+  document.addEventListener('keydown', (e) => {
+    if (['ArrowUp', 'ArrowDown', ' '].includes(e.key)) e.preventDefault();
+    if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.up = true;
+    if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.down = true;
+    if (e.key === ' ' && !running) start();
+  });
+  document.addEventListener('keyup', (e) => {
+    if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.up = false;
+    if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.down = false;
+  });
+
+  btn.addEventListener('click', start);
+  window.addEventListener('resize', () => { fit(); draw(); });
+
+  fit();
+  draw();
+})();
+</script>
+</body>
+</html>

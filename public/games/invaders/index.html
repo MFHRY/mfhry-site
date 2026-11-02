@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>太空侵略者 · mfhry.store</title>
+<style>
+  :root{--bg:#0b0e11;--fg:#eaecef;--muted:#8b939c;--accent:#7fd1b0}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--fg);font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:18px}
+  .wrap{width:min(96vw,600px)}
+  .top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;gap:10px;flex-wrap:wrap}
+  h1{font-size:22px}
+  .stat{background:#161d24;border-radius:10px;padding:6px 14px;font-size:14px}
+  .stat b{color:var(--accent)}
+  .stage{position:relative;border-radius:14px;overflow:hidden;background:#0d1218}
+  canvas{display:block;width:100%;height:auto;touch-action:none}
+  .overlay{position:absolute;inset:0;background:rgba(0,0,0,.76);display:none;flex-direction:column;
+    align-items:center;justify-content:center;gap:14px;text-align:center;padding:16px}
+  .overlay.on{display:flex}
+  .overlay h2{font-size:20px}
+  .overlay p{color:var(--muted);font-size:13px}
+  button{font:inherit;padding:9px 22px;border-radius:10px;border:1px solid var(--accent);
+    background:transparent;color:var(--fg);cursor:pointer}
+  button:hover{background:rgba(127,209,176,.12)}
+  .hint{margin-top:10px;font-size:12px;color:var(--muted)}
+  .back{display:inline-block;margin-top:8px;font-size:12px;color:var(--muted);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>太空侵略者</h1>
+    <div class="stat">分数 <b id="score">0</b> · 命 <b id="lives">3</b> · 最高 <b id="best">0</b></div>
+  </div>
+  <div class="stage">
+    <canvas id="cv"></canvas>
+    <div class="overlay" id="ov"><h2 id="ovt">太空侵略者</h2><p id="ovs">← → 移动 · 空格射击</p><button id="btn">开始</button></div>
+  </div>
+  <div class="hint">← → / A D 移动，空格开火；手机可拖动飞船、点按射击</div>
+  <a class="back" href="/games/">← 返回小游戏</a>
+</div>
+<script>
+(() => {
+  const W = 480, H = 360;
+  const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+  const $score = document.getElementById('score');
+  const $lives = document.getElementById('lives');
+  const $best = document.getElementById('best');
+  const ov = document.getElementById('ov'), ovt = document.getElementById('ovt'), ovs = document.getElementById('ovs'), btn = document.getElementById('btn');
+
+  const COLS = 8, ROWS = 5;
+  const IW = 24, IH = 16, GAPX = 14, GAPY = 14;
+
+  let ship, bullets, bombs, invaders, dirX, gx, gy, score, lives, wave, running, raf = null;
+  let best = +(localStorage.getItem('mfhry_invaders_best') || 0);
+  let keys = {}, bombTimer = 0, lastTime = 0;
+  $best.textContent = best;
+
+  function fit() {
+    const w = cv.parentElement.clientWidth;
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    cv.width = W * dpr;
+    cv.height = H * dpr;
+    cv.style.width = w + 'px';
+    cv.style.height = (H * w / W) + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function newWave() {
+    invaders = [];
+    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+      invaders.push({ c, r, alive: true, x: 60 + c * (IW + GAPX), y: 44 + r * (IH + GAPY) });
+    }
+    gx = 0; gy = 0; dirX = 1;
+  }
+
+  function reset(full) {
+    ship = { x: W / 2 - 14, y: H - 34, w: 28, h: 12 };
+    bullets = [];
+    bombs = [];
+    newWave();
+    if (full) { score = 0; lives = 3; wave = 1; $score.textContent = 0; $lives.textContent = 3; }
+    bombTimer = 0;
+    running = true;
+    ov.classList.remove('on');
+    lastTime = 0;
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(loop);
+  }
+
+  const speedOf = () => 22 + wave * 8 + (ROWS * COLS - alive()) * 0.9;
+
+  function alive() { return invaders.filter((i) => i.alive).length; }
+
+  function gameOver() {
+    running = false;
+    cancelAnimationFrame(raf);
+    if (score > best) {
+      best = score;
+      localStorage.setItem('mfhry_invaders_best', best);
+      $best.textContent = best;
+    }
+    ovt.textContent = '游戏结束 · ' + score + ' 分';
+    ovs.textContent = '到达第 ' + wave + ' 波';
+    btn.textContent = '再来一局';
+    ov.classList.add('on');
+  }
+
+  function nextWave() {
+    wave++;
+    newWave();
+    bombs = [];
+  }
+
+  function fire() {
+    if (!running) return;
+    if (bullets.length >= 2) return;
+    bullets.push({ x: ship.x + ship.w / 2, y: ship.y, vy: -420 });
+  }
+
+  function dropBombs(dt) {
+    bombTimer -= dt;
+    if (bombTimer > 0) return;
+    bombTimer = Math.max(0.28, 1.05 - wave * 0.09);
+    // 随机挑一个最靠下的侵略者开火
+    const cols = {};
+    for (const inv of invaders) {
+      if (!inv.alive) continue;
+      const key = inv.c;
+      if (!cols[key] || inv.r > cols[key].r) cols[key] = inv;
+    }
+    const pool = Object.values(cols);
+    if (!pool.length) return;
+    const shooter = pool[(Math.random() * pool.length) | 0];
+    bombs.push({ x: shooter.x + IW / 2 + gx, y: shooter.y + gy + IH, vy: 130 + wave * 8 });
+  }
+
+  function loop(t) {
+    if (!running) return;
+    const dt = lastTime ? Math.min(0.05, (t - lastTime) / 1000) : 0.016;
+    lastTime = t;
+
+    // 移动飞船
+    if (keys.left) ship.x -= 260 * dt;
+    if (keys.right) ship.x += 260 * dt;
+    ship.x = Math.max(8, Math.min(W - ship.w - 8, ship.x));
+
+    // 侵略者整体移动
+    const sp = speedOf();
+    gx += dirX * sp * dt;
+    let minX = Infinity, maxX = -Infinity;
+    for (const inv of invaders) {
+      if (!inv.alive) continue;
+      minX = Math.min(minX, inv.x + gx);
+      maxX = Math.max(maxX, inv.x + gx + IW);
+    }
+    if (minX < 8 || maxX > W - 8) {
+      dirX *= -1;
+      gy += 14;
+    }
+
+    // 侵略者是否压到底线
+    let lowest = 0;
+    for (const inv of invaders) if (inv.alive) lowest = Math.max(lowest, inv.y + gy + IH);
+    if (lowest >= ship.y) { gameOver(); return; }
+
+    // 子弹
+    for (const b of bullets) b.y += b.vy * dt;
+    bullets = bullets.filter((b) => b.y > -10);
+    for (const b of bombs) b.y += b.vy * dt;
+    bombs = bombs.filter((b) => b.y < H + 10);
+
+    // 子弹命中
+    for (const b of bullets) {
+      for (const inv of invaders) {
+        if (!inv.alive) continue;
+        const ix = inv.x + gx, iy = inv.y + gy;
+        if (b.x > ix && b.x < ix + IW && b.y > iy && b.y < iy + IH) {
+          inv.alive = false;
+          b.dead = true;
+          score += 10;
+          $score.textContent = score;
+          break;
+        }
+      }
+    }
+    bullets = bullets.filter((b) => !b.dead);
+
+    // 炸弹命中玩家
+    for (const b of bombs) {
+      if (b.x > ship.x && b.x < ship.x + ship.w && b.y > ship.y && b.y < ship.y + ship.h + 6) {
+        b.dead = true;
+        lives--;
+        $lives.textContent = Math.max(0, lives);
+        if (lives <= 0) { gameOver(); return; }
+      }
+    }
+    bombs = bombs.filter((b) => !b.dead);
+
+    dropBombs(dt);
+
+    if (alive() === 0) nextWave();
+
+    draw();
+    raf = requestAnimationFrame(loop);
+  }
+
+  function draw() {
+    ctx.fillStyle = '#0d1218';
+    ctx.fillRect(0, 0, W, H);
+
+    // 星星
+    for (let i = 0; i < 60; i++) {
+      const x = (i * 97 + 13) % W;
+      const y = (i * 53 + (performance.now() / 90) % 40 * (i % 3 + 1)) % H;
+      ctx.fillStyle = 'rgba(255,255,255,' + (0.08 + (i % 5) * 0.05) + ')';
+      ctx.fillRect(x, y % H, 1.6, 1.6);
+    }
+
+    // 侵略者
+    const colors = ['#7fd1b0', '#e8c46a', '#c58ee0', '#6aa8e8', '#e57b6b'];
+    invaders.forEach((inv) => {
+      if (!inv.alive) return;
+      const x = inv.x + gx, y = inv.y + gy;
+      ctx.fillStyle = colors[inv.r % colors.length];
+      ctx.fillRect(x + 4, y, IW - 8, 5);
+      ctx.fillRect(x, y + 5, IW, 5);
+      ctx.fillRect(x + 2, y + 10, 4, 3);
+      ctx.fillRect(x + IW - 6, y + 10, 4, 3);
+      ctx.fillStyle = 'rgba(10,14,18,.85)';
+      ctx.fillRect(x + 7, y + 5, 3, 3);
+      ctx.fillRect(x + IW - 10, y + 5, 3, 3);
+    });
+
+    // 飞船
+    ctx.fillStyle = '#eaecef';
+    ctx.beginPath();
+    ctx.moveTo(ship.x + ship.w / 2, ship.y - 8);
+    ctx.lineTo(ship.x + ship.w, ship.y + ship.h);
+    ctx.lineTo(ship.x, ship.y + ship.h);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#7fd1b0';
+    ctx.fillRect(ship.x + ship.w / 2 - 2, ship.y + ship.h, 4, 4);
+
+    // 子弹
+    ctx.fillStyle = '#7fd1b0';
+    for (const b of bullets) ctx.fillRect(b.x - 1.5, b.y - 8, 3, 10);
+    ctx.fillStyle = '#e57b6b';
+    for (const b of bombs) ctx.fillRect(b.x - 1.5, b.y, 3, 9);
+
+    // 地面线
+    ctx.fillStyle = 'rgba(127,209,176,.35)';
+    ctx.fillRect(0, H - 4, W, 2);
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (['ArrowLeft', 'ArrowRight', ' '].includes(e.key)) e.preventDefault();
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = true;
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = true;
+    if (e.key === ' ') fire();
+    if (e.key === 'Enter' && !running) reset(true);
+  });
+  document.addEventListener('keyup', (e) => {
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = false;
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = false;
+  });
+
+  cv.addEventListener('pointermove', (e) => {
+    if (!running) return;
+    const r = cv.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width * W;
+    ship.x = Math.max(8, Math.min(W - ship.w - 8, x - ship.w / 2));
+  });
+  cv.addEventListener('pointerdown', (e) => {
+    const r = cv.getBoundingClientRect();
+    ship.x = Math.max(8, Math.min(W - ship.w - 8, (e.clientX - r.left) / r.width * W - ship.w / 2));
+    fire();
+  });
+
+  btn.addEventListener('click', () => reset(true));
+  window.addEventListener('resize', fit);
+
+  fit();
+  reset(true);
+  running = false;
+  cancelAnimationFrame(raf);
+  ship = { x: W / 2 - 14, y: H - 34, w: 28, h: 12 };
+  bullets = []; bombs = [];
+  newWave();
+  draw();
+})();
+</script>
+</body>
+</html>

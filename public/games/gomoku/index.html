@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>五子棋 · mfhry.store</title>
+<style>
+  :root{--bg:#0b0e11;--fg:#eaecef;--muted:#8b939c;--accent:#7fd1b0}
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{background:var(--bg);color:var(--fg);font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:18px}
+  .wrap{width:min(96vw,520px)}
+  .top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;gap:10px;flex-wrap:wrap}
+  h1{font-size:22px}
+  .stat{background:#161d24;border-radius:10px;padding:6px 14px;font-size:14px;color:var(--muted)}
+  .stat b{color:var(--fg)}
+  .bar{display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap}
+  button{font:inherit;padding:7px 14px;border-radius:10px;border:1px solid #2a3540;background:#161d24;
+    color:var(--fg);cursor:pointer;font-size:13px}
+  button:hover{background:rgba(127,209,176,.12)}
+  button.on{border-color:var(--accent);color:var(--accent);background:rgba(127,209,176,.1)}
+  .bar .spacer{margin-left:auto}
+  .stage{position:relative;border-radius:14px;overflow:hidden;background:#1a1512}
+  canvas{display:block;width:100%;height:auto;touch-action:manipulation}
+  .msg{margin-top:10px;font-size:13px;color:var(--muted);min-height:20px}
+  .msg b{color:var(--accent)}
+  .hint{margin-top:4px;font-size:12px;color:var(--muted)}
+  .back{display:inline-block;margin-top:8px;font-size:12px;color:var(--muted);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>五子棋</h1>
+    <div class="stat">胜 <b id="win">0</b> · 负 <b id="lose">0</b></div>
+  </div>
+  <div class="bar">
+    <button id="modeAi" class="on">人机</button>
+    <button id="modeTwo">双人</button>
+    <button id="undo">悔棋</button>
+    <button id="restart" class="spacer">重开</button>
+  </div>
+  <div class="stage"><canvas id="cv"></canvas></div>
+  <div class="msg" id="msg">你执黑先行，点棋盘落子</div>
+  <div class="hint">横、竖、斜任意方向连成五子即胜</div>
+  <a class="back" href="/games/">← 返回小游戏</a>
+</div>
+<script>
+(() => {
+  const N = 15;
+  const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+  const $msg = document.getElementById('msg');
+  const $win = document.getElementById('win');
+  const $lose = document.getElementById('lose');
+
+  const EMPTY = 0, BLACK = 1, WHITE = 2;
+  const DIRS = [[1, 0], [0, 1], [1, 1], [1, -1]];
+
+  let board, turn, over, mode = 'ai', history = [], thinking = false, cell = 30, pad = 18, size = 480;
+  let winCount = +(localStorage.getItem('mfhry_gomoku_win') || 0);
+  let loseCount = +(localStorage.getItem('mfhry_gomoku_lose') || 0);
+  $win.textContent = winCount;
+  $lose.textContent = loseCount;
+
+  function fit() {
+    const w = cv.parentElement.clientWidth;
+    size = w;
+    cell = (size - pad * 2) / (N - 1);
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    cv.width = size * dpr;
+    cv.height = size * dpr;
+    cv.style.width = size + 'px';
+    cv.style.height = size + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    draw();
+  }
+
+  function reset() {
+    board = Array.from({ length: N }, () => Array(N).fill(EMPTY));
+    turn = BLACK; over = false; history = []; thinking = false;
+    $msg.textContent = mode === 'ai' ? '你执黑先行，点棋盘落子' : '黑棋先行';
+    draw();
+  }
+
+  const inBoard = (x, y) => x >= 0 && y >= 0 && x < N && y < N;
+
+  function wins(x, y, who) {
+    for (const [dx, dy] of DIRS) {
+      let count = 1;
+      for (const s of [1, -1]) {
+        let step = 1;
+        while (true) {
+          const nx = x + dx * step * s, ny = y + dy * step * s;
+          if (!inBoard(nx, ny) || board[ny][nx] !== who) break;
+          count++; step++;
+        }
+      }
+      if (count >= 5) return true;
+    }
+    return false;
+  }
+
+  function place(x, y, who) {
+    board[y][x] = who;
+    history.push({ x, y, who });
+    draw();
+    return wins(x, y, who);
+  }
+
+  function endGame(winner) {
+    over = true;
+    if (mode === 'ai') {
+      if (winner === BLACK) {
+        winCount++;
+        localStorage.setItem('mfhry_gomoku_win', winCount);
+        $msg.innerHTML = '<b>你赢了</b> · 五子连珠';
+      } else {
+        loseCount++;
+        localStorage.setItem('mfhry_gomoku_lose', loseCount);
+        $msg.innerHTML = '<b>电脑赢了</b> · 再来一局？';
+      }
+      $win.textContent = winCount;
+      $lose.textContent = loseCount;
+    } else {
+      $msg.innerHTML = (winner === BLACK ? '<b>黑棋</b>' : '<b>白棋</b>') + ' 获胜';
+    }
+  }
+
+  function draw() {
+    // 木纹底
+    const g = ctx.createLinearGradient(0, 0, size, size);
+    g.addColorStop(0, '#241c16');
+    g.addColorStop(1, '#1a1512');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, size, size);
+
+    ctx.strokeStyle = 'rgba(200,180,150,.22)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < N; i++) {
+      const p = pad + i * cell;
+      ctx.beginPath(); ctx.moveTo(pad, p); ctx.lineTo(size - pad, p); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(p, pad); ctx.lineTo(p, size - pad); ctx.stroke();
+    }
+
+    // 星位
+    ctx.fillStyle = 'rgba(200,180,150,.5)';
+    for (const [x, y] of [[3, 3], [11, 3], [3, 11], [11, 11], [7, 7]]) {
+      ctx.beginPath();
+      ctx.arc(pad + x * cell, pad + y * cell, Math.max(2, cell * 0.08), 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 棋子
+    const r = cell * 0.44;
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+      const v = board[y][x];
+      if (!v) continue;
+      const cx = pad + x * cell, cy = pad + y * cell;
+      const grad = ctx.createRadialGradient(cx - r * .35, cy - r * .35, r * .15, cx, cy, r);
+      if (v === BLACK) { grad.addColorStop(0, '#5a626b'); grad.addColorStop(1, '#0d1117'); }
+      else { grad.addColorStop(0, '#ffffff'); grad.addColorStop(1, '#b9c3cc'); }
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // 最后一手标记
+    const last = history[history.length - 1];
+    if (last) {
+      ctx.strokeStyle = '#e57b6b';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(pad + last.x * cell, pad + last.y * cell, r * 0.4, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+
+  // ---------- AI ----------
+  function evaluate(x, y, who) {
+    let score = 0;
+    for (const [dx, dy] of DIRS) {
+      for (let off = -4; off <= 0; off++) {
+        let own = 0, opp = 0, ok = true;
+        for (let i = 0; i < 5; i++) {
+          const nx = x + (off + i) * dx, ny = y + (off + i) * dy;
+          if (!inBoard(nx, ny)) { ok = false; break; }
+          const v = board[ny][nx];
+          if (v === who) own++;
+          else if (v !== EMPTY) opp++;
+        }
+        if (!ok || opp) continue;
+        if (own >= 4) score += 1000000;
+        else if (own === 3) score += 6000;
+        else if (own === 2) score += 400;
+        else if (own === 1) score += 25;
+      }
+    }
+    return score;
+  }
+
+  function candidates() {
+    const out = [];
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+      if (board[y][x] !== EMPTY) continue;
+      let near = false;
+      for (let dy = -2; dy <= 2 && !near; dy++) for (let dx = -2; dx <= 2; dx++) {
+        const nx = x + dx, ny = y + dy;
+        if (inBoard(nx, ny) && board[ny][nx] !== EMPTY) { near = true; break; }
+      }
+      if (near) out.push({ x, y });
+    }
+    if (!out.length) out.push({ x: (N >> 1), y: (N >> 1) });
+    return out;
+  }
+
+  function aiMove() {
+    thinking = true;
+    $msg.textContent = '电脑思考中…';
+    setTimeout(() => {
+      let bestScore = -1, best = null;
+      for (const c of candidates()) {
+        const attack = evaluate(c.x, c.y, WHITE);
+        const defend = evaluate(c.x, c.y, BLACK);
+        const center = 10 - (Math.abs(c.x - 7) + Math.abs(c.y - 7));
+        const s = attack + defend * 0.9 + center;
+        if (s > bestScore) { bestScore = s; best = c; }
+      }
+      thinking = false;
+      if (!best || over) return;
+      if (place(best.x, best.y, WHITE)) endGame(WHITE);
+      else {
+        turn = BLACK;
+        $msg.textContent = '你的回合';
+      }
+    }, 180);
+  }
+
+  // ---------- 交互 ----------
+  function clickAt(px, py) {
+    const x = Math.round((px - pad) / cell);
+    const y = Math.round((py - pad) / cell);
+    if (!inBoard(x, y) || board[y][x] !== EMPTY) return;
+    if (over || thinking) return;
+    if (mode === 'ai' && turn !== BLACK) return;
+
+    if (place(x, y, turn)) { endGame(turn); return; }
+    if (mode === 'ai') { turn = WHITE; aiMove(); }
+    else { turn = turn === BLACK ? WHITE : BLACK; $msg.textContent = turn === BLACK ? '黑棋回合' : '白棋回合'; }
+  }
+
+  cv.addEventListener('click', (e) => {
+    const r = cv.getBoundingClientRect();
+    clickAt(e.clientX - r.left, e.clientY - r.top);
+  });
+  cv.addEventListener('touchend', (e) => {
+    const t = e.changedTouches[0];
+    if (!t) return;
+    e.preventDefault();
+    const r = cv.getBoundingClientRect();
+    clickAt(t.clientX - r.left, t.clientY - r.top);
+  }, { passive: false });
+
+  document.getElementById('undo').addEventListener('click', () => {
+    if (!history.length || thinking) return;
+    const back = mode === 'ai' && history.length >= 2 ? 2 : 1;
+    for (let i = 0; i < back; i++) {
+      const last = history.pop();
+      if (!last) break;
+      board[last.y][last.x] = EMPTY;
+    }
+    over = false;
+    turn = BLACK;
+    $msg.textContent = mode === 'ai' ? '你的回合' : '黑棋回合';
+    draw();
+  });
+
+  const setMode = (m) => {
+    mode = m;
+    document.getElementById('modeAi').classList.toggle('on', m === 'ai');
+    document.getElementById('modeTwo').classList.toggle('on', m === 'two');
+    reset();
+  };
+  document.getElementById('modeAi').addEventListener('click', () => setMode('ai'));
+  document.getElementById('modeTwo').addEventListener('click', () => setMode('two'));
+  document.getElementById('restart').addEventListener('click', reset);
+
+  window.addEventListener('resize', fit);
+
+  reset();
+  fit();
+})();
+</script>
+</body>
+</html>

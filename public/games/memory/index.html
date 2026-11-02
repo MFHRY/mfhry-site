@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>记忆翻牌 · mfhry.store</title>
+<style>
+  :root{--bg:#0b0e11;--fg:#eaecef;--muted:#8b939c;--accent:#7fd1b0}
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{background:var(--bg);color:var(--fg);font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:18px}
+  .wrap{width:min(94vw,460px)}
+  .top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;gap:10px;flex-wrap:wrap}
+  h1{font-size:22px}
+  .stat{background:#161d24;border-radius:10px;padding:6px 14px;font-size:14px}
+  .stat b{color:var(--accent)}
+  .bar{display:flex;gap:8px;margin-bottom:10px;align-items:center}
+  .chip{background:#161d24;border-radius:10px;padding:7px 12px;font-size:13px;color:var(--muted)}
+  .chip b{color:var(--fg)}
+  .bar button{margin-left:auto}
+  button{font:inherit;padding:8px 16px;border-radius:10px;border:1px solid #2a3540;background:#161d24;
+    color:var(--fg);cursor:pointer;font-size:14px}
+  button:hover{background:rgba(127,209,176,.12)}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .card{aspect-ratio:1;perspective:800px;cursor:pointer}
+  .inner{position:relative;width:100%;height:100%;transition:transform .28s;transform-style:preserve-3d}
+  .card.flip .inner,.card.done .inner{transform:rotateY(180deg)}
+  .face{position:absolute;inset:0;border-radius:12px;display:flex;align-items:center;justify-content:center;
+    backface-visibility:hidden;font-size:clamp(24px,9vw,38px);user-select:none}
+  .front{background:#1d2731;border:1px solid #26323e;color:#3b4b59;font-size:20px}
+  .back{background:#1a2730;border:1px solid #2f4a44;transform:rotateY(180deg)}
+  .card.done .back{background:#182e2a;border-color:var(--accent)}
+  .overlay{position:fixed;inset:0;background:rgba(5,7,9,.8);display:none;align-items:center;justify-content:center;
+    flex-direction:column;gap:14px;text-align:center;padding:24px}
+  .overlay.on{display:flex}
+  .overlay h2{font-size:22px}
+  .overlay p{color:var(--muted);font-size:14px}
+  .hint{margin-top:12px;font-size:12px;color:var(--muted)}
+  .back-link{display:inline-block;margin-top:8px;font-size:12px;color:var(--muted);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>记忆翻牌</h1>
+    <div class="stat">最少步数 <b id="best">--</b></div>
+  </div>
+  <div class="bar">
+    <span class="chip">步数 <b id="moves">0</b></span>
+    <span class="chip">时间 <b id="time">0</b>s</span>
+    <button id="reset">重开</button>
+  </div>
+  <div class="grid" id="grid"></div>
+  <div class="hint">翻开两张相同的牌，全部配对即通关</div>
+  <a class="back-link" href="/games/">← 返回小游戏</a>
+</div>
+<div class="overlay" id="ov"><h2 id="ovt">通关 🎉</h2><p id="ovs"></p><button id="again">再来一局</button></div>
+<script>
+(() => {
+  const EMOJI = ['🐶', '🐱', '🦊', '🐼', '🐸', '🐵', '🦁', '🐯'];
+  const grid = document.getElementById('grid');
+  const $moves = document.getElementById('moves');
+  const $time = document.getElementById('time');
+  const $best = document.getElementById('best');
+  const ov = document.getElementById('ov'), ovt = document.getElementById('ovt'), ovs = document.getElementById('ovs');
+
+  let deck, first = null, second = null, lock = false, moves = 0, matched = 0, timer = null, seconds = 0, running = false;
+  const best = +(localStorage.getItem('mfhry_memory_best') || 0);
+  $best.textContent = best ? best + ' 步' : '--';
+
+  const shuffle = (a) => {
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = (Math.random() * (i + 1)) | 0;
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  };
+
+  function build() {
+    grid.innerHTML = '';
+    deck = shuffle([...EMOJI, ...EMOJI]).map((e, i) => ({ id: i, emoji: e, done: false }));
+    deck.forEach((card) => {
+      const el = document.createElement('div');
+      el.className = 'card';
+      el.dataset.id = card.id;
+      el.innerHTML = '<div class="inner"><div class="face front">?</div><div class="face back">' + card.emoji + '</div></div>';
+      grid.appendChild(el);
+      card.el = el;
+    });
+  }
+
+  function reset() {
+    clearInterval(timer);
+    seconds = 0; moves = 0; matched = 0; running = false;
+    first = second = null; lock = false;
+    $moves.textContent = 0;
+    $time.textContent = 0;
+    ov.classList.remove('on');
+    build();
+  }
+
+  function tick() {
+    seconds++;
+    $time.textContent = seconds;
+  }
+
+  function flip(card) {
+    if (lock || card.done || card.el.classList.contains('flip')) return;
+    if (!running) { running = true; timer = setInterval(tick, 1000); }
+    card.el.classList.add('flip');
+    if (!first) { first = card; return; }
+    second = card;
+    moves++;
+    $moves.textContent = moves;
+    lock = true;
+
+    if (first.emoji === second.emoji) {
+      setTimeout(() => {
+        first.el.classList.add('done');
+        second.el.classList.add('done');
+        first.done = second.done = true;
+        matched++;
+        first = second = null;
+        lock = false;
+        if (matched === EMOJI.length) win();
+      }, 320);
+    } else {
+      setTimeout(() => {
+        first.el.classList.remove('flip');
+        second.el.classList.remove('flip');
+        first = second = null;
+        lock = false;
+      }, 620);
+    }
+  }
+
+  function win() {
+    clearInterval(timer);
+    const prev = +(localStorage.getItem('mfhry_memory_best') || 0);
+    if (!prev || moves < prev) {
+      localStorage.setItem('mfhry_memory_best', moves);
+      $best.textContent = moves + ' 步';
+    }
+    ovt.textContent = '通关 🎉';
+    ovs.textContent = moves + ' 步 · ' + seconds + ' 秒' + (!prev || moves < prev ? ' · 新纪录' : '');
+    ov.classList.add('on');
+  }
+
+  grid.addEventListener('click', (e) => {
+    const el = e.target.closest('.card');
+    if (!el) return;
+    const card = deck.find((c) => c.id === +el.dataset.id);
+    if (card) flip(card);
+  });
+
+  document.getElementById('reset').addEventListener('click', reset);
+  document.getElementById('again').addEventListener('click', reset);
+
+  reset();
+})();
+</script>
+</body>
+</html>

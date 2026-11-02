@@ -55,6 +55,78 @@
     "status": "play"
   },
   {
+    "slug": "tetris",
+    "title": "俄罗斯方块",
+    "desc": "经典俄罗斯方块：七种方块、消行加速、下一个预览，键盘和触屏都能玩。",
+    "tag": "街机",
+    "emoji": "🟦",
+    "href": "/games/tetris/",
+    "status": "play"
+  },
+  {
+    "slug": "minesweeper",
+    "title": "扫雷",
+    "desc": "9×9 经典扫雷：左键翻开、右键插旗，手机长按插旗，计时比速度。",
+    "tag": "益智",
+    "emoji": "💣",
+    "href": "/games/minesweeper/",
+    "status": "play"
+  },
+  {
+    "slug": "gomoku",
+    "title": "五子棋",
+    "desc": "15×15 棋盘，人机对战或双人同屏；电脑会连自己的子，也会堵你的。",
+    "tag": "棋类",
+    "emoji": "⚫",
+    "href": "/games/gomoku/",
+    "status": "play"
+  },
+  {
+    "slug": "pong",
+    "title": "乒乓",
+    "desc": "最原始的对打：鼠标或手指控制球拍，和会追球的 AI 打到 7 分。",
+    "tag": "街机",
+    "emoji": "🏓",
+    "href": "/games/pong/",
+    "status": "play"
+  },
+  {
+    "slug": "flappy",
+    "title": "像素鸟",
+    "desc": "点一下拍翅膀，穿过一根根水管；撞了就重来，只看最高分。",
+    "tag": "休闲",
+    "emoji": "🐤",
+    "href": "/games/flappy/",
+    "status": "play"
+  },
+  {
+    "slug": "invaders",
+    "title": "太空侵略者",
+    "desc": "守住底线，一波波打光外星人，越打越快，漏一个就扣命。",
+    "tag": "街机",
+    "emoji": "👾",
+    "href": "/games/invaders/",
+    "status": "play"
+  },
+  {
+    "slug": "memory",
+    "title": "记忆翻牌",
+    "desc": "4×4 翻牌配对，记住位置，用最少的步数翻完。",
+    "tag": "益智",
+    "emoji": "🃏",
+    "href": "/games/memory/",
+    "status": "play"
+  },
+  {
+    "slug": "puzzle15",
+    "title": "数字华容道",
+    "desc": "4×4 滑块拼图，把 1–15 按顺序推回原位，计步计时。",
+    "tag": "益智",
+    "emoji": "🔢",
+    "href": "/games/puzzle15/",
+    "status": "play"
+  },
+  {
     "slug": "cs16",
     "title": "CS 1.6",
     "desc": "play-cs.com 的浏览器版反恐精英：直接进服务器开打，不用装客户端。",

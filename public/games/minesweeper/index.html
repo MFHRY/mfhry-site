@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>扫雷 · mfhry.store</title>
+<style>
+  :root{--bg:#0b0e11;--fg:#eaecef;--muted:#8b939c;--accent:#7fd1b0}
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{background:var(--bg);color:var(--fg);font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:18px}
+  .wrap{width:min(94vw,460px)}
+  .top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;gap:10px;flex-wrap:wrap}
+  h1{font-size:22px}
+  .stat{background:#161d24;border-radius:10px;padding:6px 14px;font-size:14px}
+  .stat b{color:var(--accent)}
+  .bar{display:flex;gap:8px;margin-bottom:10px;align-items:center}
+  .bar .chip{background:#161d24;border-radius:10px;padding:7px 12px;font-size:13px;color:var(--muted)}
+  .bar .chip b{color:var(--fg)}
+  .bar button{margin-left:auto}
+  button{font:inherit;padding:8px 16px;border-radius:10px;border:1px solid #2a3540;background:#161d24;
+    color:var(--fg);cursor:pointer;font-size:14px}
+  button:hover{background:rgba(127,209,176,.12)}
+  button:active{transform:scale(.97)}
+  .grid{display:grid;grid-template-columns:repeat(9,1fr);gap:4px;background:#121820;padding:8px;border-radius:14px}
+  .cell{aspect-ratio:1;border-radius:6px;background:#1d2731;display:flex;align-items:center;justify-content:center;
+    font-weight:600;font-size:clamp(13px,3.6vw,19px);cursor:pointer;user-select:none;transition:background .12s}
+  .cell:hover{background:#26323e}
+  .cell.open{background:#141b22;cursor:default}
+  .cell.open:hover{background:#141b22}
+  .cell.flag{background:#2b2430}
+  .cell.mine{background:#4a1f24}
+  .cell.wrong{background:#3a2a1c}
+  .c1{color:#6aa8e8}.c2{color:#6cc98a}.c3{color:#e57b6b}.c4{color:#c58ee0}
+  .c5{color:#e8c46a}.c6{color:#54c0b8}.c7{color:#dfe3e8}.c8{color:#8b939c}
+  .overlay{position:fixed;inset:0;background:rgba(5,7,9,.8);display:none;align-items:center;justify-content:center;
+    flex-direction:column;gap:14px;text-align:center;padding:24px}
+  .overlay.on{display:flex}
+  .overlay h2{font-size:22px}
+  .overlay p{color:var(--muted);font-size:14px}
+  .hint{margin-top:10px;font-size:12px;color:var(--muted)}
+  .back{display:inline-block;margin-top:8px;font-size:12px;color:var(--muted);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>扫雷</h1>
+    <div class="stat">最高 <b id="best">--</b></div>
+  </div>
+  <div class="bar">
+    <span class="chip">雷 <b id="mines">10</b></span>
+    <span class="chip">时间 <b id="time">0</b></span>
+    <button id="reset">重开</button>
+  </div>
+  <div class="grid" id="grid"></div>
+  <div class="hint">左键翻开 · 右键插旗 · 手机长按插旗</div>
+  <a class="back" href="/games/">← 返回小游戏</a>
+</div>
+<div class="overlay" id="ov"><h2 id="ovt"></h2><p id="ovs"></p><button id="again">再来一局</button></div>
+<script>
+(() => {
+  const SIZE = 9, MINES = 10;
+  const grid = document.getElementById('grid');
+  const $mines = document.getElementById('mines');
+  const $time = document.getElementById('time');
+  const $best = document.getElementById('best');
+  const ov = document.getElementById('ov'), ovt = document.getElementById('ovt'), ovs = document.getElementById('ovs');
+
+  let cells, mineSet, openCount, flags, started, dead, won, timer = null, seconds = 0;
+  const best = +(localStorage.getItem('mfhry_mines_best') || 0);
+  $best.textContent = best ? best + ' 秒' : '--';
+
+  const idx = (x, y) => y * SIZE + x;
+  const neighbors = (i) => {
+    const x = i % SIZE, y = (i / SIZE) | 0, out = [];
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      if (!dx && !dy) continue;
+      const nx = x + dx, ny = y + dy;
+      if (nx >= 0 && ny >= 0 && nx < SIZE && ny < SIZE) out.push(idx(nx, ny));
+    }
+    return out;
+  };
+
+  function build() {
+    grid.innerHTML = '';
+    cells = [];
+    for (let i = 0; i < SIZE * SIZE; i++) {
+      const el = document.createElement('div');
+      el.className = 'cell';
+      el.dataset.i = i;
+      grid.appendChild(el);
+      cells.push(el);
+    }
+  }
+
+  function reset() {
+    clearInterval(timer);
+    seconds = 0;
+    $time.textContent = '0';
+    mineSet = new Set();
+    openCount = 0;
+    flags = 0;
+    started = dead = won = false;
+    $mines.textContent = MINES;
+    ov.classList.remove('on');
+    build();
+  }
+
+  function layMines(safe) {
+    const banned = new Set([safe, ...neighbors(safe)]);
+    const pool = [];
+    for (let i = 0; i < SIZE * SIZE; i++) if (!banned.has(i)) pool.push(i);
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = (Math.random() * (i + 1)) | 0;
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    for (let i = 0; i < MINES; i++) mineSet.add(pool[i]);
+  }
+
+  function count(i) {
+    return neighbors(i).filter((n) => mineSet.has(n)).length;
+  }
+
+  function startTimer() {
+    clearInterval(timer);
+    timer = setInterval(() => {
+      seconds++;
+      $time.textContent = seconds;
+      if (seconds > 999) clearInterval(timer);
+    }, 1000);
+  }
+
+  function open(i) {
+    const el = cells[i];
+    if (dead || won || el.classList.contains('open')) return;
+    if (el.classList.contains('flag')) return;
+
+    if (!started) {
+      layMines(i);
+      started = true;
+      startTimer();
+    }
+
+    if (mineSet.has(i)) {
+      el.classList.add('open', 'mine');
+      el.textContent = '💥';
+      lose();
+      return;
+    }
+
+    const stack = [i];
+    while (stack.length) {
+      const cur = stack.pop();
+      const c = cells[cur];
+      if (c.classList.contains('open') || c.classList.contains('flag')) continue;
+      c.classList.add('open');
+      openCount++;
+      const n = count(cur);
+      if (n) {
+        c.textContent = n;
+        c.classList.add('c' + n);
+      } else {
+        for (const nb of neighbors(cur)) {
+          if (!cells[nb].classList.contains('open')) stack.push(nb);
+        }
+      }
+    }
+    checkWin();
+  }
+
+  function flag(i) {
+    if (dead || won) return;
+    const el = cells[i];
+    if (el.classList.contains('open')) return;
+    if (el.classList.contains('flag')) {
+      el.classList.remove('flag');
+      el.textContent = '';
+      flags--;
+    } else {
+      if (flags >= MINES) return;
+      el.classList.add('flag');
+      el.textContent = '🚩';
+      flags++;
+    }
+    $mines.textContent = MINES - flags;
+  }
+
+  function lose() {
+    dead = true;
+    clearInterval(timer);
+    mineSet.forEach((m) => {
+      const el = cells[m];
+      if (!el.classList.contains('flag') && !el.classList.contains('open')) {
+        el.classList.add('open');
+        el.textContent = '💣';
+      }
+    });
+    cells.forEach((el, i) => {
+      if (el.classList.contains('flag') && !mineSet.has(i)) {
+        el.classList.remove('flag');
+        el.classList.add('open', 'wrong');
+        el.textContent = '✕';
+      }
+    });
+    ovt.textContent = '踩到雷了';
+    ovs.textContent = '用了 ' + seconds + ' 秒';
+    ov.classList.add('on');
+  }
+
+  function checkWin() {
+    if (openCount < SIZE * SIZE - MINES) return;
+    won = true;
+    clearInterval(timer);
+    mineSet.forEach((m) => {
+      if (!cells[m].classList.contains('open')) {
+        cells[m].classList.add('flag');
+        cells[m].textContent = '🚩';
+      }
+    });
+    const prev = +(localStorage.getItem('mfhry_mines_best') || 0);
+    if (!prev || seconds < prev) {
+      localStorage.setItem('mfhry_mines_best', seconds);
+      $best.textContent = seconds + ' 秒';
+    }
+    ovt.textContent = '扫清了 🎉';
+    ovs.textContent = '用时 ' + seconds + ' 秒' + (!prev || seconds < prev ? ' · 新纪录' : '');
+    ov.classList.add('on');
+  }
+
+  // 鼠标
+  grid.addEventListener('click', (e) => {
+    const el = e.target.closest('.cell');
+    if (el) open(+el.dataset.i);
+  });
+  grid.addEventListener('contextmenu', (e) => {
+    const el = e.target.closest('.cell');
+    if (!el) return;
+    e.preventDefault();
+    flag(+el.dataset.i);
+  });
+
+  // 触摸：长按插旗
+  let pressTimer = null, pressed = -1, longPressed = false;
+  grid.addEventListener('touchstart', (e) => {
+    const el = e.target.closest('.cell');
+    if (!el) return;
+    pressed = +el.dataset.i;
+    longPressed = false;
+    pressTimer = setTimeout(() => {
+      longPressed = true;
+      flag(pressed);
+    }, 380);
+  }, { passive: true });
+  grid.addEventListener('touchend', (e) => {
+    clearTimeout(pressTimer);
+    if (longPressed) { e.preventDefault(); return; }
+    if (pressed >= 0) open(pressed);
+    pressed = -1;
+  });
+  grid.addEventListener('touchmove', () => { clearTimeout(pressTimer); pressed = -1; }, { passive: true });
+
+  document.getElementById('reset').addEventListener('click', reset);
+  document.getElementById('again').addEventListener('click', reset);
+
+  reset();
+})();
+</script>
+</body>
+</html>

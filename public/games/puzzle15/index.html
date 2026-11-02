@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>数字华容道 · mfhry.store</title>
+<style>
+  :root{--bg:#0b0e11;--fg:#eaecef;--muted:#8b939c;--accent:#7fd1b0}
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{background:var(--bg);color:var(--fg);font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:18px}
+  .wrap{width:min(94vw,440px)}
+  .top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;gap:10px;flex-wrap:wrap}
+  h1{font-size:22px}
+  .stat{background:#161d24;border-radius:10px;padding:6px 14px;font-size:14px}
+  .stat b{color:var(--accent)}
+  .bar{display:flex;gap:8px;margin-bottom:12px;align-items:center}
+  .chip{background:#161d24;border-radius:10px;padding:7px 12px;font-size:13px;color:var(--muted)}
+  .chip b{color:var(--fg)}
+  .bar button{margin-left:auto}
+  button{font:inherit;padding:8px 16px;border-radius:10px;border:1px solid #2a3540;background:#161d24;
+    color:var(--fg);cursor:pointer;font-size:14px}
+  button:hover{background:rgba(127,209,176,.12)}
+  .board{position:relative;width:100%;aspect-ratio:1;background:#121820;border-radius:14px}
+  .tile{position:absolute;width:calc(25% - 12px);height:calc(25% - 12px);margin:6px;border-radius:10px;
+    background:#1e2a34;border:1px solid #2b3a46;display:flex;align-items:center;justify-content:center;
+    font-size:clamp(20px,7vw,30px);font-weight:600;cursor:pointer;
+    transition:left .12s ease,top .12s ease,background .12s}
+  .tile:hover{background:#25333f}
+  .tile.ok{background:#182e2a;border-color:#2f5f52;color:var(--accent)}
+  .overlay{position:fixed;inset:0;background:rgba(5,7,9,.8);display:none;align-items:center;justify-content:center;
+    flex-direction:column;gap:14px;text-align:center;padding:24px}
+  .overlay.on{display:flex}
+  .overlay h2{font-size:22px}
+  .overlay p{color:var(--muted);font-size:14px}
+  .hint{margin-top:12px;font-size:12px;color:var(--muted)}
+  .back-link{display:inline-block;margin-top:8px;font-size:12px;color:var(--muted);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>数字华容道</h1>
+    <div class="stat">最少步数 <b id="best">--</b></div>
+  </div>
+  <div class="bar">
+    <span class="chip">步数 <b id="moves">0</b></span>
+    <span class="chip">时间 <b id="time">0</b>s</span>
+    <button id="reset">打乱</button>
+  </div>
+  <div class="board" id="board"></div>
+  <div class="hint">点空格旁边的数字，或用方向键推动；1–15 归位即通关</div>
+  <a class="back-link" href="/games/">← 返回小游戏</a>
+</div>
+<div class="overlay" id="ov"><h2 id="ovt">拼好了 🎉</h2><p id="ovs"></p><button id="again">再来一局</button></div>
+<script>
+(() => {
+  const N = 4, TOTAL = N * N;
+  const board = document.getElementById('board');
+  const $moves = document.getElementById('moves');
+  const $time = document.getElementById('time');
+  const $best = document.getElementById('best');
+  const ov = document.getElementById('ov'), ovt = document.getElementById('ovt'), ovs = document.getElementById('ovs');
+
+  const SOLVED = Array.from({ length: TOTAL }, (_, i) => (i + 1) % TOTAL);
+
+  let values = SOLVED.slice();
+  let tiles = [];
+  let blank = TOTAL - 1;
+  let moves = 0, seconds = 0, timer = null, playable = false, solved = false;
+  const best = +(localStorage.getItem('mfhry_puzzle_best') || 0);
+  $best.textContent = best ? best + ' 步' : '--';
+
+  function build() {
+    board.innerHTML = '';
+    tiles = [];
+    for (let i = 0; i < TOTAL; i++) {
+      const el = document.createElement('div');
+      el.className = 'tile';
+      el.dataset.i = i;
+      board.appendChild(el);
+      tiles.push(el);
+    }
+  }
+
+  function place() {
+    values.forEach((v, i) => {
+      const el = tiles[i];
+      if (!v) { el.style.display = 'none'; return; }
+      el.style.display = 'flex';
+      el.textContent = v;
+      el.style.left = ((i % N) * 25) + '%';
+      el.style.top = (((i / N) | 0) * 25) + '%';
+      el.classList.toggle('ok', v === i + 1);
+    });
+  }
+
+  const neighborsOf = (i) => {
+    const x = i % N, y = (i / N) | 0, out = [];
+    if (x > 0) out.push(i - 1);
+    if (x < N - 1) out.push(i + 1);
+    if (y > 0) out.push(i - N);
+    if (y < N - 1) out.push(i + N);
+    return out;
+  };
+
+  const isSolved = () => values.every((v, i) => v === (i + 1) % TOTAL);
+
+  function shuffle() {
+    let prev = -1;
+    for (let n = 0; n < 240; n++) {
+      const opts = neighborsOf(blank).filter((x) => x !== prev);
+      const pick = opts[(Math.random() * opts.length) | 0];
+      prev = blank;
+      values[blank] = values[pick];
+      values[pick] = 0;
+      blank = pick;
+    }
+    if (isSolved()) shuffle();
+  }
+
+  function reset() {
+    clearInterval(timer);
+    values = SOLVED.slice();
+    blank = TOTAL - 1;
+    moves = 0; seconds = 0; solved = false; playable = true;
+    $moves.textContent = 0;
+    $time.textContent = 0;
+    ov.classList.remove('on');
+    shuffle();
+    place();
+    timer = setInterval(() => {
+      if (solved) return;
+      seconds++;
+      $time.textContent = seconds;
+    }, 1000);
+  }
+
+  function move(i) {
+    if (!playable || solved) return;
+    if (!neighborsOf(blank).includes(i)) return;
+    values[blank] = values[i];
+    values[i] = 0;
+    blank = i;
+    moves++;
+    $moves.textContent = moves;
+    place();
+    if (isSolved()) win();
+  }
+
+  function win() {
+    solved = true;
+    clearInterval(timer);
+    const prev = +(localStorage.getItem('mfhry_puzzle_best') || 0);
+    if (!prev || moves < prev) {
+      localStorage.setItem('mfhry_puzzle_best', moves);
+      $best.textContent = moves + ' 步';
+    }
+    ovt.textContent = '拼好了 🎉';
+    ovs.textContent = moves + ' 步 · ' + seconds + ' 秒' + (!prev || moves < prev ? ' · 新纪录' : '');
+    ov.classList.add('on');
+  }
+
+  board.addEventListener('click', (e) => {
+    const el = e.target.closest('.tile');
+    if (el) move(+el.dataset.i);
+  });
+
+  document.addEventListener('keydown', (e) => {
+    const delta = { ArrowLeft: 1, ArrowRight: -1, ArrowUp: N, ArrowDown: -N }[e.key];
+    if (delta === undefined) return;
+    e.preventDefault();
+    const target = blank + delta;
+    if (target < 0 || target >= TOTAL) return;
+    if (Math.abs(delta) === 1 && ((target / N) | 0) !== ((blank / N) | 0)) return;
+    move(target);
+  });
+
+  document.getElementById('reset').addEventListener('click', reset);
+  document.getElementById('again').addEventListener('click', reset);
+
+  build();
+  reset();
+})();
+</script>
+</body>
+</html>
