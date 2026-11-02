@@ -7,6 +7,10 @@ const playable = games.filter((g) => g.status === 'play').length;
 <Base title="小游戏">
   <h1>小游戏</h1>
   <p class="muted">{playable} 个可以玩，大部分纯前端实现，点开即玩。</p>
+  <p style="margin-top:10px">
+    <a class="lb" href="/leaderboard/">🏆 看排行榜</a>
+    <span class="muted" style="font-size:13px;margin-left:8px">按 IP 记一条最好成绩，能看到来自哪个国家 / 地区</span>
+  </p>
 
   <div class="games">
     {games.map((g) => (
@@ -73,6 +77,19 @@ const playable = games.filter((g) => g.status === 'play').length;
   </script>
 
   <style>
+    .lb {
+      display: inline-block;
+      padding: 7px 16px;
+      border-radius: 999px;
+      border: 1px solid var(--accent);
+      background: var(--accent-soft);
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 14px;
+    }
+    .lb:hover {
+      filter: brightness(1.08);
+    }
     .best {
       display: inline-block;
       margin-left: 8px;

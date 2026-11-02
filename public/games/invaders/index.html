@@ -41,6 +41,7 @@
   <div class="hint">← → / A D 移动，空格开火；手机可拖动飞船、点按射击</div>
   <a class="back" href="/games/">← 返回小游戏</a>
 </div>
+<script src="/games/score.js"></script>
 <script>
 (() => {
   const W = 480, H = 360;
@@ -96,6 +97,7 @@
 
   function gameOver() {
     running = false;
+    if (window.mfhryScore) mfhryScore('invaders', score);
     cancelAnimationFrame(raf);
     if (score > best) {
       best = score;

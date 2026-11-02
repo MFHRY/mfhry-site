@@ -1,0 +1,265 @@
+---
+import Base from '../../layouts/Base.astro';
+---
+<Base title="排行榜">
+  <h1>小游戏排行榜</h1>
+  <p class="muted">每个 IP 只留一条最好成绩，右边是你的名次。地区由 Cloudflare 边缘节点判断，可能不太准。</p>
+
+  <div class="tabs" id="tabs"></div>
+
+  <div class="myrow" id="me" hidden></div>
+
+  <div class="tablewrap">
+    <table class="board" id="board">
+      <thead>
+        <tr>
+          <th class="rank">#</th>
+          <th>来自</th>
+          <th class="ipcol">IP</th>
+          <th class="score">成绩</th>
+          <th class="when">时间</th>
+        </tr>
+      </thead>
+      <tbody id="rows">
+        <tr><td colspan="5" class="empty">加载中…</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="muted small">
+    成绩由浏览器提交，只能防手滑、防不了改代码。IP 的最后一段已经打码。 ·
+    <a href="/games/">← 回小游戏</a>
+  </p>
+</Base>
+
+<script>
+  type Entry = {
+    rank: number;
+    name: string | null;
+    score: number;
+    ip: string;
+    flag: string;
+    country: string | null;
+    countryName: string;
+    region: string | null;
+    regionName: string;
+    city: string | null;
+    at: string | null;
+  };
+
+  const GAMES: Array<[string, string]> = [
+    ['tetris', '俄罗斯方块'],
+    ['2048', '2048'],
+    ['snake', '贪吃蛇'],
+    ['flappy', '像素鸟'],
+    ['invaders', '太空侵略者'],
+    ['breakout', '打砖块'],
+    ['gold-miner', '黄金矿工'],
+    ['minesweeper', '扫雷'],
+    ['memory', '记忆翻牌'],
+    ['puzzle15', '数字华容道'],
+  ];
+
+  const $tabs = document.getElementById('tabs')!;
+  const $rows = document.getElementById('rows')!;
+  const $me = document.getElementById('me')!;
+
+  let current = (location.hash || '#tetris').slice(1);
+  if (!GAMES.some(([slug]) => slug === current)) current = 'tetris';
+
+  const esc = (s: string) =>
+    s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string));
+
+  const when = (iso: string | null) => {
+    if (!iso) return '';
+    const d = new Date(iso.replace(' ', 'T') + 'Z');
+    if (Number.isNaN(d.getTime())) return '';
+    const mins = Math.floor((Date.now() - d.getTime()) / 60000);
+    if (mins < 1) return '刚刚';
+    if (mins < 60) return mins + ' 分钟前';
+    if (mins < 1440) return Math.floor(mins / 60) + ' 小时前';
+    return `${d.getMonth() + 1}/${d.getDate()}`;
+  };
+
+  function paintTabs() {
+    $tabs.innerHTML = '';
+    for (const [slug, label] of GAMES) {
+      const b = document.createElement('button');
+      b.textContent = label;
+      b.className = slug === current ? 'tab on' : 'tab';
+      b.onclick = () => {
+        current = slug;
+        history.replaceState(null, '', '#' + slug);
+        paintTabs();
+        load();
+      };
+      $tabs.appendChild(b);
+    }
+  }
+
+  async function load() {
+    $rows.innerHTML = '<tr><td colspan="5" class="empty">加载中…</td></tr>';
+    $me.hidden = true;
+    try {
+      const res = await fetch(`/api/score?game=${encodeURIComponent(current)}&limit=20`, {
+        headers: { accept: 'application/json' },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || '加载失败');
+      render(data);
+    } catch (err: any) {
+      $rows.innerHTML = `<tr><td colspan="5" class="empty">${esc(err?.message || '加载失败')}</td></tr>`;
+    }
+  }
+
+  function render(data: any) {
+    const entries: Entry[] = data.entries || [];
+    if (!entries.length) {
+      $rows.innerHTML = '<tr><td colspan="5" class="empty">还没有人上榜，去玩一局吧</td></tr>';
+    } else {
+      $rows.innerHTML = entries
+        .map((e) => {
+          const where = [e.flag, e.countryName, e.regionName].filter(Boolean).join(' ');
+          const medal = e.rank === 1 ? '🥇' : e.rank === 2 ? '🥈' : e.rank === 3 ? '🥉' : e.rank;
+          return `<tr class="${e.rank <= 3 ? 'top' : ''}">
+            <td class="rank">${medal}</td>
+            <td class="where" title="${esc(where)}">${esc(where)}</td>
+            <td class="ipcol">${esc(e.ip)}${e.name ? ` <em class="nm">${esc(e.name)}</em>` : ''}</td>
+            <td class="score">${e.score}<i>${esc(data.unit || '')}</i></td>
+            <td class="when">${esc(when(e.at))}</td>
+          </tr>`;
+        })
+        .join('');
+    }
+
+    if (data.me) {
+      $me.hidden = false;
+      $me.innerHTML = `你在 <b>${esc(data.label)}</b> 排第 <b>${data.me.rank}</b> 名，成绩 ${data.me.score}${esc(data.unit || '')}，共 ${data.total} 人上榜`;
+    } else if (data.total) {
+      $me.hidden = false;
+      $me.textContent = `共 ${data.total} 人上榜，你还没交过成绩`;
+    }
+  }
+
+  paintTabs();
+  load();
+</script>
+
+<style>
+  .tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 18px 0 14px;
+  }
+  .tab {
+    font: inherit;
+    font-size: 13px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .tab:hover {
+    color: var(--fg);
+  }
+  .tab.on {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .myrow {
+    margin: 0 0 14px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: var(--accent-soft);
+    color: var(--fg);
+    font-size: 14px;
+  }
+  .tablewrap {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--card);
+  }
+  table.board {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  .board th,
+  .board td {
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .board thead th {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    background: var(--bg);
+  }
+  .board tbody tr:last-child td {
+    border-bottom: 0;
+  }
+  .board tr.top .rank {
+    font-size: 16px;
+  }
+  .board .rank {
+    width: 44px;
+    color: var(--muted);
+    text-align: right;
+  }
+  .board .where {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 220px;
+  }
+  .board .ipcol {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .board .ipcol .nm {
+    font-style: normal;
+    color: var(--fg);
+    margin-left: 6px;
+    font-family: inherit;
+  }
+  .board .score {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .board .score i {
+    font-style: normal;
+    color: var(--muted);
+    font-size: 12px;
+    margin-left: 2px;
+  }
+  .board .when {
+    color: var(--muted);
+    font-size: 12px;
+    text-align: right;
+  }
+  .empty {
+    text-align: center;
+    color: var(--muted);
+    padding: 24px 12px;
+  }
+  .small {
+    font-size: 13px;
+    margin-top: 14px;
+  }
+  @media (max-width: 560px) {
+    .board .when,
+    .board thead th.when {
+      display: none;
+    }
+    .board .where {
+      max-width: 140px;
+    }
+  }
+</style>

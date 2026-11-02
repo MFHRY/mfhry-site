@@ -53,6 +53,7 @@
   <a class="back-link" href="/games/">← 返回小游戏</a>
 </div>
 <div class="overlay" id="ov"><h2 id="ovt">拼好了 🎉</h2><p id="ovs"></p><button id="again">再来一局</button></div>
+<script src="/games/score.js"></script>
 <script>
 (() => {
   const N = 4, TOTAL = N * N;
@@ -155,6 +156,7 @@
 
   function win() {
     solved = true;
+    if (window.mfhryScore) mfhryScore('puzzle15', moves);
     clearInterval(timer);
     const prev = +(localStorage.getItem('mfhry_puzzle_best') || 0);
     if (!prev || moves < prev) {

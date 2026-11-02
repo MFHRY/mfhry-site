@@ -58,6 +58,7 @@
   <a class="back" href="/games/">← 返回小游戏</a>
 </div>
 <div class="overlay" id="ov"><h2 id="ovt"></h2><p id="ovs"></p><button id="again">再来一局</button></div>
+<script src="/games/score.js"></script>
 <script>
 (() => {
   const SIZE = 9, MINES = 10;
@@ -212,6 +213,7 @@
     if (openCount < SIZE * SIZE - MINES) return;
     won = true;
     clearInterval(timer);
+    if (window.mfhryScore) mfhryScore('minesweeper', seconds);
     mineSet.forEach((m) => {
       if (!cells[m].classList.contains('open')) {
         cells[m].classList.add('flag');

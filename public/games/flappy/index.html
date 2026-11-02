@@ -41,6 +41,7 @@
   <div class="hint">空格 / 点击 / 触摸 拍翅膀</div>
   <a class="back" href="/games/">← 返回小游戏</a>
 </div>
+<script src="/games/score.js"></script>
 <script>
 (() => {
   const W = 360, H = 480, GROUND = 70;
@@ -89,6 +90,7 @@
 
   function over() {
     state = 'dead';
+    if (window.mfhryScore) mfhryScore('flappy', score);
     cancelAnimationFrame(raf);
     raf = null;
     if (score > best) {

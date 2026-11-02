@@ -28,6 +28,7 @@
 <a href="/games/" title="返回小游戏列表" style="position:fixed;left:10px;bottom:10px;z-index:99999;display:flex;align-items:center;justify-content:center;min-width:34px;height:34px;padding:0 10px;border-radius:999px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.22);color:#ffe8b0;text-decoration:none;font:14px/1 -apple-system,PingFang SC,sans-serif;opacity:.75">← 返回</a>
 
 <canvas id="game" width="800" height="600"></canvas>
+<script src="/games/score.js"></script>
 <script>
 (function () {
   'use strict';
@@ -562,6 +563,7 @@
       setTimeout(function () { beep(1180, 0.24, 'sine', 0.055); }, 300);
     } else {
       gamePhase = 'gameover';
+      if (window.mfhryScore) mfhryScore('gold-miner', Math.round(score));
       if (score > best) {
         best = score;
         try { localStorage.setItem('goldminer_best', String(best)); } catch (e) {}

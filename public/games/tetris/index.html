@@ -61,6 +61,7 @@
   <div class="hint">← → 移动 · ↑/X 旋转 · ↓ 加速 · 空格直落 · P 暂停</div>
   <a class="back" href="/games/">← 返回小游戏</a>
 </div>
+<script src="/games/score.js"></script>
 <script>
 (() => {
   const COLS = 10, ROWS = 20;
@@ -192,6 +193,7 @@
 
   function gameOver() {
     dead = true;
+    if (window.mfhryScore) mfhryScore('tetris', score);
     clearInterval(dropTimer);
     if (score > best) { best = score; localStorage.setItem('mfhry_tetris_best', best); $best.textContent = best; }
     ovt.textContent = '游戏结束 · ' + score + ' 分';

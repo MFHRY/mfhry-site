@@ -52,6 +52,7 @@
   <div class="hint">方向键 / WASD 移动，手机可滑动</div>
   <a class="back" href="/games/">← 返回小游戏</a>
 </div>
+<script src="/games/score.js"></script>
 <script>
 (() => {
   const SIZE = 4, GAP = 8;
@@ -118,7 +119,7 @@
       if (score > best) { best = score; $best.textContent = best; localStorage.setItem('mfhry_2048_best', best); }
     }
     render();
-    if (!canMove()) { playing = false; ovt.textContent = '结束 · 得分 ' + score; btn.textContent = '再来'; ov.classList.add('on'); }
+    if (!canMove()) { playing = false; if (window.mfhryScore) mfhryScore('2048', score); ovt.textContent = '结束 · 得分 ' + score; btn.textContent = '再来'; ov.classList.add('on'); }
     else if (grid.flat().includes(2048) && playing) { playing = false; ovt.textContent = '2048！'; btn.textContent = '继续'; ov.classList.add('on'); }
   }
 

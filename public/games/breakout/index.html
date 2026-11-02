@@ -40,6 +40,7 @@
   <div class="hint">鼠标 / 触摸移动挡板，也可以按 ← →</div>
   <a class="back" href="/games/">← 返回小游戏</a>
 </div>
+<script src="/games/score.js"></script>
 <script>
 (() => {
   const W = 620, H = 420;
@@ -129,6 +130,7 @@
       $lives.textContent = lives;
       if (lives <= 0) {
         running = false;
+        if (window.mfhryScore) mfhryScore('breakout', score);
         ovt.textContent = '结束 · 得分 ' + score;
         btn.textContent = '再来';
         ov.classList.add('on');
