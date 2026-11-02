@@ -37,12 +37,13 @@
   },
   {
     "slug": "rhythm",
-    "title": "音游",
-    "desc": "下落式音游：3 首内置 chiptune 现场合成，也能导入自己的音频自动打谱；键位、轨道数、难度都能改。",
+    "title": "音游（osu 谱面）",
+    "desc": "下落式音游：直接从 osu! 镜像搜歌现下谱面，二次元曲库（アイドル / Bad Apple / One Last Kiss / World is Mine…），键位、轨道数、判定严格度都能改。",
     "tag": "音乐",
     "emoji": "🎵",
     "href": "/games/rhythm/",
-    "status": "play"
+    "status": "play",
+    "note": "在线下载谱面"
   },
   {
     "slug": "whack",
