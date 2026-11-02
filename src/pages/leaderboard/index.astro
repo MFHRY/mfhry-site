@@ -5,7 +5,10 @@ import Base from '../../layouts/Base.astro';
   <h1>小游戏排行榜</h1>
   <p class="muted">每个 IP 只留一条最好成绩，右边是你的名次。地区由 Cloudflare 边缘节点判断，可能不太准。</p>
 
-  <div class="tabs" id="tabs"></div>
+  <div class="tabbar">
+    <div class="tabs" id="tabs"></div>
+    <button class="refresh" id="refresh" title="刷新榜单">↻ 刷新</button>
+  </div>
 
   <div class="myrow" id="me" hidden></div>
 
@@ -63,9 +66,20 @@ import Base from '../../layouts/Base.astro';
   const $tabs = document.getElementById('tabs')!;
   const $rows = document.getElementById('rows')!;
   const $me = document.getElementById('me')!;
+  const $refresh = document.getElementById('refresh') as HTMLButtonElement;
 
-  let current = (location.hash || '#tetris').slice(1);
+  // 记住上一次交成绩的游戏，打开榜单先看这个（否则你刚玩的游戏榜是空的，看着像没上榜）
+  const LAST_KEY = 'mfhry_last_game';
+  let lastGame = '';
+  try {
+    lastGame = localStorage.getItem(LAST_KEY) || '';
+  } catch {
+    /* 隐私模式下 localStorage 会抛 */
+  }
+
+  let current = (location.hash || '').slice(1) || lastGame || 'tetris';
   if (!GAMES.some(([slug]) => slug === current)) current = 'tetris';
+  let autoTimer: ReturnType<typeof setInterval> | undefined;
 
   const esc = (s: string) =>
     s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string));
@@ -85,8 +99,9 @@ import Base from '../../layouts/Base.astro';
     $tabs.innerHTML = '';
     for (const [slug, label] of GAMES) {
       const b = document.createElement('button');
-      b.textContent = label;
+      b.textContent = label + (slug === lastGame ? ' ●' : '');
       b.className = slug === current ? 'tab on' : 'tab';
+      b.title = slug === lastGame ? '你最近玩过的' : '';
       b.onclick = () => {
         current = slug;
         history.replaceState(null, '', '#' + slug);
@@ -97,60 +112,108 @@ import Base from '../../layouts/Base.astro';
     }
   }
 
-  async function load() {
-    $rows.innerHTML = '<tr><td colspan="5" class="empty">加载中…</td></tr>';
-    $me.hidden = true;
+  function rowHtml(e: Entry, unit: string, mine: boolean) {
+    const where = [e.flag, e.countryName, e.regionName].filter(Boolean).join(' ');
+    const medal = e.rank === 1 ? '🥇' : e.rank === 2 ? '🥈' : e.rank === 3 ? '🥉' : String(e.rank);
+    return `<tr class="${mine ? 'mine' : ''}${e.rank <= 3 ? ' top' : ''}">
+      <td class="rank">${medal}</td>
+      <td class="where" title="${esc(where)}">${esc(where)}${mine ? ' <b class="you">你</b>' : ''}</td>
+      <td class="ipcol">${esc(e.ip)}${e.name ? ` <em class="nm">${esc(e.name)}</em>` : ''}</td>
+      <td class="score">${e.score}<i>${esc(unit || '')}</i></td>
+      <td class="when">${esc(when(e.at))}</td>
+    </tr>`;
+  }
+
+  async function load(silent = false) {
+    if (!silent) {
+      $rows.innerHTML = '<tr><td colspan="5" class="empty">加载中…</td></tr>';
+      $me.hidden = true;
+    }
     try {
-      const res = await fetch(`/api/score?game=${encodeURIComponent(current)}&limit=20`, {
-        headers: { accept: 'application/json' },
-      });
+      // 加时间戳：避免任何一层缓存把旧榜单喂回来
+      const url = `/api/score?game=${encodeURIComponent(current)}&limit=20&t=${Date.now()}`;
+      const res = await fetch(url, { headers: { accept: 'application/json' }, cache: 'no-store' });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || '加载失败');
       render(data);
+      $refresh.textContent = '↻ 刷新';
     } catch (err: any) {
       $rows.innerHTML = `<tr><td colspan="5" class="empty">${esc(err?.message || '加载失败')}</td></tr>`;
+      $refresh.textContent = '↻ 重试';
     }
   }
 
   function render(data: any) {
     const entries: Entry[] = data.entries || [];
+    const unit = data.unit || '';
+    const mineIp = data.me?.ip || '';
+    const mineInList = !!mineIp && entries.some((e) => e.ip === mineIp);
+
+    let html = '';
     if (!entries.length) {
-      $rows.innerHTML = '<tr><td colspan="5" class="empty">还没有人上榜，去玩一局吧</td></tr>';
+      html = '<tr><td colspan="5" class="empty">还没有人上榜，去玩一局吧</td></tr>';
     } else {
-      $rows.innerHTML = entries
-        .map((e) => {
-          const where = [e.flag, e.countryName, e.regionName].filter(Boolean).join(' ');
-          const medal = e.rank === 1 ? '🥇' : e.rank === 2 ? '🥈' : e.rank === 3 ? '🥉' : e.rank;
-          return `<tr class="${e.rank <= 3 ? 'top' : ''}">
-            <td class="rank">${medal}</td>
-            <td class="where" title="${esc(where)}">${esc(where)}</td>
-            <td class="ipcol">${esc(e.ip)}${e.name ? ` <em class="nm">${esc(e.name)}</em>` : ''}</td>
-            <td class="score">${e.score}<i>${esc(data.unit || '')}</i></td>
-            <td class="when">${esc(when(e.at))}</td>
-          </tr>`;
-        })
-        .join('');
+      html = entries.map((e) => rowHtml(e, unit, !!mineIp && e.ip === mineIp)).join('');
+      // 名次掉出前 20 时，把你自己那行也贴出来，不然看着就像「没上榜」
+      if (data.me && !mineInList) {
+        html += '<tr class="gap"><td colspan="5">⋯ 你的名次在前 20 之外 ⋯</td></tr>';
+        html += rowHtml(data.me, unit, true);
+      }
     }
+    $rows.innerHTML = html;
 
     if (data.me) {
       $me.hidden = false;
-      $me.innerHTML = `你在 <b>${esc(data.label)}</b> 排第 <b>${data.me.rank}</b> 名，成绩 ${data.me.score}${esc(data.unit || '')}，共 ${data.total} 人上榜`;
+      const outside = mineInList ? '' : '（不在前 20，已单列在下面）';
+      $me.innerHTML = `你在 <b>${esc(data.label)}</b> 排第 <b>${data.me.rank}</b> 名，成绩 ${data.me.score}${esc(unit)}，共 ${data.total} 人上榜${outside}`;
     } else if (data.total) {
       $me.hidden = false;
-      $me.textContent = `共 ${data.total} 人上榜，你还没交过成绩`;
+      $me.textContent = `共 ${data.total} 人上榜，这个 IP 还没交过成绩`;
+    } else {
+      $me.hidden = true;
     }
   }
+
+  $refresh.onclick = () => load();
+
+  // 每 20 秒自己刷一次，别人刚打完也能很快看到
+  clearInterval(autoTimer);
+  autoTimer = setInterval(() => {
+    if (!document.hidden) load(true);
+  }, 20000);
 
   paintTabs();
   load();
 </script>
 
 <style>
+  .tabbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 18px 0 14px;
+  }
   .tabs {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    margin: 18px 0 14px;
+    flex: 1;
+    min-width: 0;
+  }
+  .refresh {
+    flex: none;
+    font: inherit;
+    font-size: 13px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .refresh:hover {
+    color: var(--accent);
+    border-color: var(--accent);
   }
   .tab {
     font: inherit;
@@ -204,6 +267,27 @@ import Base from '../../layouts/Base.astro';
   }
   .board tbody tr:last-child td {
     border-bottom: 0;
+  }
+  .board tr.mine td {
+    background: var(--accent-soft);
+  }
+  .board tr.mine .ipcol {
+    color: var(--fg);
+  }
+  .board .you {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 999px;
+    padding: 0 6px;
+    margin-left: 4px;
+  }
+  .board tr.gap td {
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+    padding: 6px 12px;
   }
   .board tr.top .rank {
     font-size: 16px;
