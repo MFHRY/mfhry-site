@@ -89,6 +89,41 @@
   @keyframes cbump{0%{transform:scale(1)}38%{transform:scale(1.24)}100%{transform:scale(1)}}
   .stage.shake{animation:shake .24s ease}
   @keyframes shake{0%,100%{transform:translate(0,0)}25%{transform:translate(-3px,1px)}55%{transform:translate(2px,-1px)}80%{transform:translate(-1px,0)}}
+
+  /* ---------- 电脑端 16:9 适配 ---------- */
+  body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:var(--cover-bg, none) center/cover no-repeat;
+    filter:blur(70px) saturate(1.25) brightness(.34);opacity:0;transition:opacity .5s}
+  body.has-cover::before{opacity:1}
+  body.has-cover{background:#080a0d}
+
+  @media (min-width:960px){
+    body{padding:14px 18px}
+    .wrap{width:auto;max-width:1180px}
+    .top{margin-bottom:12px}
+    .stats{gap:10px}
+    .stat{min-width:78px;padding:6px 16px}
+    .stat b{font-size:18px}
+
+    .stage{display:grid;grid-template-columns:minmax(320px,372px) auto;gap:16px;align-items:start;
+      background:transparent;border-radius:0;overflow:visible}
+    .stage::after{content:'';display:none}
+    canvas{order:2;height:min(calc(100dvh - 186px),680px);width:auto;max-width:100%;
+      border-radius:16px;background:#0b0f13;box-shadow:0 24px 70px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.06)}
+    .judge{bottom:170px}
+    .panel{order:1;position:relative;inset:auto;width:auto;max-height:min(calc(100dvh - 186px),680px);
+      border-radius:16px;border:1px solid rgba(255,255,255,.1);background:rgba(12,16,20,.82);
+      -webkit-backdrop-filter:blur(24px) saturate(1.2);backdrop-filter:blur(24px) saturate(1.2);
+      padding:16px;box-shadow:0 24px 70px rgba(0,0,0,.45)}
+    .panel[hidden]{display:none}
+    .stage:has(.panel[hidden]){grid-template-columns:auto;justify-content:center}
+    .stage:has(.panel[hidden]) canvas{order:1}
+
+    .result,.pickLayer{max-height:none}
+  }
+  @media (min-width:960px) and (min-height:820px){
+    canvas{height:min(calc(100dvh - 186px),760px)}
+  }
 </style>
 </head>
 <body>
@@ -530,6 +565,10 @@
     await new Promise((res) => { img.onload = res; img.onerror = res; img.src = coverUrl; });
     coverImg = img.naturalWidth ? img : null;
     buildCoverLayer();
+    if (coverImg) {
+      document.body.classList.add('has-cover');
+      document.body.style.setProperty('--cover-bg', 'url("' + coverUrl + '")');
+    }
   }
   async function loadCover(obj) {
     try {
@@ -858,7 +897,7 @@
   async function startGame() {
     if (!chart || !buf) return;
     cancelAnimationFrame(raf);
-    panel.style.display = 'none';
+    panel.hidden = true;
     resultEl.classList.remove('on');
     try {
       const a = ac();
@@ -866,7 +905,7 @@
     } catch (e) { alert('这个浏览器不支持 WebAudio'); return; }
 
     notes = toNotes(chart.obj, curLanes);
-    if (!notes.length) { alert('这张谱面里没有可点的音符'); panel.style.display = ''; return; }
+    if (!notes.length) { alert('这张谱面里没有可点的音符'); panel.hidden = false; return; }
     stats = { score: 0, combo: 0, maxCombo: 0, perfect: 0, great: 0, miss: 0 };
     hp = 100; pressed = {};
     $score.textContent = '0'; $combo.textContent = '0'; $acc.textContent = '100%';
@@ -1074,7 +1113,7 @@
   $('again').onclick = () => { resultEl.classList.remove('on'); startGame(); };
   $('tomenu').onclick = () => {
     resultEl.classList.remove('on');
-    panel.style.display = '';
+    panel.hidden = false;
     state = 'menu';
     cancelAnimationFrame(raf);
     draw();
