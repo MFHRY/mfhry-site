@@ -9,7 +9,7 @@
   "packageManager": "pnpm@11.28.5",
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build",
+    "build": "astro build && node scripts/gen-sitemap.mjs",
     "preview": "astro preview",
     "fetch": "node scripts/pull-github.mjs && node scripts/pull-releases.mjs && node scripts/pull-content.mjs",
     "pages:create": "wrangler pages project create mfhry-site --production-branch main",
