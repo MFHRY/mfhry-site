@@ -79,6 +79,15 @@ const playable = games.filter((g) => g.status === 'play').length;
         break;
       }
     });
+
+    // 没上榜的，显示本机最佳（kit.js 记的 mfhry_best_<slug>）
+    document.querySelectorAll<HTMLElement>('.best[data-slug]').forEach((el) => {
+      if (!el.hidden) return;
+      const value = read('mfhry_best_' + (el.dataset.slug || ''));
+      if (value === null) return;
+      el.textContent = `本机最佳 ${value}`;
+      el.hidden = false;
+    });
   </script>
 
   <style>
