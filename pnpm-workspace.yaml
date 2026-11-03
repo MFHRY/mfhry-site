@@ -1,0 +1,6 @@
+# pnpm 10/11 把构建脚本白名单挪到了这里（package.json 里的 pnpm 字段已不再读取）
+onlyBuiltDependencies:
+  - esbuild
+  - sharp
+  - workerd
+  - '@parcel/watcher'
