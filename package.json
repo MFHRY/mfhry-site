@@ -21,5 +21,13 @@
   "devDependencies": {
     "pg": "^8.13.0",
     "wrangler": "^4.0.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp",
+      "workerd",
+      "@parcel/watcher"
+    ]
   }
 }
