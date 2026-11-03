@@ -34,6 +34,8 @@
     font-size:12px;color:var(--muted);cursor:pointer;white-space:nowrap}
   .chip.on{border-color:var(--accent);color:var(--fg);background:rgba(127,209,176,.13)}
   .list{display:grid;gap:5px;margin-top:8px}
+  .more{font-size:12px;color:var(--accent);cursor:pointer;padding:7px 2px 2px;user-select:none}
+  .more:hover{text-decoration:underline}
   .gtitle{font-size:11px;color:#6f7883;margin:9px 0 5px;letter-spacing:.03em}
   .item{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;
     border:1px solid #263039;border-radius:9px;background:#141a20;cursor:pointer;font-size:12.5px;line-height:1.45}
@@ -340,6 +342,8 @@
         const r = await fetch(MIRROR + '/search?query=' + encodeURIComponent(q) + '&limit=12');
         if (!r.ok) throw new Error('镜像返回 ' + r.status);
         const list = rankSets(await r.json(), q);
+        lastSets = list;
+        setsOpen = false;
         renderSets(list);
         $('status').textContent = list.length
           ? '找到 ' + list.length + ' 个谱面集，点一个开始下载（几十 MB）'
@@ -373,11 +377,14 @@
     }).sort((a, b) => b.k - a.k).map((x) => x.s);
   }
 
+  const SHOW = 3;
+  let lastSets = [], setsOpen = false;
+
   function renderSets(list) {
     const wrap = $('sets');
     wrap.innerHTML = '';
     if (!list.length) { wrap.innerHTML = '<div class="note">没搜到，换个关键词</div>'; return; }
-    for (const s of list) {
+    for (const s of (setsOpen ? list : list.slice(0, SHOW))) {
       const d = document.createElement('div');
       d.className = 'item';
       const diffs = (s.ChildrenBeatmaps || []).length;
@@ -387,6 +394,13 @@
         '<span class="go2">下载 →</span>';
       d.onclick = () => loadSet(s);
       wrap.appendChild(d);
+    }
+    if (list.length > SHOW) {
+      const more = document.createElement('div');
+      more.className = 'more';
+      more.textContent = setsOpen ? '收起 ↑' : '展开全部 ' + list.length + ' 个 ↓';
+      more.onclick = () => { setsOpen = !setsOpen; renderSets(lastSets); };
+      wrap.appendChild(more);
     }
   }
 
