@@ -68,6 +68,7 @@ import Base from '../../layouts/Base.astro';
     ['minesweeper', '扫雷'],
     ['memory', '记忆翻牌'],
     ['puzzle15', '数字华容道'],
+    ['fx-sim', 'FX 模拟器'],
   ];
 
   const $tabs = document.getElementById('tabs')!;
@@ -119,7 +120,13 @@ import Base from '../../layouts/Base.astro';
     }
   }
 
-  function rowHtml(e: Entry, unit: string, mine: boolean) {
+  // 金额类成绩（fx-sim）显示成 $12,345，其它还是「分数 + 单位」
+  function scoreText(v: number, unit: string, fmt?: string) {
+    if (fmt === 'money') return '$' + Number(v).toLocaleString('en-US');
+    return String(v) + (unit || '');
+  }
+
+  function rowHtml(e: Entry, unit: string, mine: boolean, fmt?: string) {
     const where = [e.flag, e.countryName, e.regionName].filter(Boolean).join(' ');
     const medal = e.rank === 1 ? '🥇' : e.rank === 2 ? '🥈' : e.rank === 3 ? '🥉' : String(e.rank);
     const who = `${esc(e.ip)}${e.name ? ` <em class="nm">${esc(e.name)}</em>` : ''}`;
@@ -127,7 +134,11 @@ import Base from '../../layouts/Base.astro';
       <td class="rank">${medal}</td>
       <td class="where" title="${esc(where)}">${esc(where)}${mine ? ' <b class="you">你</b>' : ''}</td>
       <td class="ipcol">${who}</td>
-      <td class="score">${e.score}<i>${esc(unit || '')}</i></td>
+      <td class="score">${
+        fmt === 'money'
+          ? esc(scoreText(e.score, unit, fmt))
+          : `${e.score}<i>${esc(unit || '')}</i>`
+      }</td>
       <td class="when">${esc(when(e.at))}</td>
     </tr>`;
   }
@@ -154,6 +165,7 @@ import Base from '../../layouts/Base.astro';
   function render(data: any) {
     const entries: Entry[] = data.entries || [];
     const unit = data.unit || '';
+    const fmt = data.fmt || '';
 
     // 按（打码后的）IP 认自己
     const isMine = (e: Entry) => !!data.me?.ip && e.ip === data.me.ip;
@@ -163,11 +175,11 @@ import Base from '../../layouts/Base.astro';
     if (!entries.length) {
       html = '<tr><td colspan="5" class="empty">还没有人上榜，去玩一局吧</td></tr>';
     } else {
-      html = entries.map((e) => rowHtml(e, unit, isMine(e))).join('');
+      html = entries.map((e) => rowHtml(e, unit, isMine(e), fmt)).join('');
       // 名次掉出前 20 时，把你自己那行也贴出来，不然看着就像「没上榜」
       if (data.me && !mineInList) {
         html += '<tr class="gap"><td colspan="5">⋯ 你的名次在前 20 之外 ⋯</td></tr>';
-        html += rowHtml(data.me, unit, true);
+        html += rowHtml(data.me, unit, true, fmt);
       }
     }
     $rows.innerHTML = html;
@@ -175,9 +187,9 @@ import Base from '../../layouts/Base.astro';
     if (data.me) {
       $me.hidden = false;
       const outside = mineInList ? '' : '（不在前 20，已单列在下面）';
-      $me.innerHTML = `这个 IP 在 <b>${esc(data.label)}</b> 排第 <b>${data.me.rank}</b> 名，成绩 ${
-        data.me.score
-      }${esc(unit)}，共 ${data.total} 人上榜${outside}`;
+      $me.innerHTML = `这个 IP 在 <b>${esc(data.label)}</b> 排第 <b>${data.me.rank}</b> 名，成绩 ${esc(
+        scoreText(data.me.score, unit, fmt)
+      )}，共 ${data.total} 人上榜${outside}`;
     } else if (data.total) {
       $me.hidden = false;
       $me.textContent = `共 ${data.total} 人上榜，这个 IP 还没交过成绩`;

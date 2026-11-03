@@ -512,7 +512,9 @@
     <div class="price-big" id="bigPrice">1.08500</div>
     <div class="top-stats">
       <div>点差<b id="spreadVal">0.8 pip</b></div>
+      <div>累计盈利<b id="earnedVal">$0.00</b></div>
       <div>保证金率<b id="marginLevelTop">--</b></div>
+      <a class="btn-recharge" id="btnBoard" href="/leaderboard/#fx-sim" title="累计盈利排行榜">🏆 榜</a>
       <button class="btn-recharge" id="btnRecharge">＋ 充值</button>
     </div>
   </div>
@@ -692,6 +694,12 @@
     lastTickAt: Date.now(),
   };
 
+  // 排行榜只认交易赚到的钱：净值 - 初始资金 - 本次累计充值
+  const START_BALANCE = 10000;
+  let rechargedTotal = 0;
+  let lastSentScore = 0;
+  let lastSentAt = 0;
+
   // K 线存储（每个货币对独立）
   const candleStore = {};
   PAIR_KEYS.forEach(k => {
@@ -702,6 +710,7 @@
   const $ = id => document.getElementById(id);
   const bigPriceEl    = $('bigPrice');
   const equityValEl   = $('equityVal');
+  const earnedValEl   = $('earnedVal');
   const freeMarginEl  = $('freeMarginVal');
   const usedMarginEl  = $('usedMarginVal');
   const floatingPnlEl = $('floatingPnlVal');
@@ -870,6 +879,34 @@
     return state.positions.reduce((s, p) => s + calcPositionPnl(p), 0);
   }
   function getEquity() { return state.balance + getFloatingPnl(); }
+
+  // 累计交易盈利：充值进来的钱先扣掉，所以“充值作弊”不影响榜上成绩
+  function earnedTotal() {
+    return Math.round(getEquity() - START_BALANCE - rechargedTotal);
+  }
+
+  function submitScore(force = false) {
+    const earned = earnedTotal();
+    if (earned <= 0) return;
+    const now = Date.now();
+    if (!force && (now - lastSentAt < 12000 || earned <= lastSentScore)) return;
+    lastSentScore = earned;
+    lastSentAt = now;
+    if (typeof window.mfhryScore === 'function') {
+      window.mfhryScore('fx-sim', earned);
+      return;
+    }
+    fetch('/api/score', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ game: 'fx-sim', score: earned }),
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d && d.stored) showToast('已上榜 · 累计盈利 ' + fmtUsd(earned), 'win', 1800);
+      })
+      .catch(() => {});
+  }
   function getUsedMargin() { return state.positions.reduce((s, p) => s + p.margin, 0); }
   function getFreeMargin() { return getEquity() - getUsedMargin(); }
   function getMarginLevel() {
@@ -997,6 +1034,7 @@
     );
     render();
     checkLiquidation();
+    submitScore();
   }
 
   function checkLiquidation() {
@@ -1035,7 +1073,9 @@
   }
 
   function resetAccount() {
-    state.balance = 10000;
+    rechargedTotal = 0;
+    lastSentScore = 0;
+    state.balance = START_BALANCE;
     state.positions = [];
     state.prices['EUR/USD'] = 1.08500;
     state.prices['USD/JPY'] = 150.000;
@@ -1068,6 +1108,7 @@
     }
     const capped = Math.min(amt, MAX_RECHARGE);
     state.balance += capped;
+    rechargedTotal += capped;
     closeRecharge();
     render();
     showToast('充值成功 +' + fmtUsd(capped) + '\n当前余额 ' + fmtUsd(state.balance), 'win', 2000);
@@ -1112,6 +1153,11 @@
     usedMarginEl.textContent = fmtUsd(used);
     floatingPnlEl.textContent = fmtUsd(floating, true);
     floatingPnlEl.className = 'val ' + (floating > 0 ? 'pos' : floating < 0 ? 'neg' : '');
+
+    const earned = earnedTotal();
+    earnedValEl.textContent = fmtUsd(earned, true);
+    earnedValEl.style.color = earned > 0 ? '#0ecb81' : earned < 0 ? '#f6465d' : '#eaecef';
+    submitScore();
 
     marginLevelTopEl.textContent = used > 0 ? level.toFixed(0) + '%' : '--';
     marginLevelTopEl.style.color = level <= LIQ_LEVEL ? '#f6465d' : level < 200 ? '#f0b90b' : '#eaecef';

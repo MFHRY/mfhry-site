@@ -10,7 +10,7 @@ const json = (data: any, status = 200) =>
   });
 
 // asc: 数值越小越好（时间 / 步数）
-const GAMES: Record<string, { asc: boolean; max: number; label: string; unit: string }> = {
+const GAMES: Record<string, { asc: boolean; max: number; label: string; unit: string; fmt?: 'money' }> = {
   'gold-miner': { asc: false, max: 999999, label: '黄金矿工', unit: '分' },
   '2048': { asc: false, max: 999999, label: '2048', unit: '分' },
   whack: { asc: false, max: 99999, label: '打地鼠', unit: '分' },
@@ -25,6 +25,8 @@ const GAMES: Record<string, { asc: boolean; max: number; label: string; unit: st
   minesweeper: { asc: true, max: 999, label: '扫雷', unit: '秒' },
   memory: { asc: true, max: 999, label: '记忆翻牌', unit: '步' },
   puzzle15: { asc: true, max: 9999, label: '数字华容道', unit: '步' },
+  // fx-sim：只认交易赚到的钱（客户端已扣掉充值部分），单位是美元
+  'fx-sim': { asc: false, max: 1000000000, label: 'FX 模拟器', unit: '美元', fmt: 'money' },
 };
 
 // 榜单里默认遮掉 IP 最后一段：既看得出是不同的人，又不至于把完整地址公开。
@@ -102,6 +104,7 @@ export const onRequestGet = async (ctx: any) => {
     game,
     label: meta.label,
     unit: meta.unit,
+    fmt: meta.fmt || '',
     asc: meta.asc,
     total: Number(total?.c || 0),
     entries,
