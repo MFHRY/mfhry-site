@@ -8,6 +8,11 @@ import Base from '../layouts/Base.astro';
   <div id="list" class="news"></div>
   <p class="muted" id="empty" hidden>还没有新闻。</p>
 
+  <section id="feeds" class="feeds" hidden>
+    <h2>订阅源精选 <small>外部内容，点开读原文</small></h2>
+    <div class="feedgrid" id="feedgrid"></div>
+  </section>
+
   <script is:inline>
     const listEl = document.getElementById('list');
     const emptyEl = document.getElementById('empty');
@@ -87,6 +92,73 @@ import Base from '../layouts/Base.astro';
             '</article>'
         )
         .join('');
+    })();
+  </script>
+
+  <style>
+    .feeds { margin-top: 34px; }
+    .feeds h2 { font-size: 16px; font-weight: 650; margin: 0 0 12px; }
+    .feeds h2 small { font-weight: 500; font-size: 12px; color: var(--muted); margin-left: 8px; }
+    .feedgrid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+    .feedcard {
+      padding: 14px 16px 8px; border-radius: 16px;
+      background: linear-gradient(165deg, rgba(255,255,255,.055), rgba(255,255,255,.025));
+      border: 1px solid rgba(255,255,255,.1);
+    }
+    .feedcard h3 { margin: 0 0 8px; font-size: 13.5px; font-weight: 650; }
+    .feedcard h3 a { color: var(--accent); text-decoration: none; }
+    .feedcard ul { list-style: none; margin: 0; padding: 0; }
+    .feedcard li { display: flex; gap: 10px; align-items: baseline; padding: 6px 0; border-top: 1px solid rgba(255,255,255,.06); }
+    .feedcard li:first-child { border-top: 0; }
+    .feedcard li a { flex: 1; font-size: 13px; line-height: 1.5; color: var(--fg); text-decoration: none; }
+    .feedcard li a:hover { color: var(--accent); }
+    .feedcard time { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  </style>
+
+  <script is:inline>
+    (async () => {
+      const grid = document.getElementById('feedgrid');
+      const wrap = document.getElementById('feeds');
+      if (!grid || !wrap) return;
+      const SRC = ['ruanyf', 'sspai', 'gcores'];
+      const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+      const when = (t) => {
+        const d = new Date(t);
+        if (isNaN(d.getTime())) return '';
+        const mins = Math.floor((Date.now() - d.getTime()) / 60000);
+        if (mins < 60) return Math.max(1, mins) + ' 分钟前';
+        if (mins < 1440) return Math.floor(mins / 60) + ' 小时前';
+        return Math.floor(mins / 1440) + ' 天前';
+      };
+      const cards = await Promise.all(
+        SRC.map(async (src) => {
+          try {
+            const r = await fetch('/api/rss?src=' + src + '&n=5');
+            return await r.json();
+          } catch (e) {
+            return null;
+          }
+        })
+      );
+      const html = cards
+        .filter((c) => c && c.items && c.items.length)
+        .map(
+          (c) =>
+            '<div class="feedcard"><h3><a href="' + esc(c.home) + '" target="_blank" rel="noreferrer">' + esc(c.name) + ' ↗</a></h3><ul>' +
+            c.items
+              .map(
+                (it) =>
+                  '<li><a href="' + esc(it.link) + '" target="_blank" rel="noreferrer">' + esc(it.title) + '</a><time>' +
+                  esc(when(it.date)) +
+                  '</time></li>'
+              )
+              .join('') +
+            '</ul></div>'
+        )
+        .join('');
+      if (!html) return;
+      grid.innerHTML = html;
+      wrap.hidden = false;
     })();
   </script>
 </Base>

@@ -369,9 +369,11 @@
       } else if (section === '[HitObjects]') {
         const p = line.split(',');
         if (p.length < 5) continue;
-        const x = +p[0], t = +p[2], type = +p[3];
+        const x = +p[0], t = +p[2], type = +p[3], hs = +(p[4] || 0);
         if (!((type & 1) || (type & 2) || (type & 128))) continue; // 只留能点的
-        objects.push({ x, t: t / 1000 });
+        let end = 0;
+        if (type & 128 && p[5]) end = +(String(p[5]).split(':')[0] || 0);
+        objects.push({ x, t: t / 1000, hs, end: end ? end / 1000 : 0 });
       }
     }
     return { audio, mode, cs, od, title, artist, version, bg, objects };
@@ -380,8 +382,16 @@
   function toNotes(obj, lanes) {
     const out = [];
     for (const o of obj.objects) {
-      const lane = Math.max(0, Math.min(lanes - 1, Math.floor((o.x / 512) * lanes)));
-      out.push({ t: o.t, lane, judged: 0 });
+      let lane;
+      if (obj.mode === 1) {
+        // taiko：whistle/clap 是蓝（kat），其余是红（don）
+        const kat = (o.hs & 2) || (o.hs & 8);
+        lane = kat ? 1 : 0;
+      } else {
+        lane = Math.max(0, Math.min(lanes - 1, Math.floor((o.x / 512) * lanes)));
+      }
+      const hold = o.end && o.end > o.t ? Math.min(30, o.end - o.t) : 0;
+      out.push({ t: o.t, lane, judged: 0, hold, holdState: 0 });
     }
     out.sort((a, b) => a.t - b.t);
     return out;
@@ -658,7 +668,9 @@
 
   async function chooseChart(i) {
     chart = charts[i];
-    curLanes = chart.obj.mode === 3 ? Math.max(1, Math.min(8, Math.round(chart.obj.cs))) : pref.lanes;
+    curLanes = chart.obj.mode === 3
+      ? Math.max(1, Math.min(8, Math.round(chart.obj.cs)))
+      : chart.obj.mode === 1 ? 2 : pref.lanes;
     $('status').textContent = '准备音频…';
     try {
       await ensureAudio(chart.obj);
@@ -799,7 +811,19 @@
       const y = HIT_Y - (n.t - songTime) * pxPerSec;
       if (y < -40 || y > H + 40) continue;
       const x = n.lane * lw + 6;
-      ctx.fillStyle = LANE_COLORS[n.lane % LANE_COLORS.length];
+      const col = LANE_COLORS[n.lane % LANE_COLORS.length];
+      if (n.hold > 0) {
+        const yEnd = HIT_Y - (n.t + n.hold - songTime) * pxPerSec;
+        ctx.fillStyle = col.replace(')', ',.35)').replace('rgb', 'rgba');
+        ctx.globalAlpha = 0.35;
+        ctx.fillStyle = col;
+        ctx.fillRect(x + (lw - 12) / 2 - 5, Math.min(y, yEnd), 10, Math.abs(yEnd - y));
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = col;
+        roundRect(x, yEnd - 6, lw - 12, 12, 5);
+        ctx.fill();
+      }
+      ctx.fillStyle = col;
       roundRect(x, y - 8, lw - 12, 16, 6);
       ctx.fill();
     }
@@ -857,6 +881,25 @@
           if (AUTO && Math.abs(n.t - (songTime + offSec())) < 0.016) { press(n.lane); continue; }
           if (songTime + offSec() - n.t > w.great) judge(n, 'miss');
         }
+        for (let i = activeHolds.length - 1; i >= 0; i--) {
+          const h = activeHolds[i];
+          if (songTime < h.t + h.hold) continue;
+          activeHolds.splice(i, 1);
+          if (heldLane[h.lane]) {
+            h.holdState = 3;
+            stats.score += 80;
+            addFx(h.lane, 'hit');
+          } else {
+            h.holdState = 2;
+            stats.miss++;
+            stats.combo = 0;
+            const cb = $('combo');
+            cb.textContent = '0';
+            addFx(h.lane, 'miss');
+            popJudge('miss');
+            tick('miss');
+          }
+        }
         if (notes.length && songTime > notes[notes.length - 1].t + 2.5) return finish(false);
         if (hp <= 0) return finish(true);
       }
@@ -903,9 +946,31 @@
     cb.classList.add('bump');
   }
 
+  const heldLane = {};
+  const activeHolds = [];
+
+  function releaseLane(lane) {
+    heldLane[lane] = false;
+    for (let i = activeHolds.length - 1; i >= 0; i--) {
+      const h = activeHolds[i];
+      if (h.lane !== lane || h.holdState !== 1) continue;
+      // 提前松手：尾判 miss（头判已经算过）
+      h.holdState = 2;
+      activeHolds.splice(i, 1);
+      stats.miss++;
+      stats.combo = 0;
+      const cb = $('combo');
+      cb.textContent = '0';
+      addFx(lane, 'miss');
+      popJudge('miss');
+      tick('miss');
+    }
+  }
+
   function press(lane) {
     if (state !== 'playing' || !chart) return;
     pressed[lane] = performance.now();
+    heldLane[lane] = true;
     const w = windows(chart.obj.od, chart.obj.mode);
     const t = songTime + offSec();
     let best = null, bestAbs = 1e9;
@@ -917,8 +982,14 @@
     }
     if (!best) return;
     best.delta = (t - best.t) * 1000;
+    const isHold = best.hold > 0.05;
     if (bestAbs <= w.perfect) judge(best, 'perfect');
     else if (bestAbs <= w.great) judge(best, 'great');
+    else return;
+    if (isHold) {
+      best.holdState = 1;
+      activeHolds.push(best);
+    }
   }
 
   $('offRange').addEventListener('input', (e) => {
@@ -946,6 +1017,8 @@
     } catch (e) { alert('这个浏览器不支持 WebAudio'); return; }
 
     notes = toNotes(chart.obj, curLanes);
+    activeHolds.length = 0;
+    for (let i = 0; i < 8; i++) heldLane[i] = false;
     if (!notes.length) { alert('这张谱面里没有可点的音符'); panel.hidden = false; return; }
     stats = { score: 0, combo: 0, maxCombo: 0, perfect: 0, great: 0, miss: 0 };
     hp = 100; pressed = {};
@@ -1022,7 +1095,13 @@
     }
     if (state !== 'playing') return;
     const lane = laneFromKey(e.key);
-    if (lane >= 0) { e.preventDefault(); press(lane); }
+    if (lane >= 0) { e.preventDefault(); if (!e.repeat) press(lane); }
+  });
+
+  window.addEventListener('keyup', (e) => {
+    if (state !== 'playing') return;
+    const lane = laneFromKey(e.key);
+    if (lane >= 0) releaseLane(lane);
   });
 
   function pause() {
@@ -1036,6 +1115,15 @@
     try { if (actx) actx.resume(); } catch (e) {}
     state = 'playing';
   }
+
+  stage.addEventListener('pointerup', (e) => {
+    const r = cv.getBoundingClientRect();
+    const x = (e.clientX - r.left) * (W / r.width);
+    releaseLane(Math.max(0, Math.min(curLanes - 1, Math.floor(x / laneW()))));
+  });
+  stage.addEventListener('pointercancel', () => {
+    for (let i = 0; i < curLanes; i++) releaseLane(i);
+  });
 
   stage.addEventListener('pointerdown', (e) => {
     if (state === 'paused') { resume(); return; }
