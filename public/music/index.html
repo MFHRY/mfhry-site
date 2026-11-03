@@ -71,6 +71,72 @@
   .empty{font-size:12px;color:var(--muted);padding:8px 2px;line-height:1.6}
   .foot{margin-top:14px;font-size:11px;color:var(--muted);line-height:1.7}
   .foot a{color:var(--muted)}
+
+  /* ---------- 全屏播放（仿 macOS 音乐 App） ---------- */
+  .fs{position:fixed;inset:0;z-index:120;display:none;flex-direction:column;overflow:hidden;background:#0a0a0c;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Microsoft YaHei",sans-serif}
+  .fs.on{display:flex}
+  .fs-bg{position:absolute;inset:-8%;width:116%;height:116%;object-fit:cover;
+    filter:blur(64px) saturate(180%) brightness(.5);transform:scale(1.06);transition:opacity .5s}
+  .fs-shade{position:absolute;inset:0;background:
+    radial-gradient(120% 80% at 50% -10%, rgba(255,255,255,.14), rgba(255,255,255,0) 55%),
+    linear-gradient(180deg, rgba(0,0,0,.25), rgba(0,0,0,.55) 60%, rgba(0,0,0,.78))}
+  .fs-top{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;
+    padding:16px 22px;color:rgba(255,255,255,.62);font-size:12.5px;letter-spacing:.02em}
+  .fs-top .acts{display:flex;gap:8px}
+  .fs-top button{width:32px;height:32px;border-radius:50%;border:0;cursor:pointer;
+    background:rgba(255,255,255,.12);color:#fff;font-size:13px;line-height:1;backdrop-filter:blur(8px)}
+  .fs-top button:hover{background:rgba(255,255,255,.22)}
+  .fs-body{position:relative;z-index:2;flex:1;display:flex;align-items:center;justify-content:center;
+    gap:clamp(24px,5vw,64px);padding:0 clamp(18px,4vw,56px);min-height:0}
+  .fs-art{width:clamp(180px,32vw,360px);aspect-ratio:1/1;object-fit:cover;border-radius:10px;
+    box-shadow:0 34px 80px rgba(0,0,0,.6),0 0 0 .5px rgba(255,255,255,.14);background:#1a1f25;
+    transition:transform .45s cubic-bezier(.2,.8,.2,1),box-shadow .45s}
+  .fs-art.playing{transform:scale(1.015)}
+  .fs-info{width:clamp(240px,38vw,420px);color:#fff;min-width:0}
+  .fs-title{font-size:clamp(20px,2.4vw,30px);font-weight:700;letter-spacing:-.015em;line-height:1.22;
+    overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .fs-artist{font-size:clamp(14px,1.5vw,19px);color:rgba(255,255,255,.6);margin-top:7px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .fs-prog{margin-top:26px}
+  .fs-prog input[type=range]{height:5px;border-radius:3px;background:rgba(255,255,255,.22)}
+  .fs-prog input[type=range]::-webkit-slider-thumb{width:11px;height:11px;background:#fff;
+    box-shadow:0 1px 4px rgba(0,0,0,.5);opacity:0;transition:opacity .2s}
+  .fs-prog:hover input[type=range]::-webkit-slider-thumb{opacity:1}
+  .fs-times{display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,.5);
+    margin-top:7px;font-variant-numeric:tabular-nums}
+  .fs-ctrl{display:flex;align-items:center;justify-content:center;gap:clamp(18px,3vw,34px);margin-top:22px}
+  .fs-ctrl button{background:none;border:0;color:rgba(255,255,255,.88);cursor:pointer;padding:0;
+    display:flex;align-items:center;justify-content:center}
+  .fs-ctrl button:hover{color:#fff}
+  .fs-ctrl .mini{opacity:.72}
+  .fs-ctrl .mini:hover,.fs-ctrl .mini.on{opacity:1}
+  .fs-play{width:62px;height:62px;border-radius:50%;background:rgba(255,255,255,.16);
+    backdrop-filter:blur(12px);transition:background .18s,transform .12s}
+  .fs-play:hover{background:rgba(255,255,255,.26)}
+  .fs-play:active{transform:scale(.96)}
+  .fs-vol{display:flex;align-items:center;gap:10px;margin-top:24px;color:rgba(255,255,255,.55)}
+  .fs-vol input{flex:1}
+  .fs-vol svg{opacity:.7}
+  .fs-queue{position:relative;z-index:2;display:flex;gap:10px;overflow-x:auto;padding:14px clamp(18px,4vw,56px) 22px;
+    scrollbar-width:none}
+  .fs-queue::-webkit-scrollbar{display:none}
+  .fs-q{display:flex;align-items:center;gap:9px;flex:none;max-width:240px;padding:7px 12px 7px 7px;
+    border-radius:11px;background:rgba(255,255,255,.07);cursor:pointer;transition:background .15s}
+  .fs-q:hover{background:rgba(255,255,255,.14)}
+  .fs-q img{width:34px;height:34px;border-radius:6px;object-fit:cover;background:#222;flex:none}
+  .fs-q span{color:#fff;font-size:12px;line-height:1.3;overflow:hidden}
+  .fs-q small{display:block;color:rgba(255,255,255,.55);font-size:10.5px;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis}
+  .fs-q b{display:block;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .fs-empty{color:rgba(255,255,255,.4);font-size:12px;padding:6px 2px}
+  @media (max-width:720px){
+    .fs-body{flex-direction:column;gap:22px;padding-top:6px;justify-content:center}
+    .fs-art{width:min(62vw,260px)}
+    .fs-info{width:100%;max-width:360px;text-align:center}
+    .fs-ctrl{justify-content:center}
+    .fs-prog,.fs-vol{margin-top:18px}
+  }
 </style>
 </head>
 <body>
@@ -95,6 +161,7 @@
       <button id="toggle" title="播放 / 暂停">▶</button>
       <button id="next" title="下一首">⏭</button>
       <span class="chip" id="loop" title="播放模式">顺序</span>
+      <button id="fsOpen" title="全屏播放" style="width:auto;padding:0 12px;font-size:12.5px">全屏 ⤢</button>
     </div>
     <div class="vol">
       <span>音量</span><input type="range" id="vol" min="0" max="1" step="0.01" value="0.85" />
@@ -120,6 +187,43 @@
     </p>
   </section>
 </main>
+
+
+<div class="fs" id="fs">
+  <img class="fs-bg" id="fsBg" alt="" />
+  <div class="fs-shade"></div>
+  <div class="fs-top">
+    <span>正在播放</span>
+    <div class="acts">
+      <button id="fsReal" title="浏览器全屏">⤢</button>
+      <button id="fsClose" title="退出全屏播放（Esc）">✕</button>
+    </div>
+  </div>
+  <div class="fs-body">
+    <img class="fs-art" id="fsArt" alt="封面" />
+    <div class="fs-info">
+      <div class="fs-title" id="fsTitle">未在播放</div>
+      <div class="fs-artist" id="fsArtist"></div>
+      <div class="fs-prog">
+        <input type="range" id="fsSeek" min="0" max="1000" value="0" />
+        <div class="fs-times"><span id="fsCur">0:00</span><span id="fsDur">0:00</span></div>
+      </div>
+      <div class="fs-ctrl">
+        <button class="mini" id="fsShuffle" title="随机播放">⇄</button>
+        <button id="fsPrev" title="上一首"><svg viewBox="0 0 24 24" width="20" height="20"><path d="M11.6 6.2 3.9 12l7.7 5.8V6.2zM20.3 6.2 12.6 12l7.7 5.8V6.2z" fill="currentColor"/></svg></button>
+        <button class="fs-play" id="fsToggle" title="播放 / 暂停"></button>
+        <button id="fsNext" title="下一首"><svg viewBox="0 0 24 24" width="20" height="20"><path d="M12.4 6.2 20.1 12l-7.7 5.8V6.2zM3.7 6.2 11.4 12l-7.7 5.8V6.2z" fill="currentColor"/></svg></button>
+        <button class="mini" id="fsLoop" title="播放模式">↻</button>
+      </div>
+      <div class="fs-vol">
+        <svg viewBox="0 0 24 24" width="15" height="15"><path d="M4 9.5v5h3.5L12 18V6L7.5 9.5H4z" fill="currentColor"/></svg>
+        <input type="range" id="fsVol" min="0" max="1" step="0.01" value="0.85" />
+        <svg viewBox="0 0 24 24" width="15" height="15"><path d="M4 9.5v5h3.5L12 18V6L7.5 9.5H4z" fill="currentColor"/><path d="M15 8.5a5 5 0 0 1 0 7M17.6 6a8.5 8.5 0 0 1 0 12" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
+      </div>
+    </div>
+  </div>
+  <div class="fs-queue" id="fsQueue"></div>
+</div>
 
 <audio id="au" preload="auto"></audio>
 <script src="/songs.js"></script>
@@ -155,8 +259,14 @@
     '<text x="150" y="168" font-size="86" fill="#33414d" text-anchor="middle" font-family="sans-serif">♪</text></svg>');
   const coverOf = (id) => 'https://assets.ppy.sh/beatmaps/' + id + '/covers/cover.jpg';
   const theCover = $('cover');
-  theCover.src = PLACEHOLDER;
-  theCover.onerror = () => { if (theCover.src !== PLACEHOLDER) theCover.src = PLACEHOLDER; };
+  const fsArt = $('fsArt'), fsBg = $('fsBg');
+  function setArt(src) {
+    for (const el of [theCover, fsArt, fsBg]) {
+      el.onerror = () => { el.onerror = null; el.src = PLACEHOLDER; };
+      el.src = src;
+    }
+  }
+  setArt(PLACEHOLDER);
   const thumbFor = (id) => {
     const im = new Image();
     im.className = 'thumb';
@@ -326,9 +436,9 @@
     idx = i;
     const s = queue[i];
     renderQueue();
+    renderFsQueue();
     $('npTitle').innerHTML = esc(s.title || '未知曲目') + '<small>' + esc(s.artist || '') + '</small>';
-    theCover.onerror = null;
-    theCover.src = coverOf(s.setId);
+    setArt(coverOf(s.setId));
     document.title = (s.title || '音乐') + ' · mfhry.store';
     $('bar').classList.add('on');
     $('bari').style.width = '0%';
@@ -348,11 +458,7 @@
         bufCache.set(String(s.setId), url);
         try {
           const bg = await coverFromOsz(s.setId, buf);
-          if (bg && idx === i) {
-            theCover.onerror = null;
-            theCover.src = bg;
-            bgUrl = bg;
-          }
+          if (bg && idx === i) { setArt(bg); bgUrl = bg; }
         } catch (e) {}
       }
       if (blobUrl && blobUrl !== url) URL.revokeObjectURL(blobUrl);
@@ -364,6 +470,7 @@
       if (autoplay) await au.play().catch((e) => setStatus('浏览器拦了自动播放，点一下 ▶'));
       setMediaSession(s);
       renderQueue();
+      syncFS();
     } catch (e) {
       setStatus('没成功：' + e.message);
     } finally {
@@ -542,8 +649,8 @@
     if (!au.src) { if (queue.length) play(idx < 0 ? 0 : idx); return; }
     if (au.paused) au.play().catch(() => {}); else au.pause();
   };
-  au.addEventListener('play', () => { $('toggle').textContent = '⏸'; });
-  au.addEventListener('pause', () => { $('toggle').textContent = '▶'; });
+  au.addEventListener('play', () => { $('toggle').textContent = '⏸'; syncFS(); });
+  au.addEventListener('pause', () => { $('toggle').textContent = '▶'; syncFS(); });
   au.addEventListener('ended', () => {
     if (loopMode === 1) { au.currentTime = 0; au.play().catch(() => {}); return; }
     step(1);
@@ -553,6 +660,7 @@
     $('cur').textContent = mmss(au.currentTime);
     $('dur').textContent = mmss(au.duration);
     $('seek').value = String(Math.round((au.currentTime / au.duration) * 1000));
+    if (fsEl.classList.contains('on')) syncFS();
   });
   au.addEventListener('loadedmetadata', () => { $('dur').textContent = mmss(au.duration); });
   au.addEventListener('error', () => { if (au.src) setStatus('这个音频浏览器放不了，换一首'); });
@@ -565,9 +673,10 @@
   });
   $('vol').addEventListener('input', () => {
     au.volume = +$('vol').value;
+    $('fsVol').value = String(au.volume);
     try { localStorage.setItem('mfhry_music_vol', $('vol').value); } catch (e) {}
   });
-  $('loop').onclick = () => { loopMode = (loopMode + 1) % 3; $('loop').textContent = LOOP_TXT[loopMode]; };
+  $('loop').onclick = () => { loopMode = (loopMode + 1) % 3; $('loop').textContent = LOOP_TXT[loopMode]; syncFS(); };
   $('prev').onclick = () => step(-1);
   $('next').onclick = () => step(1);
   $('search').onclick = () => { const q = $('q').value.trim(); if (q) search(q); };
@@ -577,6 +686,86 @@
     if (e.key === ' ') { e.preventDefault(); $('toggle').click(); }
     if (e.key === 'ArrowRight' && au.duration) au.currentTime = Math.min(au.duration, au.currentTime + 5);
     if (e.key === 'ArrowLeft' && au.duration) au.currentTime = Math.max(0, au.currentTime - 5);
+  });
+
+
+  // ---------- 全屏播放（仿 macOS 音乐 App） ----------
+  const fsEl = $('fs');
+  const PLAY_SVG = '<svg viewBox="0 0 24 24" width="22" height="22"><path d="M8 5.5v13a1 1 0 0 0 1.53.85l10-6.5a1 1 0 0 0 0-1.7l-10-6.5A1 1 0 0 0 8 5.5z" fill="currentColor"/></svg>';
+  const PAUSE_SVG = '<svg viewBox="0 0 24 24" width="22" height="22"><rect x="7" y="5" width="3.4" height="14" rx="1.4" fill="currentColor"/><rect x="13.6" y="5" width="3.4" height="14" rx="1.4" fill="currentColor"/></svg>';
+
+  function syncFS() {
+    const s = queue[idx] || {};
+    const playing = !!au.src && !au.paused;
+    $('fsTitle').textContent = s.title || '未在播放';
+    $('fsArtist').textContent = s.artist || '';
+    $('fsToggle').innerHTML = playing ? PAUSE_SVG : PLAY_SVG;
+    $('fsCur').textContent = mmss(au.currentTime);
+    $('fsDur').textContent = mmss(au.duration);
+    if (au.duration) $('fsSeek').value = String(Math.round((au.currentTime / au.duration) * 1000));
+    $('fsVol').value = String(au.volume);
+    $('fsShuffle').classList.toggle('on', loopMode === 2);
+    $('fsLoop').classList.toggle('on', loopMode !== 0);
+    fsArt.classList.toggle('playing', playing);
+  }
+
+  function renderFsQueue() {
+    const wrap = $('fsQueue');
+    wrap.innerHTML = '';
+    const next = queue.slice(idx + 1, idx + 8);
+    if (!next.length) {
+      wrap.innerHTML = '<div class="fs-empty">列表里没有下一首了</div>';
+      return;
+    }
+    next.forEach((s, k) => {
+      const d = document.createElement('div');
+      d.className = 'fs-q';
+      const im = new Image();
+      im.loading = 'lazy';
+      im.src = coverOf(s.setId);
+      im.onerror = () => { im.onerror = null; im.src = PLACEHOLDER; };
+      const t = document.createElement('span');
+      t.innerHTML = '<b>' + esc(s.title || '?') + '</b><small>' + esc(s.artist || '') + '</small>';
+      d.appendChild(im); d.appendChild(t);
+      d.onclick = () => play(idx + 1 + k);
+      wrap.appendChild(d);
+    });
+  }
+
+  function openFS() {
+    fsEl.classList.add('on');
+    document.body.style.overflow = 'hidden';
+    if (!fsArt.src || fsArt.src === PLACEHOLDER) setArt(theCover.src || PLACEHOLDER);
+    syncFS();
+    renderFsQueue();
+  }
+  function closeFS() {
+    fsEl.classList.remove('on');
+    document.body.style.overflow = '';
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  }
+
+  $('fsOpen').onclick = openFS;
+  $('fsClose').onclick = closeFS;
+  $('fsReal').onclick = () => {
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    else (fsEl.requestFullscreen ? fsEl.requestFullscreen() : Promise.reject()).catch(() => {});
+  };
+  $('fsToggle').onclick = () => $('toggle').click();
+  $('fsPrev').onclick = () => step(-1);
+  $('fsNext').onclick = () => step(1);
+  $('fsLoop').onclick = () => $('loop').click();
+  $('fsShuffle').onclick = () => { loopMode = loopMode === 2 ? 0 : 2; $('loop').textContent = LOOP_TXT[loopMode]; syncFS(); };
+  $('fsSeek').addEventListener('input', () => {
+    if (au.duration) au.currentTime = (+$('fsSeek').value / 1000) * au.duration;
+  });
+  $('fsVol').addEventListener('input', () => {
+    au.volume = +$('fsVol').value;
+    $('vol').value = String(au.volume);
+    try { localStorage.setItem('mfhry_music_vol', $('vol').value); } catch (e) {}
+  });
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && fsEl.classList.contains('on')) { closeFS(); }
   });
 
   // ---------- 启动 ----------
@@ -594,6 +783,8 @@
   }
 
   window.__music = {
+    openFS: () => openFS(),
+    closeFS: () => closeFS(),
     queue: () => queue.slice(),
     idx: () => idx,
     add: (o) => addSong(o),
