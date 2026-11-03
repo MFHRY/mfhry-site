@@ -108,10 +108,10 @@
     .stage{display:grid;grid-template-columns:minmax(320px,372px) auto;gap:16px;align-items:start;
       background:transparent;border-radius:0;overflow:visible}
     .stage::after{content:'';display:none}
-    canvas{order:2;height:min(calc(100dvh - 186px),680px);width:auto;max-width:100%;
+    canvas{order:2;height:min(calc(100vh - 186px),680px);width:auto;max-width:100%;
       border-radius:16px;background:#0b0f13;box-shadow:0 24px 70px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.06)}
     .judge{bottom:170px}
-    .panel{order:1;position:relative;inset:auto;width:auto;max-height:min(calc(100dvh - 186px),680px);
+    .panel{order:1;position:relative;inset:auto;width:auto;max-height:min(calc(100vh - 186px),680px);
       border-radius:16px;border:1px solid rgba(255,255,255,.1);background:rgba(12,16,20,.82);
       -webkit-backdrop-filter:blur(24px) saturate(1.2);backdrop-filter:blur(24px) saturate(1.2);
       padding:16px;box-shadow:0 24px 70px rgba(0,0,0,.45)}
@@ -122,7 +122,7 @@
     .result,.pickLayer{max-height:none}
   }
   @media (min-width:960px) and (min-height:820px){
-    canvas{height:min(calc(100dvh - 186px),760px)}
+    canvas{height:min(calc(100vh - 186px),760px)}
   }
 </style>
 </head>
