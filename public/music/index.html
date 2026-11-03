@@ -5,141 +5,229 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>音乐 · mfhry.store</title>
 <style>
-  :root{--bg:#0b0e11;--panel:#151b21;--cell:#1c232b;--fg:#eaecef;--muted:#8b939c;--accent:#7fd1b0}
+  :root{
+    --bg:#08090b;--fg:#eef1f4;--muted:rgba(238,241,244,.55);--accent:#7fd1b0;
+    --glass:linear-gradient(165deg,rgba(255,255,255,.13),rgba(255,255,255,.05) 46%,rgba(255,255,255,.075));
+    --glass-hi:inset 0 1px 0 rgba(255,255,255,.34),inset 0 -1px 0 rgba(255,255,255,.06);
+    --rim:1px solid rgba(255,255,255,.17);
+    --shadow:0 20px 48px rgba(0,0,0,.45);
+  }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-  body{background:var(--bg);color:var(--fg);font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;min-height:100vh}
-  header{display:flex;align-items:baseline;justify-content:space-between;gap:10px;
-    max-width:1000px;margin:0 auto;padding:16px 18px 8px}
-  header h1{font-size:20px}
-  header small{color:var(--muted);font-size:12px}
-  header a{color:var(--muted);text-decoration:none;font-size:12.5px}
-  header a:hover{color:var(--fg)}
-  main{max-width:1000px;margin:0 auto;padding:0 18px 40px;display:grid;grid-template-columns:340px 1fr;gap:16px;align-items:start}
-  @media (max-width:760px){main{grid-template-columns:1fr}}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Microsoft YaHei",sans-serif;
+    min-height:100vh;overflow-x:hidden}
 
-  .card{background:var(--panel);border-radius:14px;padding:16px}
-  .cover{width:100%;aspect-ratio:900/250;object-fit:cover;border-radius:12px;background:linear-gradient(160deg,#1d2731,#12181e);
-    display:block;margin-bottom:14px;border:1px solid #222c35}
-  .thumb{width:34px;height:34px;border-radius:7px;object-fit:cover;background:#1d2731;flex:none;border:1px solid #222c35}
-  .np{font-size:17px;font-weight:600;line-height:1.35;word-break:break-word;min-height:46px}
+  /* 液态玻璃环境层：整张页面铺满当前封面 */
+  .ambient{position:fixed;inset:-12%;z-index:-1;overflow:hidden;background:#0a0b0d}
+  .ambient img{width:100%;height:100%;object-fit:cover;filter:blur(70px) saturate(175%) brightness(.40);transform:scale(1.12)}
+  .ambient::after{content:'';position:absolute;inset:0;background:
+    radial-gradient(120% 80% at 30% -10%,rgba(255,255,255,.10),transparent 55%),
+    linear-gradient(180deg,rgba(8,9,11,.30),rgba(8,9,11,.62) 55%,rgba(8,9,11,.82))}
+
+  header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px clamp(16px,3vw,40px) 4px}
+  header h1{font-size:19px;letter-spacing:-.01em}
+  header small{color:var(--muted);font-size:11.5px;margin-left:8px}
+  header a{color:var(--muted);text-decoration:none;font-size:12px;padding:7px 13px;border-radius:999px;
+    background:var(--glass);border:var(--rim);box-shadow:var(--glass-hi),0 8px 22px rgba(0,0,0,.28);
+    backdrop-filter:blur(20px) saturate(170%);transition:background .18s,transform .12s}
+  header a:hover{background:linear-gradient(165deg,rgba(255,255,255,.22),rgba(255,255,255,.09))}
+  header a:active{transform:scale(.97)}
+
+  main{display:grid;grid-template-columns:minmax(320px,420px) minmax(0,1fr);gap:16px;align-items:start;
+    padding:10px clamp(16px,3vw,40px) 24px;min-height:calc(100vh - 66px)}
+  @media (max-width:860px){main{grid-template-columns:1fr;min-height:0}}
+
+  .card{position:relative;border-radius:22px;background:var(--glass);border:var(--rim);
+    box-shadow:var(--shadow),var(--glass-hi);backdrop-filter:blur(30px) saturate(180%);
+    -webkit-backdrop-filter:blur(30px) saturate(180%);padding:16px;overflow:hidden}
+  .card::before{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+    background:radial-gradient(130% 55% at 18% -12%,rgba(255,255,255,.20),transparent 62%)}
+  .card>*{position:relative}
+  @media (min-width:861px){
+    #colRight{max-height:calc(100vh - 92px);overflow:auto;scrollbar-width:thin}
+    #colRight::-webkit-scrollbar{width:8px}
+    #colRight::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:4px}
+  }
+
+  .cover{width:100%;aspect-ratio:900/250;object-fit:cover;border-radius:16px;background:#12161b;
+    display:block;margin-bottom:14px;border:1px solid rgba(255,255,255,.14);
+    box-shadow:0 18px 40px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.22)}
+  .thumb{width:36px;height:36px;border-radius:9px;object-fit:cover;background:#1d2731;flex:none;
+    border:1px solid rgba(255,255,255,.16);box-shadow:0 4px 10px rgba(0,0,0,.35)}
+
+  .np{font-size:17px;font-weight:600;line-height:1.35;word-break:break-word;min-height:46px;letter-spacing:-.01em}
   .np small{display:block;font-weight:400;font-size:12.5px;color:var(--muted);margin-top:3px}
+
   .seek{margin-top:14px}
-  input[type=range]{width:100%;-webkit-appearance:none;appearance:none;height:4px;border-radius:2px;
-    background:#2a3540;outline:none}
-  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;
-    background:var(--accent);cursor:pointer}
-  .times{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:6px;
+  input[type=range]{width:100%;-webkit-appearance:none;appearance:none;height:6px;border-radius:999px;outline:none;
+    background:linear-gradient(90deg,rgba(255,255,255,.42),rgba(255,255,255,.16));
+    box-shadow:inset 0 1px 2px rgba(0,0,0,.4),0 1px 0 rgba(255,255,255,.08)}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%,#fff,#d6dee6);cursor:pointer;
+    box-shadow:0 2px 8px rgba(0,0,0,.5),inset 0 -1px 2px rgba(0,0,0,.15)}
+  .times{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:7px;
     font-variant-numeric:tabular-nums}
-  .controls{display:flex;align-items:center;gap:8px;margin-top:12px}
-  .controls button{border:1px solid #33414d;background:transparent;color:var(--fg);border-radius:10px;
-    width:42px;height:38px;font-size:15px;cursor:pointer}
-  .controls button:hover{border-color:var(--accent)}
-  #toggle{width:56px;background:rgba(127,209,176,.15);border-color:var(--accent);font-size:17px}
-  .controls .chip{margin-left:auto}
-  .vol{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:11px;color:var(--muted)}
+
+  .controls{display:flex;align-items:center;gap:9px;margin-top:12px}
+  .controls button{width:42px;height:40px;border-radius:13px;color:var(--fg);font-size:15px;cursor:pointer;
+    background:var(--glass);border:var(--rim);box-shadow:var(--glass-hi),0 10px 24px rgba(0,0,0,.30);
+    backdrop-filter:blur(18px) saturate(170%);transition:background .18s,transform .12s,box-shadow .18s}
+  .controls button:hover{background:linear-gradient(165deg,rgba(255,255,255,.24),rgba(255,255,255,.10));
+    box-shadow:var(--glass-hi),0 14px 30px rgba(0,0,0,.36)}
+  .controls button:active{transform:scale(.95)}
+  #toggle{width:58px;background:linear-gradient(165deg,rgba(127,209,176,.32),rgba(127,209,176,.12));
+    border-color:rgba(127,209,176,.5);box-shadow:var(--glass-hi),0 12px 34px rgba(48,150,116,.35);font-size:17px}
+  #toggle:hover{background:linear-gradient(165deg,rgba(127,209,176,.44),rgba(127,209,176,.18))}
+
+  .chip{padding:6px 13px;border-radius:999px;font-size:12px;color:var(--fg);cursor:pointer;white-space:nowrap;
+    background:var(--glass);border:var(--rim);box-shadow:var(--glass-hi),0 8px 20px rgba(0,0,0,.26);
+    backdrop-filter:blur(16px) saturate(165%);transition:background .18s,transform .12s}
+  .chip:hover{background:linear-gradient(165deg,rgba(255,255,255,.22),rgba(255,255,255,.09))}
+  .chip:active{transform:scale(.97)}
+  .chip.on{background:linear-gradient(165deg,rgba(127,209,176,.34),rgba(127,209,176,.14));
+    border-color:rgba(127,209,176,.55);color:#fff;box-shadow:var(--glass-hi),0 10px 26px rgba(48,150,116,.35)}
+
+  .vol{display:flex;align-items:center;gap:9px;margin-top:12px;font-size:11px;color:var(--muted)}
   .vol input{flex:1}
   .status{font-size:11.5px;color:var(--muted);margin-top:10px;min-height:16px;line-height:1.5}
-  .bar{height:4px;border-radius:2px;background:#1c232b;margin-top:8px;overflow:hidden;display:none}
+  .bar{height:5px;border-radius:3px;background:rgba(255,255,255,.12);margin-top:8px;overflow:hidden;display:none}
   .bar.on{display:block}
-  .bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .12s}
+  .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,rgba(127,209,176,.9),rgba(160,230,205,.95));
+    transition:width .12s}
 
-  .row{display:flex;gap:6px;flex-wrap:wrap}
-  .chip{padding:5px 11px;border-radius:999px;border:1px solid #2b3742;background:#141a20;
-    font-size:12px;color:var(--muted);cursor:pointer;white-space:nowrap}
-  .chip:hover{border-color:#3b4a56}
-  .chip.on{border-color:var(--accent);color:var(--fg);background:rgba(127,209,176,.13)}
-  .gtitle{font-size:11px;color:#6f7883;margin:9px 0 5px}
-  .search{display:flex;gap:6px;margin-bottom:4px}
-  .search input{flex:1;min-width:0;padding:8px 11px;border-radius:9px;border:1px solid #2b3742;background:#141a20;
-    color:var(--fg);font:inherit;font-size:13px}
-  .search input:focus{outline:none;border-color:var(--accent)}
-  .search button{padding:8px 14px;border-radius:9px;border:1px solid var(--accent);background:rgba(127,209,176,.14);
-    color:var(--fg);font:inherit;font-size:13px;cursor:pointer}
+  .row{display:flex;gap:7px;flex-wrap:wrap}
+  .gtitle{font-size:11px;color:rgba(255,255,255,.42);margin:10px 0 6px;letter-spacing:.04em}
 
-  h3{font-size:12px;color:var(--accent);margin:16px 0 6px;font-weight:600;letter-spacing:.02em}
-  h3 small{color:var(--muted);font-weight:400;margin-left:6px;letter-spacing:0}
-  .list{display:grid;gap:5px}
-  .more{font-size:12px;color:var(--accent);cursor:pointer;padding:7px 2px 2px;user-select:none}
-  .more:hover{text-decoration:underline}
-  .item{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;
-    border:1px solid #263039;border-radius:9px;background:#141a20;font-size:12.5px;line-height:1.45}
+  .search{display:flex;gap:7px;margin-bottom:2px}
+  .search input{flex:1;min-width:0;padding:9px 14px;border-radius:13px;border:var(--rim);color:var(--fg);
+    font:inherit;font-size:13px;background:linear-gradient(165deg,rgba(255,255,255,.10),rgba(255,255,255,.045));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.26),inset 0 -1px 0 rgba(0,0,0,.2);
+    backdrop-filter:blur(18px) saturate(170%)}
+  .search input::placeholder{color:rgba(255,255,255,.38)}
+  .search input:focus{outline:none;border-color:rgba(127,209,176,.55);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 0 0 3px rgba(127,209,176,.16)}
+  .search button{padding:9px 16px;border-radius:13px;color:var(--fg);font:inherit;font-size:13px;cursor:pointer;
+    background:linear-gradient(165deg,rgba(127,209,176,.34),rgba(127,209,176,.13));
+    border:1px solid rgba(127,209,176,.5);box-shadow:var(--glass-hi),0 10px 26px rgba(48,150,116,.3);
+    backdrop-filter:blur(18px) saturate(170%);transition:background .18s,transform .12s}
+  .search button:hover{background:linear-gradient(165deg,rgba(127,209,176,.46),rgba(127,209,176,.2))}
+  .search button:active{transform:scale(.97)}
+
+  h3{font-size:12px;color:rgba(255,255,255,.78);margin:16px 0 7px;font-weight:600;letter-spacing:.02em}
+  h3 small{color:var(--muted);font-weight:400;margin-left:6px}
+
+  .list{display:grid;gap:6px}
+  .item{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 12px;
+    border-radius:14px;font-size:12.5px;line-height:1.45;
+    background:linear-gradient(165deg,rgba(255,255,255,.075),rgba(255,255,255,.03));
+    border:1px solid rgba(255,255,255,.10);box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 8px 20px rgba(0,0,0,.22);
+    transition:background .18s,border-color .18s,transform .12s}
+  .item:hover{background:linear-gradient(165deg,rgba(255,255,255,.135),rgba(255,255,255,.05));
+    border-color:rgba(255,255,255,.2)}
   .item small{color:var(--muted);font-size:11px}
-  .item .act{color:var(--accent);font-size:11.5px;white-space:nowrap;cursor:pointer;padding:2px 4px}
-  .item.playing{border-color:var(--accent);background:rgba(127,209,176,.1)}
-  .item .rm{color:#7b8791;cursor:pointer;padding:2px 6px;font-size:13px}
-  .item .rm:hover{color:#e87f9a}
-  .empty{font-size:12px;color:var(--muted);padding:8px 2px;line-height:1.6}
+  .item.playing{border-color:rgba(127,209,176,.55);
+    background:linear-gradient(165deg,rgba(127,209,176,.22),rgba(127,209,176,.07));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.24),0 10px 26px rgba(48,150,116,.28)}
+  .item .act{font-size:11.5px;white-space:nowrap;cursor:pointer;padding:5px 10px;border-radius:999px;
+    color:#dff5ec;background:linear-gradient(165deg,rgba(127,209,176,.28),rgba(127,209,176,.10));
+    border:1px solid rgba(127,209,176,.42);box-shadow:inset 0 1px 0 rgba(255,255,255,.3);
+    transition:background .18s,transform .12s}
+  .item .act:hover{background:linear-gradient(165deg,rgba(127,209,176,.42),rgba(127,209,176,.18))}
+  .item .act:active{transform:scale(.96)}
+  .item .rm{color:rgba(255,255,255,.45);cursor:pointer;padding:3px 7px;font-size:13px;border-radius:8px;
+    transition:color .15s,background .15s}
+  .item .rm:hover{color:#ff9fb4;background:rgba(255,255,255,.08)}
+  .empty{font-size:12px;color:var(--muted);padding:10px 4px;line-height:1.6}
+  .more{display:inline-block;font-size:12px;color:var(--fg);cursor:pointer;padding:6px 13px;margin-top:8px;
+    border-radius:999px;background:var(--glass);border:var(--rim);
+    box-shadow:var(--glass-hi),0 8px 20px rgba(0,0,0,.26);backdrop-filter:blur(16px) saturate(165%);
+    transition:background .18s,transform .12s}
+  .more:hover{background:linear-gradient(165deg,rgba(255,255,255,.22),rgba(255,255,255,.09))}
+  .more:active{transform:scale(.97)}
   .foot{margin-top:14px;font-size:11px;color:var(--muted);line-height:1.7}
-  .foot a{color:var(--muted)}
+  .foot a{color:rgba(180,235,215,.9);text-decoration:none;border-bottom:1px solid rgba(180,235,215,.3)}
 
-  /* ---------- 全屏播放（仿 macOS 音乐 App） ---------- */
-  .fs{position:fixed;inset:0;z-index:120;display:none;flex-direction:column;overflow:hidden;background:#0a0a0c;
-    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Microsoft YaHei",sans-serif}
+  /* ---------- 全屏播放（液态玻璃） ---------- */
+  .fs{position:fixed;inset:0;z-index:120;display:none;flex-direction:column;overflow:hidden;background:#08090c}
   .fs.on{display:flex}
   .fs-bg{position:absolute;inset:-8%;width:116%;height:116%;object-fit:cover;
-    filter:blur(64px) saturate(180%) brightness(.5);transform:scale(1.06);transition:opacity .5s}
+    filter:blur(70px) saturate(185%) brightness(.46);transform:scale(1.07)}
   .fs-shade{position:absolute;inset:0;background:
-    radial-gradient(120% 80% at 50% -10%, rgba(255,255,255,.14), rgba(255,255,255,0) 55%),
-    linear-gradient(180deg, rgba(0,0,0,.25), rgba(0,0,0,.55) 60%, rgba(0,0,0,.78))}
+    radial-gradient(120% 80% at 50% -10%,rgba(255,255,255,.15),rgba(255,255,255,0) 55%),
+    linear-gradient(180deg,rgba(0,0,0,.22),rgba(0,0,0,.5) 60%,rgba(0,0,0,.75))}
   .fs-top{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;
-    padding:16px 22px;color:rgba(255,255,255,.62);font-size:12.5px;letter-spacing:.02em}
+    padding:14px 20px;color:rgba(255,255,255,.62);font-size:12.5px;letter-spacing:.02em}
   .fs-top .acts{display:flex;gap:8px}
-  .fs-top button{width:32px;height:32px;border-radius:50%;border:0;cursor:pointer;
-    background:rgba(255,255,255,.12);color:#fff;font-size:13px;line-height:1;backdrop-filter:blur(8px)}
-  .fs-top button:hover{background:rgba(255,255,255,.22)}
+  .fs-top button{width:34px;height:34px;border-radius:50%;border:var(--rim);cursor:pointer;color:#fff;font-size:13px;
+    background:var(--glass);box-shadow:var(--glass-hi),0 8px 22px rgba(0,0,0,.3);
+    backdrop-filter:blur(20px) saturate(175%);transition:background .18s,transform .12s}
+  .fs-top button:hover{background:linear-gradient(165deg,rgba(255,255,255,.26),rgba(255,255,255,.1))}
+  .fs-top button:active{transform:scale(.95)}
+
   .fs-body{position:relative;z-index:2;flex:1;display:flex;align-items:center;justify-content:center;
     gap:clamp(24px,5vw,64px);padding:0 clamp(18px,4vw,56px);min-height:0}
-  .fs-art{width:clamp(180px,32vw,360px);aspect-ratio:1/1;object-fit:cover;border-radius:10px;
-    box-shadow:0 34px 80px rgba(0,0,0,.6),0 0 0 .5px rgba(255,255,255,.14);background:#1a1f25;
-    transition:transform .45s cubic-bezier(.2,.8,.2,1),box-shadow .45s}
-  .fs-art.playing{transform:scale(1.015)}
-  .fs-info{width:clamp(240px,38vw,420px);color:#fff;min-width:0}
-  .fs-title{font-size:clamp(20px,2.4vw,30px);font-weight:700;letter-spacing:-.015em;line-height:1.22;
+  .fs-art{width:clamp(180px,32vw,360px);aspect-ratio:1/1;object-fit:cover;border-radius:22px;background:#1a1f25;
+    border:1px solid rgba(255,255,255,.18);
+    box-shadow:0 40px 90px rgba(0,0,0,.62),0 0 0 .5px rgba(255,255,255,.14),inset 0 1px 0 rgba(255,255,255,.3);
+    transition:transform .5s cubic-bezier(.2,.8,.2,1),box-shadow .5s}
+  .fs-art.playing{transform:scale(1.018) translateY(-2px);
+    box-shadow:0 52px 110px rgba(0,0,0,.7),0 0 0 .5px rgba(255,255,255,.18),inset 0 1px 0 rgba(255,255,255,.34)}
+  .fs-info{width:clamp(240px,38vw,430px);color:#fff;min-width:0;padding:20px 22px;border-radius:24px;
+    background:linear-gradient(165deg,rgba(255,255,255,.10),rgba(255,255,255,.035));
+    border:1px solid rgba(255,255,255,.15);box-shadow:0 26px 70px rgba(0,0,0,.42),var(--glass-hi);
+    backdrop-filter:blur(26px) saturate(180%)}
+  .fs-title{font-size:clamp(20px,2.4vw,30px);font-weight:700;letter-spacing:-.018em;line-height:1.22;
     overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-  .fs-artist{font-size:clamp(14px,1.5vw,19px);color:rgba(255,255,255,.6);margin-top:7px;
+  .fs-artist{font-size:clamp(14px,1.5vw,19px);color:rgba(255,255,255,.62);margin-top:7px;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .fs-prog{margin-top:26px}
-  .fs-prog input[type=range]{height:5px;border-radius:3px;background:rgba(255,255,255,.22)}
-  .fs-prog input[type=range]::-webkit-slider-thumb{width:11px;height:11px;background:#fff;
-    box-shadow:0 1px 4px rgba(0,0,0,.5);opacity:0;transition:opacity .2s}
+  .fs-prog{margin-top:24px}
+  .fs-prog input[type=range]::-webkit-slider-thumb{opacity:0;transition:opacity .2s}
   .fs-prog:hover input[type=range]::-webkit-slider-thumb{opacity:1}
   .fs-times{display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,.5);
-    margin-top:7px;font-variant-numeric:tabular-nums}
-  .fs-ctrl{display:flex;align-items:center;justify-content:center;gap:clamp(18px,3vw,34px);margin-top:22px}
-  .fs-ctrl button{background:none;border:0;color:rgba(255,255,255,.88);cursor:pointer;padding:0;
-    display:flex;align-items:center;justify-content:center}
+    margin-top:8px;font-variant-numeric:tabular-nums}
+  .fs-ctrl{display:flex;align-items:center;justify-content:center;gap:clamp(16px,3vw,32px);margin-top:20px}
+  .fs-ctrl button{background:none;border:0;color:rgba(255,255,255,.9);cursor:pointer;padding:0;
+    display:flex;align-items:center;justify-content:center;transition:color .15s,transform .12s}
   .fs-ctrl button:hover{color:#fff}
-  .fs-ctrl .mini{opacity:.72}
-  .fs-ctrl .mini:hover,.fs-ctrl .mini.on{opacity:1}
-  .fs-play{width:62px;height:62px;border-radius:50%;background:rgba(255,255,255,.16);
-    backdrop-filter:blur(12px);transition:background .18s,transform .12s}
-  .fs-play:hover{background:rgba(255,255,255,.26)}
-  .fs-play:active{transform:scale(.96)}
-  .fs-vol{display:flex;align-items:center;gap:10px;margin-top:24px;color:rgba(255,255,255,.55)}
+  .fs-ctrl button:active{transform:scale(.94)}
+  .fs-ctrl .mini{opacity:.7;font-size:19px;width:34px;height:34px;border-radius:50%;
+    background:linear-gradient(165deg,rgba(255,255,255,.10),rgba(255,255,255,.04));
+    border:1px solid rgba(255,255,255,.14);box-shadow:inset 0 1px 0 rgba(255,255,255,.22)}
+  .fs-ctrl .mini:hover,.fs-ctrl .mini.on{opacity:1;background:linear-gradient(165deg,rgba(127,209,176,.3),rgba(127,209,176,.12));
+    border-color:rgba(127,209,176,.5)}
+  .fs-play{width:64px;height:64px;border-radius:50%;
+    background:linear-gradient(165deg,rgba(255,255,255,.30),rgba(255,255,255,.10));
+    border:1px solid rgba(255,255,255,.35)!important;
+    box-shadow:0 16px 38px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.55),inset 0 -2px 8px rgba(255,255,255,.08);
+    backdrop-filter:blur(20px) saturate(180%)}
+  .fs-play:hover{background:linear-gradient(165deg,rgba(255,255,255,.42),rgba(255,255,255,.16))}
+  .fs-vol{display:flex;align-items:center;gap:10px;margin-top:20px;color:rgba(255,255,255,.55)}
   .fs-vol input{flex:1}
-  .fs-vol svg{opacity:.7}
-  .fs-queue{position:relative;z-index:2;display:flex;gap:10px;overflow-x:auto;padding:14px clamp(18px,4vw,56px) 22px;
+  .fs-queue{position:relative;z-index:2;display:flex;gap:10px;overflow-x:auto;padding:12px clamp(18px,4vw,56px) 20px;
     scrollbar-width:none}
   .fs-queue::-webkit-scrollbar{display:none}
-  .fs-q{display:flex;align-items:center;gap:9px;flex:none;max-width:240px;padding:7px 12px 7px 7px;
-    border-radius:11px;background:rgba(255,255,255,.07);cursor:pointer;transition:background .15s}
-  .fs-q:hover{background:rgba(255,255,255,.14)}
-  .fs-q img{width:34px;height:34px;border-radius:6px;object-fit:cover;background:#222;flex:none}
+  .fs-q{display:flex;align-items:center;gap:10px;flex:none;max-width:250px;padding:8px 14px 8px 8px;border-radius:16px;
+    cursor:pointer;background:linear-gradient(165deg,rgba(255,255,255,.10),rgba(255,255,255,.04));
+    border:1px solid rgba(255,255,255,.14);box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 10px 26px rgba(0,0,0,.28);
+    backdrop-filter:blur(20px) saturate(175%);transition:background .18s,transform .12s}
+  .fs-q:hover{background:linear-gradient(165deg,rgba(255,255,255,.20),rgba(255,255,255,.08))}
+  .fs-q:active{transform:scale(.97)}
+  .fs-q img{width:36px;height:36px;border-radius:9px;object-fit:cover;background:#222;flex:none;
+    border:1px solid rgba(255,255,255,.18)}
   .fs-q span{color:#fff;font-size:12px;line-height:1.3;overflow:hidden}
-  .fs-q small{display:block;color:rgba(255,255,255,.55);font-size:10.5px;white-space:nowrap;
-    overflow:hidden;text-overflow:ellipsis}
+  .fs-q small{display:block;color:rgba(255,255,255,.55);font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .fs-q b{display:block;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .fs-empty{color:rgba(255,255,255,.4);font-size:12px;padding:6px 2px}
+  .fs-empty{color:rgba(255,255,255,.42);font-size:12px;padding:8px 2px}
   @media (max-width:720px){
-    .fs-body{flex-direction:column;gap:22px;padding-top:6px;justify-content:center}
-    .fs-art{width:min(62vw,260px)}
-    .fs-info{width:100%;max-width:360px;text-align:center}
-    .fs-ctrl{justify-content:center}
-    .fs-prog,.fs-vol{margin-top:18px}
+    .fs-body{flex-direction:column;gap:18px;padding-top:4px;justify-content:center}
+    .fs-art{width:min(58vw,240px)}
+    .fs-info{width:100%;max-width:360px;text-align:center;padding:16px}
+    .fs-prog,.fs-vol{margin-top:16px}
   }
 </style>
 </head>
 <body>
+<div class="ambient"><img id="ambientImg" alt="" /></div>
 <header>
   <div>
     <h1>音乐</h1>
@@ -170,7 +258,7 @@
     <div class="status" id="status"></div>
   </section>
 
-  <section class="card">
+  <section class="card" id="colRight">
     <div class="search">
       <input id="q" type="search" placeholder="歌名 / 歌手 / 番名，例如 kenshi yonezu lemon" />
       <button id="search">搜索</button>
@@ -243,6 +331,7 @@
   let blobUrl = '';
   let busy = false;
   const bufCache = new Map();   // setId -> objectURL
+  let bgUrl = '';
 
   const load = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? d : v; } catch (e) { return d; } };
   const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
@@ -261,6 +350,7 @@
   const theCover = $('cover');
   const fsArt = $('fsArt'), fsBg = $('fsBg');
   function setArt(src) {
+    if ($('ambientImg')) $('ambientImg').src = src;
     for (const el of [theCover, fsArt, fsBg]) {
       el.onerror = () => { el.onerror = null; el.src = PLACEHOLDER; };
       el.src = src;
@@ -357,73 +447,179 @@
     return new Uint8Array(await new Response(stream).arrayBuffer());
   }
 
-  // ---------- 取音频 ----------
-  async function downloadOsz(id, onProgress) {
-    const cached = await cacheGet('set' + id);
-    if (cached) { onProgress && onProgress(1, 1, true); return cached; }
-    let res = null;
-    for (let a = 0; a < 3; a++) {
-      try { res = await fetch(MIRROR + '/d/' + id); if (res.ok) break; } catch (e) { res = null; }
-      await new Promise((r) => setTimeout(r, 600));
+  // ---------- 取音频：边下边解析，拿到音频就断开 ----------
+  const API = '/api/mirror';
+  const DIRECT = 'https://osu.direct/api/d/';
+  const MB = 1048576;
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const AUDIO_RE = /\.(mp3|ogg|m4a|wav)$/i;
+  const IMG_RE = /\.(jpg|jpeg|png)$/i;
+
+  function timed(ms) {
+    try { return AbortSignal.timeout(ms); } catch (e) { return undefined; }
+  }
+
+  async function fetchSet(id) {
+    let last = '连接失败';
+    for (let a = 0; a < 2; a++) {
+      for (const url of [API + '?id=' + id, DIRECT + id]) {
+        try {
+          const res = await fetch(url, { signal: timed(a === 0 ? 25000 : 45000) });
+          if (res.ok && res.body) return res;
+          last = '镜像 ' + res.status;
+        } catch (e) { last = /abort/i.test(e.message) ? '超时' : e.message; }
+      }
+      if (last === '镜像 503') break;
+      await sleep(600);
     }
-    if (!res || !res.ok) throw new Error('下载失败' + (res ? ' ' + res.status : ''));
+    throw new Error(last);
+  }
+
+  // 顺着本地文件头逐条读，只保留谱面文本 + 音频 + 封面，其余数据读掉不存
+  async function streamSet(id, onStatus) {
+    const res = await fetchSet(id);
     const total = +res.headers.get('content-length') || 0;
     const reader = res.body.getReader();
-    const chunks = [];
-    let got = 0;
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      chunks.push(value); got += value.length;
-      onProgress && onProgress(got, total, false);
+    let hold = new Uint8Array(0), holdStart = 0;
+    let pos = 0, seen = 0;
+    let audioName = '', bgName = '';
+    let audio = null, bg = null;
+    const captured = {};
+
+    const append = (b) => {
+      const n = new Uint8Array(hold.length + b.length);
+      n.set(hold, 0); n.set(b, hold.length); hold = n;
+    };
+    const ensure = async (upto) => {
+      while (holdStart + hold.length < upto) {
+        const { done, value } = await reader.read();
+        if (done) return false;
+        if (value && value.length) append(value);
+      }
+      return true;
+    };
+    const dropTo = (abs) => {
+      const cut = abs - holdStart;
+      if (cut > 0) { hold = hold.subarray(cut); holdStart = abs; }
+    };
+
+    try {
+      for (;;) {
+        if (!(await ensure(pos + 30))) break;
+        const rel = pos - holdStart;
+        const dv = new DataView(hold.buffer, hold.byteOffset, hold.byteLength);
+        if (dv.getUint32(rel, true) !== 0x04034b50) break;
+        const method = dv.getUint16(rel + 8, true);
+        const csize = dv.getUint32(rel + 18, true);
+        const nlen = dv.getUint16(rel + 26, true);
+        const elen = dv.getUint16(rel + 28, true);
+        if (!(await ensure(pos + 30 + nlen))) break;
+        const name = decodeText(hold.subarray(pos - holdStart + 30, pos - holdStart + 30 + nlen));
+        const dataStart = pos + 30 + nlen + elen;
+        const dataEnd = dataStart + csize;
+        seen++;
+
+        const lower = name.toLowerCase();
+        const isOsu = lower.endsWith('.osu');
+        const isAudio = AUDIO_RE.test(name);
+        const isImg = IMG_RE.test(name);
+        const wantAudio = audioName ? lower === audioName : isAudio;
+        const wantBg = bgName ? lower === bgName : (isImg && seen > 1);
+        const keep = isOsu || (wantAudio && !audio) || (wantBg && !bg);
+
+        if (!keep) {
+          // 读掉不存，省内存；到文件尾就结束
+          if (!(await ensure(dataEnd))) break;
+          dropTo(dataEnd);
+          pos = dataEnd;
+        } else {
+          if (!(await ensure(dataEnd))) break;
+          const data = hold.subarray(dataStart - holdStart, dataEnd - holdStart).slice();
+          dropTo(dataEnd);
+          pos = dataEnd;
+          let bytes = data;
+          if (method !== 0) {
+            try {
+              const s = new Response(data).body.pipeThrough(new DecompressionStream('deflate-raw'));
+              bytes = new Uint8Array(await new Response(s).arrayBuffer());
+            } catch (e) { bytes = null; }
+          }
+          if (!bytes) continue;
+          if (isOsu) {
+            const txt = decodeText(bytes);
+            const an = ((/AudioFilename\s*:\s*(.+)/i.exec(txt) || [])[1] || '').trim();
+            const bn = ((/^\s*0,0,"([^"]+)"/m.exec(txt) || [])[1] || '').trim();
+            if (an && !audioName) audioName = an.toLowerCase();
+            if (bn && !bgName && IMG_RE.test(bn)) bgName = bn.toLowerCase();
+          } else if (wantAudio && !audio) {
+            audio = bytes;
+            onStatus && onStatus('音频到手 ' + (bytes.length / MB).toFixed(1) + ' MB', 1);
+          } else if (wantBg && !bg) {
+            bg = { bytes, name: lower };
+          }
+          if (audio && (bg || !bgName)) break;
+        }
+        if (audio && seen > 60) break;
+      }
+    } finally {
+      try { await reader.cancel(); } catch (e) {}
     }
-    const u8 = new Uint8Array(got);
-    let o = 0;
-    for (const c of chunks) { u8.set(c, o); o += c.length; }
-    await cachePut('set' + id, u8.buffer);
-    return u8.buffer;
+
+    if (!audio) throw new Error('包里没找到音频');
+    return { audio, bg, audioName };
   }
 
-  const bgCache = new Map();
-  let bgUrl = '';
-  async function coverFromOsz(id, buf) {
-    const key = String(id);
-    if (bgCache.has(key)) return bgCache.get(key);
-    const files = readZip(buf);
-    let name = '';
-    for (const f of files.filter((x) => x.name.toLowerCase().endsWith('.osu'))) {
-      const txt = decodeText(await zipEntry(buf, f, files));
-      const m = /^\s*0,0,"([^"]+)"/m.exec(txt);
-      if (m && files.some((x) => x.name.toLowerCase() === m[1].toLowerCase())) { name = m[1]; break; }
+  async function loadSetAudio(id, onStatus) {
+    const audKey = 'aud:' + id, bgKey = 'bg:' + id;
+    const cachedAud = await cacheGet(audKey);
+    if (cachedAud) {
+      const bgc = await cacheGet(bgKey);
+      return {
+        url: URL.createObjectURL(new Blob([cachedAud], { type: 'audio/mpeg' })),
+        bgUrl: bgc ? URL.createObjectURL(new Blob([bgc])) : '',
+      };
     }
-    const bg = files.find((f) => f.name.toLowerCase() === name.toLowerCase()) ||
-      files.filter((f) => /\.(jpg|jpeg|png)$/i.test(f.name) &&
-        !/(hitcircle|hitburst|slider|spinner|default|cursor|lighting|sample|hit0|hit50|hit100|hit300)/i.test(f.name))
-        .sort((a, b) => b.csize - a.csize)[0];
-    if (!bg) return null;
-    const url = URL.createObjectURL(new Blob([await zipEntry(buf, bg, files)],
-      { type: /\.png$/i.test(bg.name) ? 'image/png' : 'image/jpeg' }));
-    bgCache.set(key, url);
-    return url;
+    onStatus && onStatus('连接镜像…', 0);
+    const got = await streamSet(id, onStatus);
+    await cachePut(audKey, got.audio.buffer);
+    if (got.bg) await cachePut(bgKey, got.bg.bytes.buffer);
+    return {
+      url: URL.createObjectURL(new Blob([got.audio], { type: 'audio/mpeg' })),
+      bgUrl: got.bg ? URL.createObjectURL(new Blob([got.bg.bytes],
+        { type: got.bg.name.endsWith('.png') ? 'image/png' : 'image/jpeg' })) : '',
+    };
   }
 
-  async function audioFromOsz(buf) {
-    const files = readZip(buf);
-    const osus = files.filter((f) => f.name.toLowerCase().endsWith('.osu'));
-    let audioName = '';
-    for (const f of osus) {
-      const txt = decodeText(await zipEntry(buf, f, files));
-      const m = /AudioFilename\s*:\s*(.+)/i.exec(txt);
-      if (m) {
-        audioName = m[1].trim();
-        if (files.some((x) => x.name.toLowerCase() === audioName.toLowerCase())) break;
+  async function findAlternatives(s, tried) {
+    try {
+      const q = ((s.title || '') + ' ' + (s.artist || '')).trim();
+      const r = await fetch(MIRROR + '/search?query=' + encodeURIComponent(q) + '&limit=8');
+      if (!r.ok) return [];
+      const list = rankSets(await r.json(), s.title || '');
+      return list.filter((x) => !tried.has(String(x.SetID)))
+        .slice(0, 4)
+        .map((x) => ({ setId: x.SetID, title: x.Title || s.title, artist: x.Artist || s.artist }));
+    } catch (e) { return []; }
+  }
+
+  async function loadTrack(s, onStatus) {
+    const tried = new Set([String(s.setId)]);
+    let cur = s;
+    for (let a = 0; a < 4; a++) {
+      try {
+        const r = await loadSetAudio(cur.setId, onStatus);
+        return Object.assign({ item: cur }, r);
+      } catch (e) {
+        let alts = (cur.alts || []).filter((x) => !tried.has(String(x.setId)));
+        if (!alts.length) alts = (await findAlternatives(s, tried)).filter((x) => !tried.has(String(x.setId)));
+        if (!alts.length) throw e;
+        const next = alts.shift();
+        tried.add(String(next.setId));
+        onStatus && onStatus('拿不到这个包（' + e.message + '），换同曲的另一个版本…', 0);
+        cur = Object.assign({}, cur, next, { alts });
       }
     }
-    const af = files.find((f) => f.name.toLowerCase() === audioName.toLowerCase()) ||
-               files.find((f) => f.name.toLowerCase().endsWith('/audio.mp3')) ||
-               files.find((f) => /\.(mp3|ogg|m4a|wav)$/i.test(f.name));
-    if (!af) throw new Error('包里没有音频');
-    return await zipEntry(buf, af, files);
+    throw new Error('同曲的几个谱面包都拿不到');
   }
 
   // ---------- 播放 ----------
@@ -434,7 +630,7 @@
     if (busy) return;
     busy = true;
     idx = i;
-    const s = queue[i];
+    let s = queue[i];
     renderQueue();
     renderFsQueue();
     $('npTitle').innerHTML = esc(s.title || '未知曲目') + '<small>' + esc(s.artist || '') + '</small>';
@@ -446,20 +642,21 @@
     try {
       let url = bufCache.get(String(s.setId));
       if (!url) {
-        const buf = await downloadOsz(s.setId, (got, total) => {
-          if (total) $('bari').style.width = Math.round((got / total) * 100) + '%';
-          setStatus(got === total
-            ? '解包取音频…'
-            : '下载中 ' + (got / 1048576).toFixed(1) + ' / ' + (total ? (total / 1048576).toFixed(1) : '?') + ' MB');
+        const got = await loadTrack(s, (msg, frac) => {
+          setStatus(msg);
+          if (frac != null) $('bari').style.width = Math.round(frac * 100) + '%';
         });
-        setStatus('解包取音频…');
-        const bytes = await audioFromOsz(buf);
-        url = URL.createObjectURL(new Blob([bytes], { type: 'audio/mpeg' }));
+        if (got.item.setId !== s.setId) {
+          s = got.item;
+          queue[i] = s;
+          persist(); renderQueue();
+          $('npTitle').innerHTML = esc(s.title || '未知曲目') + '<small>' + esc(s.artist || '') + '</small>';
+          setArt(coverOf(s.setId));
+        }
+        url = got.url;
         bufCache.set(String(s.setId), url);
-        try {
-          const bg = await coverFromOsz(s.setId, buf);
-          if (bg && idx === i) { setArt(bg); bgUrl = bg; }
-        } catch (e) {}
+        if (got.bgUrl && idx === i) { bgUrl = got.bgUrl; setArt(got.bgUrl); }
+        setStatus('已存到本机缓存');
       }
       if (blobUrl && blobUrl !== url) URL.revokeObjectURL(blobUrl);
       blobUrl = url;

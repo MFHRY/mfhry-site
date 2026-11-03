@@ -428,15 +428,20 @@
   }
 
   async function downloadOsz(id) {
-    let res = null;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        res = await fetch(MIRROR + '/d/' + id);
-        if (res.ok) break;
-      } catch (e) { res = null; }
-      await new Promise((r) => setTimeout(r, 600));
+    let res = null, last = '';
+    const urls = ['/api/mirror?id=' + id, MIRROR + '/d/' + id];
+    for (let attempt = 0; attempt < 2; attempt++) {
+      for (const u of urls) {
+        try {
+          res = await fetch(u);
+          if (res.ok) break;
+          last = ' ' + res.status;
+        } catch (e) { res = null; last = ' ' + e.message; }
+      }
+      if (res && res.ok) break;
+      await new Promise((r) => setTimeout(r, 900));
     }
-    if (!res || !res.ok) throw new Error('下载失败' + (res ? ' ' + res.status : ''));
+    if (!res || !res.ok) throw new Error('下载失败' + last);
     if (!res.body) throw new Error('这个浏览器不支持流式下载');
     const total = +res.headers.get('content-length') || 0;
     const reader = res.body.getReader();
