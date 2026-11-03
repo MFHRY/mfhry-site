@@ -172,6 +172,14 @@
         <div class="row" id="lanesRow"></div>
         <h2>按键设置（点一下，再按你要的键）</h2>
         <div class="keys" id="keys"></div>
+        <h2>判定偏移 <span id="offVal" style="color:var(--accent);font-weight:700">0 ms</span></h2>
+        <input type="range" id="offRange" min="-150" max="150" step="5" value="0"
+          style="width:100%;accent-color:var(--accent);margin:2px 0 4px">
+        <div class="row">
+          <span class="chip" id="offCal">自动校准</span>
+          <span class="chip" id="soundToggle">打击音：开</span>
+        </div>
+        <p class="note" id="offNote">打不准先校准：按提示跟着节拍敲 8 下，自动把偏差补掉。蓝牙耳机建议先测。</p>
         <button class="go" id="start">开始</button>
       </div>
 
@@ -226,7 +234,7 @@
   const GROUPS = window.MFHRY_SONGS || [];
 
   let keys = load(LS_KEYS, DEFAULT_KEYS);
-  let pref = load(LS_PREF, { lanes: 4, strict: 1 });
+  let pref = load(LS_PREF, { lanes: 4, strict: 1, offset: 0, sound: 1 });
   const AUTO = /[?&]auto=1/.test(location.search);
 
   function load(k, dflt) {
@@ -663,7 +671,7 @@
     loadCover(chart.obj);
     $('status').textContent = '已选：' + (chart.obj.title || '') + ' [' + chart.name + '] · ' +
       Math.round(songLen) + ' 秒 · ' + chart.obj.objects.length + ' 个音符';
-    renderStrict(); renderLanes(); renderKeys();
+    renderStrict(); renderLanes(); renderKeys(); renderOffset();
   }
 
   // ---------- 状态 ----------
@@ -700,6 +708,25 @@
     }
   }
 
+  // ---------- 打击音 ----------
+  let hsCtx = null;
+  function tick(kind) {
+    if (!pref.sound) return;
+    try {
+      hsCtx = hsCtx || new (window.AudioContext || window.webkitAudioContext)();
+      const a = hsCtx, t0 = a.currentTime;
+      const o = a.createOscillator(), g = a.createGain();
+      o.type = 'triangle';
+      o.frequency.setValueAtTime(kind === 'perfect' ? 1720 : kind === 'great' ? 1240 : 620, t0);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(kind === 'miss' ? 0.03 : 0.055, t0 + 0.004);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.055);
+      o.connect(g).connect(a.destination);
+      o.start(t0); o.stop(t0 + 0.06);
+    } catch (e) {}
+  }
+
+  const offSec = () => (Number(pref.offset) || 0) / 1000;
   const now = () => ac().currentTime;
   const laneW = () => W / curLanes;
   const HIT_Y = H - 96;
@@ -827,8 +854,8 @@
         const w = windows(chart.obj.od, chart.obj.mode);
         for (const n of notes) {
           if (n.judged) continue;
-          if (AUTO && Math.abs(n.t - songTime) < 0.016) { press(n.lane); continue; }
-          if (songTime - n.t > w.great) judge(n, 'miss');
+          if (AUTO && Math.abs(n.t - (songTime + offSec())) < 0.016) { press(n.lane); continue; }
+          if (songTime + offSec() - n.t > w.great) judge(n, 'miss');
         }
         if (notes.length && songTime > notes[notes.length - 1].t + 2.5) return finish(false);
         if (hp <= 0) return finish(true);
@@ -854,6 +881,7 @@
     n.judged = 1;
     addFx(n.lane, kind === 'miss' ? 'miss' : 'hit');
     popJudge(kind, n.delta);
+    tick(kind);
     const cb = $('combo');
     if (kind === 'miss') {
       stats.miss++;
@@ -879,7 +907,7 @@
     if (state !== 'playing' || !chart) return;
     pressed[lane] = performance.now();
     const w = windows(chart.obj.od, chart.obj.mode);
-    const t = songTime;
+    const t = songTime + offSec();
     let best = null, bestAbs = 1e9;
     for (const n of notes) {
       if (n.judged || n.lane !== lane) continue;
@@ -892,6 +920,19 @@
     if (bestAbs <= w.perfect) judge(best, 'perfect');
     else if (bestAbs <= w.great) judge(best, 'great');
   }
+
+  $('offRange').addEventListener('input', (e) => {
+    pref.offset = Number(e.target.value) || 0;
+    save(LS_PREF, pref);
+    $('offVal').textContent = (pref.offset > 0 ? '+' : '') + pref.offset + ' ms';
+  });
+  $('offCal').addEventListener('click', () => { calibrate(); });
+  $('soundToggle').addEventListener('click', () => {
+    pref.sound = pref.sound ? 0 : 1;
+    save(LS_PREF, pref);
+    renderOffset();
+    if (pref.sound) tick('perfect');
+  });
 
   // ---------- 开始 / 结束 ----------
   async function startGame() {
@@ -1028,6 +1069,53 @@
     }
   }
 
+  function renderOffset() {
+    const v = Number(pref.offset) || 0;
+    $('offVal').textContent = (v > 0 ? '+' : '') + v + ' ms';
+    $('offRange').value = String(v);
+    $('soundToggle').textContent = '打击音：' + (pref.sound ? '开' : '关');
+    $('soundToggle').classList.toggle('on', !!pref.sound);
+  }
+
+  async function calibrate() {
+    const note = $('offNote');
+    note.textContent = '听节拍，跟着敲 8 下…';
+    const bpm = 120, gap = 60000 / bpm, beats = 8;
+    const taps = [];
+    const onTap = (e) => {
+      if (e && e.target && e.target.closest && e.target.closest('#offCal')) return;
+      taps.push(performance.now());
+    };
+    document.addEventListener('pointerdown', onTap, true);
+    document.addEventListener('keydown', onTap, true);
+    const t0 = performance.now() + 700;
+    const beatAt = [];
+    for (let i = 0; i < beats; i++) {
+      const at = t0 + i * gap;
+      beatAt.push(at);
+      setTimeout(() => tick('perfect'), Math.max(0, at - performance.now()));
+    }
+    await new Promise((r) => setTimeout(r, beats * gap + 600));
+    document.removeEventListener('pointerdown', onTap, true);
+    document.removeEventListener('keydown', onTap, true);
+    const deltas = [];
+    for (const t of taps) {
+      let best = Infinity;
+      for (const b of beatAt) { const d = t - b; if (Math.abs(d) < Math.abs(best)) best = d; }
+      if (Math.abs(best) <= 200) deltas.push(best);
+    }
+    if (deltas.length < 4) {
+      note.textContent = '只收到 ' + deltas.length + ' 次有效敲击，再来一次（跟着响的那一下敲）。';
+      return;
+    }
+    deltas.sort((a, b) => a - b);
+    const median = deltas[Math.floor(deltas.length / 2)];
+    const next = Math.max(-150, Math.min(150, Math.round((-median) / 5) * 5));
+    pref.offset = next; save(LS_PREF, pref); renderOffset();
+    note.textContent = '检测到平均' + (median > 0 ? '偏晚 ' : '偏早 ') + Math.abs(Math.round(median)) +
+      ' ms，已设偏移 ' + (next > 0 ? '+' : '') + next + ' ms（' + deltas.length + ' 次采样）。';
+  }
+
   function renderStrict() {
     const wrap = $('strict');
     wrap.innerHTML = '';
@@ -1132,10 +1220,11 @@
   };
 
   // ---------- 启动 ----------
-  renderHot(); renderStrict(); renderLanes(); renderKeys();
+  renderHot(); renderStrict(); renderLanes(); renderKeys(); renderOffset();
   draw();
   requestAnimationFrame(loop);
 })();
 </script>
+<script src="/errlog.js"></script>
 </body>
 </html>

@@ -241,6 +241,35 @@
     .fs-info{width:100%;max-width:360px;text-align:center;padding:16px}
     .fs-prog,.fs-vol{margin-top:16px}
   }
+
+  /* 歌词 / 缓存抽屉 */
+  .sheet{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);width:min(94vw,560px);
+    max-height:min(70vh,560px);z-index:60;display:flex;flex-direction:column;border-radius:18px;
+    background:linear-gradient(165deg,rgba(24,32,38,.92),rgba(14,19,24,.94));
+    border:1px solid rgba(255,255,255,.16);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 24px 70px rgba(0,0,0,.55);
+    -webkit-backdrop-filter:blur(28px) saturate(1.6);backdrop-filter:blur(28px) saturate(1.6);
+    overflow:hidden;animation:sheetIn .22s ease}
+  @keyframes sheetIn{from{opacity:0;transform:translate(-50%,14px)}to{opacity:1;transform:translate(-50%,0)}}
+  .sheet-h{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.1)}
+  .sheet-h b{font-size:14px}
+  .sheet-h span{font-size:11.5px;color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .sheet-h .x{border:0;background:transparent;color:var(--muted);font-size:20px;line-height:1;cursor:pointer;padding:0 2px}
+  .sheet-h .x:hover{color:var(--fg)}
+  .sheet-b{overflow:auto;padding:12px 16px 18px;font-size:13.5px;line-height:1.9;color:#c8d2cc}
+  .lyr-line{padding:2px 8px;border-radius:8px;cursor:pointer;transition:color .15s,background .15s}
+  .lyr-line:hover{background:rgba(255,255,255,.05)}
+  .lyr-line.on{color:var(--accent);font-weight:600;background:rgba(127,209,176,.10)}
+  .lyr-empty{color:var(--muted);font-size:12.5px;line-height:1.8}
+  .cache-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:12.5px}
+  .cache-row .t{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cache-row .sz{color:var(--muted);font-size:11.5px;font-variant-numeric:tabular-nums}
+  .cache-row button{border:1px solid rgba(255,255,255,.18);background:transparent;color:#e8a0a0;
+    border-radius:8px;font-size:11.5px;padding:3px 9px;cursor:pointer}
+  .cache-row button:hover{background:rgba(255,120,120,.12)}
+  .cache-total{display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:12px;color:var(--muted)}
+  .cache-total button{border:1px solid rgba(255,255,255,.2);background:transparent;color:var(--fg);
+    border-radius:9px;padding:5px 12px;font-size:12px;cursor:pointer}
 </style>
 </head>
 <body>
@@ -276,6 +305,8 @@
       <button id="next" title="下一首">⏭</button>
       <span class="chip" id="loop" title="播放模式">顺序</span>
       <button id="fsOpen" title="全屏播放" style="width:auto;padding:0 12px;font-size:12.5px">全屏 ⤢</button>
+      <span class="chip" id="lyrBtn" title="歌词">歌词</span>
+      <span class="chip" id="cacheBtn" title="缓存管理">缓存</span>
     </div>
     <div class="vol">
       <span>音量</span><input type="range" id="vol" min="0" max="1" step="0.01" value="0.85" />
@@ -301,6 +332,16 @@
     </p>
   </section>
 </main>
+
+<div class="sheet" id="lyrSheet" hidden>
+  <div class="sheet-h"><b>歌词</b><span id="lyrMeta"></span><button class="x" id="lyrClose" aria-label="关闭">×</button></div>
+  <div class="sheet-b" id="lyrBody"></div>
+</div>
+
+<div class="sheet" id="cacheSheet" hidden>
+  <div class="sheet-h"><b>本机缓存</b><span id="cacheMeta"></span><button class="x" id="cacheClose" aria-label="关闭">×</button></div>
+  <div class="sheet-b" id="cacheBody"></div>
+</div>
 
 
 <div class="fs" id="fs">
@@ -692,6 +733,8 @@
       setStatus((s.artist ? s.artist + ' · ' : '') + '本地缓存' + (autoplay ? '，开始播放' : ''));
       if (autoplay) await au.play().catch((e) => setStatus('浏览器拦了自动播放，点一下 ▶'));
       setMediaSession(s);
+      lyrLines = []; lyrActive = -1;
+      if (!$('lyrSheet').hidden) loadLyrics(s);
       renderQueue();
       syncFS();
     } catch (e) {
@@ -884,6 +927,7 @@
     $('dur').textContent = mmss(au.duration);
     $('seek').value = String(Math.round((au.currentTime / au.duration) * 1000));
     if (fsEl.classList.contains('on')) syncFS();
+    syncLyrics();
   });
   au.addEventListener('loadedmetadata', () => { $('dur').textContent = mmss(au.duration); });
   au.addEventListener('error', () => { if (au.src) setStatus('这个音频浏览器放不了，换一首'); });
@@ -1005,6 +1049,194 @@
     play(i, false);   // 恢复上次的歌，但不自动出声（浏览器要手势）
   }
 
+
+  // ---------- 歌词 ----------
+  let lyrLines = [];      // [{t, text}]
+  let lyrActive = -1;
+  let lyrBusy = 0;
+
+  function parseLrc(text) {
+    const out = [];
+    for (const raw of String(text).split(/\r?\n/)) {
+      const re = /\[(\d{1,2}):(\d{2})(?:[.:](\d{1,3}))?\]/g;
+      const tags = [];
+      let m;
+      while ((m = re.exec(raw))) {
+        const frac = m[3] ? +('0.' + m[3]) : 0;
+        tags.push(+m[1] * 60 + +m[2] + frac);
+      }
+      if (!tags.length) continue;
+      const body = raw.replace(/\[(\d{1,2}):(\d{2})(?:[.:](\d{1,3}))?\]/g, '').trim();
+      if (!body) continue;
+      for (const t of tags) out.push({ t, text: body });
+    }
+    out.sort((a, b) => a.t - b.t);
+    return out;
+  }
+
+  function renderLyrics() {
+    const body = $('lyrBody');
+    body.innerHTML = '';
+    lyrActive = -1;
+    for (let i = 0; i < lyrLines.length; i++) {
+      const d = document.createElement('div');
+      d.className = 'lyr-line';
+      d.dataset.i = String(i);
+      d.textContent = lyrLines[i].text;
+      d.onclick = () => { if (au.duration) { au.currentTime = lyrLines[i].t; au.play().catch(() => {}); } };
+      body.appendChild(d);
+    }
+  }
+
+  function syncLyrics() {
+    if (!lyrLines.length || $('lyrSheet').hidden) return;
+    const t = au.currentTime + 0.15;
+    let n = -1;
+    for (let i = 0; i < lyrLines.length; i++) { if (lyrLines[i].t <= t) n = i; else break; }
+    if (n === lyrActive) return;
+    const body = $('lyrBody');
+    const prev = body.querySelector('.lyr-line.on');
+    if (prev) prev.classList.remove('on');
+    lyrActive = n;
+    if (n < 0) return;
+    const el = body.querySelector('.lyr-line[data-i="' + n + '"]');
+    if (!el) return;
+    el.classList.add('on');
+    const br = body.getBoundingClientRect(), er = el.getBoundingClientRect();
+    if (er.top < br.top + 40 || er.bottom > br.bottom - 40) {
+      body.scrollTop += er.top - br.top - br.height / 2 + 20;
+    }
+  }
+
+  async function loadLyrics(s) {
+    const meta = $('lyrMeta'), body = $('lyrBody');
+    lyrLines = [];
+    lyrActive = -1;
+    if (!s) { meta.textContent = ''; body.innerHTML = '<p class="lyr-empty">先放一首歌。</p>'; return; }
+    const token = ++lyrBusy;
+    meta.textContent = s.title ? s.title + (s.artist ? ' · ' + s.artist : '') : '';
+    body.innerHTML = '<p class="lyr-empty">找歌词…</p>';
+    try {
+      const q = new URLSearchParams({ track: String(s.title || ''), artist: String(s.artist || '') });
+      const r = await fetch('/api/lyrics?' + q.toString());
+      const d = await r.json();
+      if (token !== lyrBusy) return;
+      if (!d || !d.found) {
+        body.innerHTML = '<p class="lyr-empty">没找到这首歌的歌词。<br>（来源 LRCLIB，冷门曲常常没有）</p>';
+        return;
+      }
+      if (d.synced) {
+        lyrLines = parseLrc(d.synced);
+        if (lyrLines.length) { renderLyrics(); syncLyrics(); return; }
+      }
+      const plain = String(d.plain || '').split(/\r?\n/).filter(Boolean);
+      body.innerHTML = plain.length
+        ? '<div class="lyr-empty" style="white-space:pre-wrap;color:#c8d2cc;font-size:13px">' + plain.map(esc).join('<br>') + '</div>'
+        : '<p class="lyr-empty">没拿到歌词文本。</p>';
+    } catch (e) {
+      if (token === lyrBusy) body.innerHTML = '<p class="lyr-empty">歌词服务暂时不可用，等下再点一次。</p>';
+    }
+  }
+
+  function openLyrics(force) {
+    const sheet = $('lyrSheet');
+    if (!sheet.hidden && !force) { sheet.hidden = true; return; }
+    sheet.hidden = false;
+    const s = queue[idx];
+    if (!lyrLines.length) loadLyrics(s);
+    else syncLyrics();
+  }
+
+  // ---------- 缓存管理 ----------
+  const fmtSize = (n) => (n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB');
+
+  async function listCache() {
+    const body = $('cacheBody'), meta = $('cacheMeta');
+    body.innerHTML = '<p class="lyr-empty">统计中…</p>';
+    try {
+      const d = await db();
+      const keys = await new Promise((res) => {
+        const rq = d.transaction('osz', 'readonly').objectStore('osz').getAllKeys();
+        rq.onsuccess = () => res(rq.result || []);
+        rq.onerror = () => res([]);
+      });
+      const rows = [];
+      let total = 0;
+      for (const k of keys) {
+        const v = await cacheGet(k);
+        const size = v ? (v.byteLength || v.size || (v.length || 0)) : 0;
+        total += size;
+        rows.push({ key: String(k), size });
+      }
+      rows.sort((a, b) => b.size - a.size);
+      const audios = rows.filter((r) => r.key.startsWith('aud:')).length;
+      const sets = rows.filter((r) => r.key.startsWith('set')).length;
+      const bgs = rows.filter((r) => r.key.startsWith('bg:')).length;
+      meta.textContent = audios + ' 首有音频 · ' + sets + ' 个谱面包 · ' + bgs + ' 张封面';
+      body.innerHTML = '';
+      if (!rows.length) { body.innerHTML = '<p class="lyr-empty">还没有缓存，播一首歌就会存下来。</p>'; return; }
+      for (const r of rows) {
+        const div = document.createElement('div');
+        div.className = 'cache-row';
+        const name = r.key.replace(/^(aud|bg|set):?/, '');
+        const kind = r.key.startsWith('aud:') ? '音频' : r.key.startsWith('bg:') ? '封面' : '谱面包';
+        div.innerHTML = '<span class="t">' + kind + ' · ' + esc(name) + '</span><span class="sz">' + fmtSize(r.size) + '</span>';
+        const b = document.createElement('button');
+        b.textContent = '删除';
+        b.onclick = async () => {
+          await new Promise((res) => {
+            const tx = d.transaction('osz', 'readwrite');
+            tx.objectStore('osz').delete(r.key);
+            tx.oncomplete = res; tx.onerror = res;
+          });
+          bufCache.delete(name);
+          listCache();
+        };
+        div.appendChild(b);
+        body.appendChild(div);
+      }
+      const sum = document.createElement('div');
+      sum.className = 'cache-total';
+      sum.innerHTML = '<span>合计 ' + fmtSize(total) + '</span>';
+      const clr = document.createElement('button');
+      clr.textContent = '全部清空';
+      clr.onclick = async () => {
+        if (!confirm('清空本机缓存？下次播放要重新下载。')) return;
+        await new Promise((res) => {
+          const tx = d.transaction('osz', 'readwrite');
+          tx.objectStore('osz').clear();
+          tx.oncomplete = res; tx.onerror = res;
+        });
+        bufCache.clear();
+        listCache();
+      };
+      sum.appendChild(clr);
+      body.appendChild(sum);
+    } catch (e) {
+      body.innerHTML = '<p class="lyr-empty">读不到缓存：' + esc(e.message) + '</p>';
+    }
+  }
+
+  // ---------- 按钮 / 快捷键 ----------
+  $('lyrBtn').onclick = () => openLyrics();
+  $('lyrClose').onclick = () => { $('lyrSheet').hidden = true; };
+  $('cacheBtn').onclick = () => { $('cacheSheet').hidden = false; listCache(); };
+  $('cacheClose').onclick = () => { $('cacheSheet').hidden = true; };
+
+  document.addEventListener('keydown', (e) => {
+    const tag = (e.target && e.target.tagName) || '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || e.metaKey || e.ctrlKey || e.altKey) return;
+    const k = e.key;
+    if (k === ' ') { e.preventDefault(); if (au.paused) au.play().catch(() => {}); else au.pause(); }
+    else if (k === 'ArrowRight') { e.preventDefault(); if (au.duration) au.currentTime = Math.min(au.duration - 0.5, au.currentTime + 5); }
+    else if (k === 'ArrowLeft') { e.preventDefault(); au.currentTime = Math.max(0, au.currentTime - 5); }
+    else if (k === 'ArrowUp') { e.preventDefault(); au.volume = Math.min(1, au.volume + 0.05); $('vol').value = String(au.volume); }
+    else if (k === 'ArrowDown') { e.preventDefault(); au.volume = Math.max(0, au.volume - 0.05); $('vol').value = String(au.volume); }
+    else if (k === 'l' || k === 'L') { openLyrics(); }
+    else if (k === 'f' || k === 'F') { fsEl.classList.contains('on') ? closeFS() : openFS(); }
+    else if (k === 'Escape') { $('lyrSheet').hidden = true; $('cacheSheet').hidden = true; }
+  });
+
   window.__music = {
     openFS: () => openFS(),
     closeFS: () => closeFS(),
@@ -1020,5 +1252,6 @@
   };
 })();
 </script>
+<script src="/errlog.js"></script>
 </body>
 </html>
