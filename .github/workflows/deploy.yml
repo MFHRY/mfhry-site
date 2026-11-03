@@ -57,4 +57,5 @@ jobs:
         run: pnpm exec wrangler pages deploy dist --project-name=${{ vars.PAGES_PROJECT != '' && vars.PAGES_PROJECT || 'mfhry-site' }} --branch=main
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
