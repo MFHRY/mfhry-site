@@ -301,7 +301,7 @@
   function parseOsu(text) {
     const lines = text.split(/\r?\n/);
     let section = '';
-    let audio = '', mode = 0, cs = 4, od = 5, title = '', artist = '', version = '';
+    let audio = '', mode = 0, cs = 4, od = 5, title = '', artist = '', version = '', bg = '';
     const objects = [];
     for (const raw of lines) {
       const line = raw.trim();
@@ -317,6 +317,9 @@
           if (m[1] === 'Artist') artist = m[2].trim();
           if (m[1] === 'Version') version = m[2].trim();
         }
+      } else if (section === '[Events]') {
+        const m = /^0\s*,\s*0\s*,\s*"([^"]+)"/.exec(line);
+        if (m && !bg) bg = m[1];
       } else if (section === '[Difficulty]') {
         const m = /^(CircleSize|OverallDifficulty)\s*:\s*(.*)$/.exec(line);
         if (m) { if (m[1] === 'CircleSize') cs = +m[2]; if (m[1] === 'OverallDifficulty') od = +m[2]; }
@@ -328,7 +331,7 @@
         objects.push({ x, t: t / 1000 });
       }
     }
-    return { audio, mode, cs, od, title, artist, version, objects };
+    return { audio, mode, cs, od, title, artist, version, bg, objects };
   }
 
   function toNotes(obj, lanes) {
@@ -488,6 +491,69 @@
     return ab;
   }
 
+  // ---------- 歌曲封面：轨道背后的模糊底图 ----------
+  let coverUrl = '', coverImg = null, coverLayer = null;
+  function buildCoverLayer() {
+    coverLayer = null;
+    window.__rhythmCover = null;
+    if (!coverImg || !coverImg.naturalWidth) return;
+    const c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const g = c.getContext('2d');
+    const k = Math.max((W * 1.14) / coverImg.naturalWidth, (H * 1.14) / coverImg.naturalHeight);
+    const dw = coverImg.naturalWidth * k, dh = coverImg.naturalHeight * k;
+    try {
+      g.filter = 'blur(20px) saturate(1.35) brightness(1.38)';
+      g.drawImage(coverImg, (W - dw) / 2, (H - dh) / 2, dw, dh);
+    } catch (e) {
+      g.filter = 'none';
+      g.drawImage(coverImg, (W - dw) / 2, (H - dh) / 2, dw, dh);
+    }
+    g.filter = 'none';
+    const grad = g.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, 'rgba(9,12,16,.56)');
+    grad.addColorStop(0.42, 'rgba(10,13,17,.34)');
+    grad.addColorStop(1, 'rgba(7,9,12,.66)');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, W, H);
+    coverLayer = c;
+    window.__rhythmCover = { w: coverImg.naturalWidth, h: coverImg.naturalHeight };
+  }
+  async function setCoverBytes(bytes, name) {
+    const type = /\.png$/i.test(name || '') ? 'image/png'
+      : /\.webp$/i.test(name || '') ? 'image/webp'
+      : /\.gif$/i.test(name || '') ? 'image/gif' : 'image/jpeg';
+    if (coverUrl) { try { URL.revokeObjectURL(coverUrl); } catch (e) {} }
+    coverUrl = URL.createObjectURL(new Blob([bytes], { type }));
+    const img = new Image();
+    img.decoding = 'async';
+    await new Promise((res) => { img.onload = res; img.onerror = res; img.src = coverUrl; });
+    coverImg = img.naturalWidth ? img : null;
+    buildCoverLayer();
+  }
+  async function loadCover(obj) {
+    try {
+      const id = songSet && songSet.SetID ? String(songSet.SetID) : '';
+      if (id) {
+        const cached = await cacheGet('bg:' + id);
+        if (cached && cached.byteLength) { await setCoverBytes(cached, 'cached.jpg'); return; }
+      }
+      const nm = String((obj && obj.bg) || '').toLowerCase();
+      let entry = nm
+        ? zipAll.find((f) => f.name.toLowerCase() === nm || f.name.toLowerCase().endsWith('/' + nm))
+        : null;
+      if (!entry) {
+        entry = zipAll
+          .filter((f) => /\.(jpe?g|png|webp|gif)$/i.test(f.name) && !/\/(hitsounds?|samples?)\//i.test(f.name))
+          .sort((a, b) => (b.csize || 0) - (a.csize || 0))[0];
+      }
+      if (!entry) return;
+      const bytes = await zipEntry(oszBuf, entry, zipAll);
+      if (id && bytes.byteLength) { try { await cachePut('bg:' + id, bytes.buffer); } catch (e) {} }
+      await setCoverBytes(bytes, entry.name);
+    } catch (e) { /* 没封面就保持纯色底 */ }
+  }
+
   let zipAll = [];
   async function unpack() {
     const files = readZip(oszBuf);
@@ -555,6 +621,7 @@
     }
     $('pick').hidden = true;
     $('setup').hidden = false;
+    loadCover(chart.obj);
     $('status').textContent = '已选：' + (chart.obj.title || '') + ' [' + chart.name + '] · ' +
       Math.round(songLen) + ' 秒 · ' + chart.obj.objects.length + ' 个音符';
     renderStrict(); renderLanes(); renderKeys();
@@ -601,11 +668,15 @@
   // ---------- 渲染 ----------
   function draw() {
     ctx.clearRect(0, 0, W, H);
-    const g = ctx.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, '#0f151b');
-    g.addColorStop(1, '#0a0d10');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, W, H);
+    if (coverLayer) {
+      ctx.drawImage(coverLayer, 0, 0);
+    } else {
+      const g = ctx.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, '#0f151b');
+      g.addColorStop(1, '#0a0d10');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+    }
 
     const lw = laneW();
     for (let i = 0; i < curLanes; i++) {
