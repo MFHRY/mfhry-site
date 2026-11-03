@@ -24,17 +24,34 @@
     radial-gradient(120% 80% at 30% -10%,rgba(255,255,255,.10),transparent 55%),
     linear-gradient(180deg,rgba(8,9,11,.30),rgba(8,9,11,.62) 55%,rgba(8,9,11,.82))}
 
-  header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px clamp(16px,3vw,40px) 4px}
-  header h1{font-size:19px;letter-spacing:-.01em}
-  header small{color:var(--muted);font-size:11.5px;margin-left:8px}
-  header a{color:var(--muted);text-decoration:none;font-size:12px;padding:7px 13px;border-radius:999px;
-    background:var(--glass);border:var(--rim);box-shadow:var(--glass-hi),0 8px 22px rgba(0,0,0,.28);
-    backdrop-filter:blur(20px) saturate(170%);transition:background .18s,transform .12s}
-  header a:hover{background:linear-gradient(165deg,rgba(255,255,255,.22),rgba(255,255,255,.09))}
-  header a:active{transform:scale(.97)}
+  /* 顶部导航：和全站一样铺满、毛玻璃 */
+  .site-bar{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;
+    gap:14px;padding:10px clamp(16px,3vw,40px);
+    background:rgba(12,14,17,.42);border-bottom:1px solid rgba(255,255,255,.12);
+    backdrop-filter:blur(26px) saturate(180%);-webkit-backdrop-filter:blur(26px) saturate(180%);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 10px 30px rgba(0,0,0,.28)}
+  .site-bar::before{content:'';position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(120% 140% at 22% -60%,rgba(255,255,255,.28),transparent 60%);opacity:.6}
+  .head-left{position:relative;display:flex;align-items:baseline;gap:10px;min-width:0}
+  .head-left h1{font-size:17px;letter-spacing:-.01em;white-space:nowrap}
+  .head-left small{color:var(--muted);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .site-nav{position:relative;display:flex;gap:2px;font-size:14px;overflow-x:auto;scrollbar-width:none}
+  .site-nav::-webkit-scrollbar{display:none}
+  .site-nav a{color:var(--muted);text-decoration:none;padding:6px 12px;border-radius:999px;
+    border:1px solid transparent;white-space:nowrap;
+    transition:background .18s,color .18s,border-color .18s,box-shadow .18s,transform .12s}
+  .site-nav a:hover{color:#fff;background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.22);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 6px 18px rgba(0,0,0,.28)}
+  .site-nav a:active{transform:scale(.97)}
+  .site-nav a.on{color:#8fe0c3;background:rgba(127,209,176,.18);border-color:rgba(127,209,176,.42);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.3)}
+  @media (max-width:860px){
+    .head-left small{display:none}
+    .site-nav a{padding:6px 9px;font-size:13px}
+  }
 
   main{display:grid;grid-template-columns:minmax(320px,420px) minmax(0,1fr);gap:16px;align-items:start;
-    padding:10px clamp(16px,3vw,40px) 24px;min-height:calc(100vh - 66px)}
+    padding:10px clamp(16px,3vw,40px) 24px;min-height:calc(100vh - 108px)}
   @media (max-width:860px){main{grid-template-columns:1fr;min-height:0}}
 
   .card{position:relative;border-radius:22px;background:var(--glass);border:var(--rim);
@@ -228,12 +245,21 @@
 </head>
 <body>
 <div class="ambient"><img id="ambientImg" alt="" /></div>
-<header>
-  <div>
+<header class="site-bar">
+  <div class="head-left">
     <h1>音乐</h1>
     <small>二次元曲库 · 从 osu! 镜像在线取音频，下过的存本地</small>
   </div>
-  <a href="/games/">← 小游戏</a>
+  <nav class="site-nav">
+    <a href="/">首页</a>
+    <a href="/projects">项目</a>
+    <a href="/games">小游戏</a>
+    <a href="/music" class="on">音乐</a>
+    <a href="/videos">视频</a>
+    <a href="/news">新闻</a>
+    <a href="/records">记录</a>
+    <a href="/wall">墙</a>
+  </nav>
 </header>
 
 <main>
