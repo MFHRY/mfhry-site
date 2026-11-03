@@ -2,21 +2,39 @@
 import '../styles/global.css';
 import site from '../data/site.json';
 
-const { title = '首页', noindex = false } = Astro.props;
+const { title = '首页', description = site.tagline, noindex = false } = Astro.props;
 const path = Astro.url.pathname;
 const year = new Date().getFullYear();
+const ORIGIN = 'https://mfhry.store';
+const canonical = new URL(path, ORIGIN).href;
+const ogImage = ORIGIN + '/og.png';
+const pageTitle = `${title} · ${site.name}`;
 ---
 <!doctype html>
 <html lang="zh-CN">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content={site.tagline} />
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={site.name} />
+    <meta property="og:locale" content="zh_CN" />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={pageTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
     <meta name="generator" content={Astro.generator} />
     {noindex && <meta name="robots" content="noindex, nofollow" />}
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <script is:inline src="/vplayer.js"></script>
-    <title>{title} · {site.name}</title>
+    <title>{pageTitle}</title>
   </head>
   <body>
     <header class="site-header">
@@ -43,5 +61,43 @@ const year = new Date().getFullYear();
       <span>© {year} {site.name}</span>
       <span>Astro · Cloudflare Pages</span>
     </footer>
+
+    <script is:inline>
+      // 前端错误上报：/api/log → D1 client_errors（每页最多 8 条，localhost 不上报）
+      (function () {
+        if (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) return;
+        var sent = 0;
+        function send(d) {
+          if (sent++ > 8) return;
+          try {
+            d.page = location.pathname + location.search;
+            d.ua = navigator.userAgent;
+            var body = JSON.stringify(d);
+            if (navigator.sendBeacon) {
+              navigator.sendBeacon('/api/log', new Blob([body], { type: 'application/json' }));
+            } else {
+              fetch('/api/log', { method: 'POST', body: body, headers: { 'content-type': 'application/json' }, keepalive: true });
+            }
+          } catch (e) {}
+        }
+        window.mfhryLog = send;
+        window.addEventListener('error', function (e) {
+          var t = e.target;
+          if (t && t !== window && t.tagName && !/^(SCRIPT|IMG|LINK|VIDEO|AUDIO|SOURCE)$/.test(t.tagName)) return;
+          send({
+            kind: 'error',
+            msg: e.message || ('resource: ' + ((t && (t.src || t.href)) || '')),
+            src: e.filename || '',
+            line: e.lineno || 0,
+            col: e.colno || 0,
+            stack: (e.error && e.error.stack) || '',
+          });
+        }, true);
+        window.addEventListener('unhandledrejection', function (e) {
+          var r = (e && e.reason) || {};
+          send({ kind: 'reject', msg: String(r.message || r), stack: String(r.stack || '') });
+        });
+      })();
+    </script>
   </body>
 </html>
