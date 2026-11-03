@@ -69,6 +69,26 @@
   .back{display:inline-block;margin-top:12px;font-size:12px;color:var(--muted);text-decoration:none}
   .back:hover{color:var(--fg)}
   .hint{margin-top:8px;font-size:11.5px;color:var(--muted)}
+  /* 判定反馈 */
+  .judge{position:absolute;left:50%;bottom:150px;transform:translate(-50%,0);
+    font-weight:800;font-size:32px;letter-spacing:.03em;pointer-events:none;opacity:0;
+    text-shadow:0 6px 22px rgba(0,0,0,.6);white-space:nowrap;z-index:3;text-align:center}
+  .judge.pop{animation:jpop .54s cubic-bezier(.2,.9,.2,1) forwards}
+  @keyframes jpop{
+    0%{opacity:0;transform:translate(-50%,12px) scale(.72)}
+    20%{opacity:1;transform:translate(-50%,-6px) scale(1.16)}
+    40%{transform:translate(-50%,-9px) scale(1)}
+    100%{opacity:0;transform:translate(-50%,-28px) scale(.96)}
+  }
+  .judge .d{display:block;font-size:11.5px;font-weight:600;opacity:.75;margin-top:1px;letter-spacing:0}
+  .judge.perfect{color:#7fd1b0}
+  .judge.great{color:#8ec5ff}
+  .judge.miss{color:#ff6b81}
+  .stats .stat b{display:inline-block;transition:color .2s}
+  .stats .stat b.bump{animation:cbump .26s ease}
+  @keyframes cbump{0%{transform:scale(1)}38%{transform:scale(1.24)}100%{transform:scale(1)}}
+  .stage.shake{animation:shake .24s ease}
+  @keyframes shake{0%,100%{transform:translate(0,0)}25%{transform:translate(-3px,1px)}55%{transform:translate(2px,-1px)}80%{transform:translate(-1px,0)}}
 </style>
 </head>
 <body>
@@ -84,6 +104,7 @@
 
   <div class="stage" id="stage">
     <canvas id="cv" width="520" height="620"></canvas>
+    <div class="judge" id="judge"></div>
 
     <div class="panel" id="panel">
       <h2>搜歌（谱面来自 osu! 镜像，点开才下载）</h2>
@@ -428,20 +449,20 @@
   }
 
   async function downloadOsz(id) {
-    let res = null, last = '';
+    let res = null, errMsg = '';
     const urls = ['/api/mirror?id=' + id, MIRROR + '/d/' + id];
     for (let attempt = 0; attempt < 2; attempt++) {
       for (const u of urls) {
         try {
           res = await fetch(u);
           if (res.ok) break;
-          last = ' ' + res.status;
-        } catch (e) { res = null; last = ' ' + e.message; }
+          errMsg = ' ' + res.status;
+        } catch (e) { res = null; errMsg = ' ' + e.message; }
       }
       if (res && res.ok) break;
       await new Promise((r) => setTimeout(r, 900));
     }
-    if (!res || !res.ok) throw new Error('下载失败' + last);
+    if (!res || !res.ok) throw new Error('下载失败' + errMsg);
     if (!res.body) throw new Error('这个浏览器不支持流式下载');
     const total = +res.headers.get('content-length') || 0;
     const reader = res.body.getReader();
@@ -548,6 +569,31 @@
   let pressed = {}, capturing = -1;
   let curLanes = 4;
 
+  // ---------- 击打反馈 ----------
+  const judgeEl = $('judge');
+  const fx = [];
+  function addFx(lane, kind) {
+    fx.push({ lane, kind, at: performance.now() });
+    if (fx.length > 48) fx.shift();
+  }
+  function popJudge(kind, deltaMs) {
+    const label = kind === 'perfect' ? 'PERFECT' : kind === 'great' ? 'GREAT' : 'MISS';
+    let sub = '';
+    if (kind !== 'miss' && deltaMs != null && Math.abs(deltaMs) >= 1) {
+      sub = '<span class="d">' + (deltaMs > 0 ? '晚 ' : '早 ') + Math.abs(Math.round(deltaMs)) + ' ms</span>';
+    }
+    judgeEl.className = 'judge ' + kind;
+    judgeEl.innerHTML = label + sub;
+    void judgeEl.offsetWidth;
+    judgeEl.classList.add('pop');
+    if (kind === 'miss') {
+      const st = $('stage');
+      st.classList.remove('shake');
+      void st.offsetWidth;
+      st.classList.add('shake');
+    }
+  }
+
   const now = () => ac().currentTime;
   const laneW = () => W / curLanes;
   const HIT_Y = H - 96;
@@ -583,6 +629,32 @@
     ctx.fillRect(0, HIT_Y - 2, W, 4);
     ctx.strokeStyle = 'rgba(127,209,176,.7)';
     ctx.beginPath(); ctx.moveTo(0, HIT_Y); ctx.lineTo(W, HIT_Y); ctx.stroke();
+
+    const tNow = performance.now();
+    for (let i = fx.length - 1; i >= 0; i--) {
+      const f = fx[i];
+      const life = f.kind === 'miss' ? 420 : 220;
+      const age = tNow - f.at;
+      if (age > life) { fx.splice(i, 1); continue; }
+      const k = 1 - age / life;
+      const fxX = f.lane * lw;
+      if (f.kind === 'miss') {
+        ctx.fillStyle = 'rgba(255,80,110,' + (0.30 * k).toFixed(3) + ')';
+        ctx.fillRect(fxX, 0, lw, H);
+        ctx.fillStyle = 'rgba(255,80,110,' + (0.85 * k).toFixed(3) + ')';
+        ctx.fillRect(fxX, HIT_Y - 2, lw, 4);
+      } else {
+        ctx.fillStyle = 'rgba(255,255,255,' + (0.20 * k).toFixed(3) + ')';
+        ctx.fillRect(fxX, HIT_Y - 46, lw, 62);
+        const r = 12 + (1 - k) * lw * 0.55;
+        ctx.strokeStyle = 'rgba(127,209,176,' + (0.5 * k).toFixed(3) + ')';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.ellipse(fxX + lw / 2, HIT_Y, r, Math.max(3, r * 0.3), 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.lineWidth = 1;
+      }
+    }
 
     const pxPerSec = H * [0.62, 0.85, 1.1][pref.strict];
     for (const n of notes) {
@@ -670,10 +742,16 @@
   function judge(n, kind) {
     if (n.judged) return;
     n.judged = 1;
+    addFx(n.lane, kind === 'miss' ? 'miss' : 'hit');
+    popJudge(kind, n.delta);
+    const cb = $('combo');
     if (kind === 'miss') {
       stats.miss++;
       stats.combo = 0;
       hp = Math.max(0, hp - 5);
+      cb.textContent = '0';
+      cb.style.color = '#ff6b81';
+      setTimeout(() => { cb.style.color = ''; }, 260);
       return;
     }
     stats[kind]++;
@@ -681,6 +759,10 @@
     stats.maxCombo = Math.max(stats.maxCombo, stats.combo);
     stats.score += Math.round((kind === 'perfect' ? 300 : 160) * (1 + Math.min(0.5, stats.combo / 200)));
     if (kind === 'perfect') hp = Math.min(100, hp + 0.3);
+    cb.textContent = String(stats.combo);
+    cb.classList.remove('bump');
+    void cb.offsetWidth;
+    cb.classList.add('bump');
   }
 
   function press(lane) {
@@ -696,6 +778,7 @@
       if (n.t > t + 0.3) break;
     }
     if (!best) return;
+    best.delta = (t - best.t) * 1000;
     if (bestAbs <= w.perfect) judge(best, 'perfect');
     else if (bestAbs <= w.great) judge(best, 'great');
   }
