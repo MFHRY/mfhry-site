@@ -133,9 +133,11 @@
   </div>
 
   <div class="hint">键位可改 · 空格暂停 · 触屏直接点轨道</div>
+  <a class="back" href="/music/">只想听歌？去音乐页 →</a><br>
   <a class="back" href="/games/">← 返回小游戏</a>
 </div>
 
+<script src="/songs.js"></script>
 <script src="/games/score.js"></script>
 <script>
 (() => {
@@ -162,49 +164,8 @@
     8: ['a', 's', 'd', 'f', 'j', 'k', 'l', ';'],
   };
   const KEY_LABEL = (k) => (k === ';' ? ';' : k === 'space' ? '空格' : k.length === 1 ? k.toUpperCase() : k);
-  // 日文名在镜像里搜不准，chip 上显示日文，实际查英文关键词
-  const GROUPS = [
-    {
-      title: '热门',
-      items: [
-        { label: 'アイドル', q: 'idol yoasobi' },
-        { label: 'Bad Apple', q: 'bad apple' },
-        { label: 'One Last Kiss', q: 'one last kiss' },
-        { label: '世界第一的公主殿下', q: 'world is mine' },
-      ],
-    },
-    {
-      title: 'ボカロ · wowaka / DECO*27 / ハチ',
-      items: [
-        { label: 'ローリンガール', q: 'rolling girl wowaka' },
-        { label: "ワールズエンド・ダンスホール", q: "world's end dancehall wowaka" },
-        { label: '裏表ラバーズ', q: 'ura omote lovers' },
-        { label: 'アンノウン・マザーグース', q: 'unknown mother goose' },
-        { label: 'ゴーストルール', q: 'ghost rule deco27' },
-        { label: 'ヴァンパイア', q: 'vampire deco27' },
-        { label: 'ヒバナ', q: 'hibana deco27' },
-        { label: 'マトリョシカ', q: 'matryoshka hachi' },
-        { label: '砂の惑星', q: 'sand planet hachi' },
-        { label: '六兆年と一夜物語', q: 'rokuchounen to ichiya' },
-        { label: 'KING', q: 'king kanaria' },
-        { label: 'ビターチョコデコレーション', q: 'bitter choco decoration' },
-        { label: 'メルト', q: 'melt supercell' },
-        { label: '独りんぼエンヴィー', q: 'hitorinbo envy' },
-      ],
-    },
-    {
-      title: '动画 OP / ED',
-      items: [
-        { label: '紅蓮華', q: 'Gurenge' },
-        { label: 'only my railgun', q: 'only my railgun' },
-        { label: '残酷な天使のテーゼ', q: 'zankoku na tenshi no thesis' },
-        { label: '千本桜', q: 'senbonzakura' },
-        { label: '夜に駆ける', q: 'yoru ni kakeru' },
-        { label: 'Butter-Fly', q: 'Butter-Fly' },
-        { label: 'Blue Bird', q: 'Blue Bird naruto' },
-      ],
-    },
-  ];
+  // 曲单在 /songs.js（音乐页共用）
+  const GROUPS = window.MFHRY_SONGS || [];
 
   let keys = load(LS_KEYS, DEFAULT_KEYS);
   let pref = load(LS_PREF, { lanes: 4, strict: 1 });
@@ -405,6 +366,7 @@
       }
       k += Math.min(6, Math.log10(1 + (s.Favourites || 0)) * 2);
       if (bad.test((s.Title || '') + ' ' + (s.Artist || ''))) k -= 5;
+      if (/cover|instrumental|off vocal|karaoke|8-bit|chiptune|nightcore|remix/i.test(s.Title || '')) k -= 4;
       const lens = (s.ChildrenBeatmaps || []).map((c) => c.TotalLength || 0);
       if (lens.length && Math.max(...lens) > 480) k -= 4;   // 十几分钟的合集往后排
       return { s, k };

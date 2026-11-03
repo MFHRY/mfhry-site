@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>音乐 · mfhry.store</title>
+<style>
+  :root{--bg:#0b0e11;--panel:#151b21;--cell:#1c232b;--fg:#eaecef;--muted:#8b939c;--accent:#7fd1b0}
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{background:var(--bg);color:var(--fg);font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;min-height:100vh}
+  header{display:flex;align-items:baseline;justify-content:space-between;gap:10px;
+    max-width:1000px;margin:0 auto;padding:16px 18px 8px}
+  header h1{font-size:20px}
+  header small{color:var(--muted);font-size:12px}
+  header a{color:var(--muted);text-decoration:none;font-size:12.5px}
+  header a:hover{color:var(--fg)}
+  main{max-width:1000px;margin:0 auto;padding:0 18px 40px;display:grid;grid-template-columns:340px 1fr;gap:16px;align-items:start}
+  @media (max-width:760px){main{grid-template-columns:1fr}}
+
+  .card{background:var(--panel);border-radius:14px;padding:16px}
+  .cover{width:100%;aspect-ratio:900/250;object-fit:cover;border-radius:12px;background:linear-gradient(160deg,#1d2731,#12181e);
+    display:block;margin-bottom:14px;border:1px solid #222c35}
+  .thumb{width:34px;height:34px;border-radius:7px;object-fit:cover;background:#1d2731;flex:none;border:1px solid #222c35}
+  .np{font-size:17px;font-weight:600;line-height:1.35;word-break:break-word;min-height:46px}
+  .np small{display:block;font-weight:400;font-size:12.5px;color:var(--muted);margin-top:3px}
+  .seek{margin-top:14px}
+  input[type=range]{width:100%;-webkit-appearance:none;appearance:none;height:4px;border-radius:2px;
+    background:#2a3540;outline:none}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;
+    background:var(--accent);cursor:pointer}
+  .times{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:6px;
+    font-variant-numeric:tabular-nums}
+  .controls{display:flex;align-items:center;gap:8px;margin-top:12px}
+  .controls button{border:1px solid #33414d;background:transparent;color:var(--fg);border-radius:10px;
+    width:42px;height:38px;font-size:15px;cursor:pointer}
+  .controls button:hover{border-color:var(--accent)}
+  #toggle{width:56px;background:rgba(127,209,176,.15);border-color:var(--accent);font-size:17px}
+  .controls .chip{margin-left:auto}
+  .vol{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:11px;color:var(--muted)}
+  .vol input{flex:1}
+  .status{font-size:11.5px;color:var(--muted);margin-top:10px;min-height:16px;line-height:1.5}
+  .bar{height:4px;border-radius:2px;background:#1c232b;margin-top:8px;overflow:hidden;display:none}
+  .bar.on{display:block}
+  .bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .12s}
+
+  .row{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{padding:5px 11px;border-radius:999px;border:1px solid #2b3742;background:#141a20;
+    font-size:12px;color:var(--muted);cursor:pointer;white-space:nowrap}
+  .chip:hover{border-color:#3b4a56}
+  .chip.on{border-color:var(--accent);color:var(--fg);background:rgba(127,209,176,.13)}
+  .gtitle{font-size:11px;color:#6f7883;margin:9px 0 5px}
+  .search{display:flex;gap:6px;margin-bottom:4px}
+  .search input{flex:1;min-width:0;padding:8px 11px;border-radius:9px;border:1px solid #2b3742;background:#141a20;
+    color:var(--fg);font:inherit;font-size:13px}
+  .search input:focus{outline:none;border-color:var(--accent)}
+  .search button{padding:8px 14px;border-radius:9px;border:1px solid var(--accent);background:rgba(127,209,176,.14);
+    color:var(--fg);font:inherit;font-size:13px;cursor:pointer}
+
+  h3{font-size:12px;color:var(--accent);margin:16px 0 6px;font-weight:600;letter-spacing:.02em}
+  h3 small{color:var(--muted);font-weight:400;margin-left:6px;letter-spacing:0}
+  .list{display:grid;gap:5px}
+  .item{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;
+    border:1px solid #263039;border-radius:9px;background:#141a20;font-size:12.5px;line-height:1.45}
+  .item small{color:var(--muted);font-size:11px}
+  .item .act{color:var(--accent);font-size:11.5px;white-space:nowrap;cursor:pointer;padding:2px 4px}
+  .item.playing{border-color:var(--accent);background:rgba(127,209,176,.1)}
+  .item .rm{color:#7b8791;cursor:pointer;padding:2px 6px;font-size:13px}
+  .item .rm:hover{color:#e87f9a}
+  .empty{font-size:12px;color:var(--muted);padding:8px 2px;line-height:1.6}
+  .foot{margin-top:14px;font-size:11px;color:var(--muted);line-height:1.7}
+  .foot a{color:var(--muted)}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>音乐</h1>
+    <small>二次元曲库 · 从 osu! 镜像在线取音频，下过的存本地</small>
+  </div>
+  <a href="/games/">← 小游戏</a>
+</header>
+
+<main>
+  <section class="card">
+    <img class="cover" id="cover" alt="封面" />
+    <div class="np" id="npTitle">还没选歌<small id="npArtist">搜索或点下面的推荐曲单</small></div>
+    <div class="seek">
+      <input type="range" id="seek" min="0" max="1000" value="0" step="1" />
+      <div class="times"><span id="cur">0:00</span><span id="dur">0:00</span></div>
+    </div>
+    <div class="controls">
+      <button id="prev" title="上一首">⏮</button>
+      <button id="toggle" title="播放 / 暂停">▶</button>
+      <button id="next" title="下一首">⏭</button>
+      <span class="chip" id="loop" title="播放模式">顺序</span>
+    </div>
+    <div class="vol">
+      <span>音量</span><input type="range" id="vol" min="0" max="1" step="0.01" value="0.85" />
+    </div>
+    <div class="bar" id="bar"><i id="bari"></i></div>
+    <div class="status" id="status"></div>
+  </section>
+
+  <section class="card">
+    <div class="search">
+      <input id="q" type="search" placeholder="歌名 / 歌手 / 番名，例如 kenshi yonezu lemon" />
+      <button id="search">搜索</button>
+    </div>
+    <div id="hot" style="margin-top:4px"></div>
+    <div class="list" id="results" style="margin-top:8px"></div>
+
+    <h3>播放列表 <small id="qcount">0 首</small></h3>
+    <div class="list" id="queue"></div>
+
+    <p class="foot">
+      音频取自 osu! 谱面包（每首几十 MB，第一次要等一下，之后走本地缓存）。<br>
+      想打这首歌的谱面？→ <a href="/games/rhythm/">去音游</a>
+    </p>
+  </section>
+</main>
+
+<audio id="au" preload="auto"></audio>
+<script src="/songs.js"></script>
+<script>
+(() => {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const au = $('au');
+  const MIRROR = 'https://osu.direct/api';
+  const LS_QUEUE = 'mfhry_music_queue';
+  const LS_STATE = 'mfhry_music_state';
+
+  let queue = [];        // [{setId,title,artist}]
+  let idx = -1;
+  let loopMode = 0;      // 0 顺序 1 单曲 2 随机
+  const LOOP_TXT = ['顺序', '单曲', '随机'];
+  let blobUrl = '';
+  let busy = false;
+  const bufCache = new Map();   // setId -> objectURL
+
+  const load = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? d : v; } catch (e) { return d; } };
+  const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const mmss = (s) => {
+    if (!isFinite(s) || s < 0) s = 0;
+    const m = Math.floor(s / 60), x = Math.floor(s % 60);
+    return m + ':' + (x < 10 ? '0' + x : x);
+  };
+
+  // ---------- 封面 ----------
+  const PLACEHOLDER = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300"><rect width="300" height="300" fill="#141a20"/>' +
+    '<text x="150" y="168" font-size="86" fill="#33414d" text-anchor="middle" font-family="sans-serif">♪</text></svg>');
+  const coverOf = (id) => 'https://assets.ppy.sh/beatmaps/' + id + '/covers/cover.jpg';
+  const theCover = $('cover');
+  theCover.src = PLACEHOLDER;
+  theCover.onerror = () => { if (theCover.src !== PLACEHOLDER) theCover.src = PLACEHOLDER; };
+  const thumbFor = (id) => {
+    const im = new Image();
+    im.className = 'thumb';
+    im.loading = 'lazy';
+    im.onerror = () => { im.onerror = null; im.src = PLACEHOLDER; };
+    im.src = coverOf(id);
+    return im;
+  };
+
+  // ---------- 缓存（和音游共用同一个库，下过的谱面包两边都能用） ----------
+  function db() {
+    return new Promise((res, rej) => {
+      const r = indexedDB.open('mfhry_rhythm', 1);
+      r.onupgradeneeded = () => { if (!r.result.objectStoreNames.contains('osz')) r.result.createObjectStore('osz'); };
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
+    });
+  }
+  async function cacheGet(k) {
+    try {
+      const d = await db();
+      return await new Promise((res) => {
+        const rq = d.transaction('osz', 'readonly').objectStore('osz').get(k);
+        rq.onsuccess = () => res(rq.result || null);
+        rq.onerror = () => res(null);
+      });
+    } catch (e) { return null; }
+  }
+  async function cachePut(k, v) {
+    try {
+      const d = await db();
+      await new Promise((res) => {
+        const tx = d.transaction('osz', 'readwrite');
+        tx.objectStore('osz').put(v, k);
+        tx.oncomplete = res; tx.onerror = res;
+      });
+    } catch (e) {}
+  }
+
+  // ---------- zip ----------
+  function decodeText(bytes) {
+    let s = new TextDecoder('utf-8').decode(bytes);
+    if (s.indexOf('\uFFFD') < 0) return s;
+    for (const enc of ['gbk', 'shift_jis', 'big5', 'euc-kr']) {
+      try {
+        const t = new TextDecoder(enc).decode(bytes);
+        if (t.indexOf('\uFFFD') < 0) return t;
+      } catch (e) {}
+    }
+    return s;
+  }
+  function readZip(buf) {
+    const dv = new DataView(buf), u8 = new Uint8Array(buf);
+    let eocd = -1;
+    for (let i = u8.length - 22; i >= Math.max(0, u8.length - 66000); i--) {
+      if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+    }
+    if (eocd < 0) throw new Error('不是 zip');
+    const count = dv.getUint16(eocd + 10, true);
+    let off = dv.getUint32(eocd + 16, true);
+    const files = [];
+    for (let i = 0; i < count; i++) {
+      if (off + 46 > u8.length || dv.getUint32(off, true) !== 0x02014b50) break;
+      const method = dv.getUint16(off + 10, true);
+      const csize = dv.getUint32(off + 20, true);
+      const nlen = dv.getUint16(off + 28, true);
+      const elen = dv.getUint16(off + 30, true);
+      const clen = dv.getUint16(off + 32, true);
+      const lho = dv.getUint32(off + 42, true);
+      files.push({ name: decodeText(u8.subarray(off + 46, off + 46 + nlen)), method, csize, lho });
+      off += 46 + nlen + elen + clen;
+    }
+    return files;
+  }
+  async function zipEntry(buf, entry, all) {
+    const dv = new DataView(buf), u8 = new Uint8Array(buf);
+    const nlen = dv.getUint16(entry.lho + 26, true);
+    const elen = dv.getUint16(entry.lho + 28, true);
+    const start = entry.lho + 30 + nlen + elen;
+    let csize = entry.csize;
+    if (!csize) {
+      const next = all.map((f) => f.lho).filter((o) => o > entry.lho).sort((a, b) => a - b)[0];
+      csize = (next || u8.length) - start - 16;
+    }
+    const raw = u8.subarray(start, start + csize);
+    if (entry.method === 0) return raw;
+    const stream = new Response(raw).body.pipeThrough(new DecompressionStream('deflate-raw'));
+    return new Uint8Array(await new Response(stream).arrayBuffer());
+  }
+
+  // ---------- 取音频 ----------
+  async function downloadOsz(id, onProgress) {
+    const cached = await cacheGet('set' + id);
+    if (cached) { onProgress && onProgress(1, 1, true); return cached; }
+    let res = null;
+    for (let a = 0; a < 3; a++) {
+      try { res = await fetch(MIRROR + '/d/' + id); if (res.ok) break; } catch (e) { res = null; }
+      await new Promise((r) => setTimeout(r, 600));
+    }
+    if (!res || !res.ok) throw new Error('下载失败' + (res ? ' ' + res.status : ''));
+    const total = +res.headers.get('content-length') || 0;
+    const reader = res.body.getReader();
+    const chunks = [];
+    let got = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value); got += value.length;
+      onProgress && onProgress(got, total, false);
+    }
+    const u8 = new Uint8Array(got);
+    let o = 0;
+    for (const c of chunks) { u8.set(c, o); o += c.length; }
+    await cachePut('set' + id, u8.buffer);
+    return u8.buffer;
+  }
+
+  const bgCache = new Map();
+  let bgUrl = '';
+  async function coverFromOsz(id, buf) {
+    const key = String(id);
+    if (bgCache.has(key)) return bgCache.get(key);
+    const files = readZip(buf);
+    let name = '';
+    for (const f of files.filter((x) => x.name.toLowerCase().endsWith('.osu'))) {
+      const txt = decodeText(await zipEntry(buf, f, files));
+      const m = /^\s*0,0,"([^"]+)"/m.exec(txt);
+      if (m && files.some((x) => x.name.toLowerCase() === m[1].toLowerCase())) { name = m[1]; break; }
+    }
+    const bg = files.find((f) => f.name.toLowerCase() === name.toLowerCase()) ||
+      files.filter((f) => /\.(jpg|jpeg|png)$/i.test(f.name) &&
+        !/(hitcircle|hitburst|slider|spinner|default|cursor|lighting|sample|hit0|hit50|hit100|hit300)/i.test(f.name))
+        .sort((a, b) => b.csize - a.csize)[0];
+    if (!bg) return null;
+    const url = URL.createObjectURL(new Blob([await zipEntry(buf, bg, files)],
+      { type: /\.png$/i.test(bg.name) ? 'image/png' : 'image/jpeg' }));
+    bgCache.set(key, url);
+    return url;
+  }
+
+  async function audioFromOsz(buf) {
+    const files = readZip(buf);
+    const osus = files.filter((f) => f.name.toLowerCase().endsWith('.osu'));
+    let audioName = '';
+    for (const f of osus) {
+      const txt = decodeText(await zipEntry(buf, f, files));
+      const m = /AudioFilename\s*:\s*(.+)/i.exec(txt);
+      if (m) {
+        audioName = m[1].trim();
+        if (files.some((x) => x.name.toLowerCase() === audioName.toLowerCase())) break;
+      }
+    }
+    const af = files.find((f) => f.name.toLowerCase() === audioName.toLowerCase()) ||
+               files.find((f) => f.name.toLowerCase().endsWith('/audio.mp3')) ||
+               files.find((f) => /\.(mp3|ogg|m4a|wav)$/i.test(f.name));
+    if (!af) throw new Error('包里没有音频');
+    return await zipEntry(buf, af, files);
+  }
+
+  // ---------- 播放 ----------
+  function setStatus(t) { $('status').textContent = t; }
+
+  async function play(i, autoplay = true) {
+    if (i < 0 || i >= queue.length) return;
+    if (busy) return;
+    busy = true;
+    idx = i;
+    const s = queue[i];
+    renderQueue();
+    $('npTitle').innerHTML = esc(s.title || '未知曲目') + '<small>' + esc(s.artist || '') + '</small>';
+    theCover.onerror = null;
+    theCover.src = coverOf(s.setId);
+    document.title = (s.title || '音乐') + ' · mfhry.store';
+    $('bar').classList.add('on');
+    $('bari').style.width = '0%';
+    setStatus('准备音频…');
+    try {
+      let url = bufCache.get(String(s.setId));
+      if (!url) {
+        const buf = await downloadOsz(s.setId, (got, total) => {
+          if (total) $('bari').style.width = Math.round((got / total) * 100) + '%';
+          setStatus(got === total
+            ? '解包取音频…'
+            : '下载中 ' + (got / 1048576).toFixed(1) + ' / ' + (total ? (total / 1048576).toFixed(1) : '?') + ' MB');
+        });
+        setStatus('解包取音频…');
+        const bytes = await audioFromOsz(buf);
+        url = URL.createObjectURL(new Blob([bytes], { type: 'audio/mpeg' }));
+        bufCache.set(String(s.setId), url);
+        try {
+          const bg = await coverFromOsz(s.setId, buf);
+          if (bg && idx === i) {
+            theCover.onerror = null;
+            theCover.src = bg;
+            bgUrl = bg;
+          }
+        } catch (e) {}
+      }
+      if (blobUrl && blobUrl !== url) URL.revokeObjectURL(blobUrl);
+      blobUrl = url;
+      au.src = url;
+      au.load();
+      $('bar').classList.remove('on');
+      setStatus((s.artist ? s.artist + ' · ' : '') + '本地缓存' + (autoplay ? '，开始播放' : ''));
+      if (autoplay) await au.play().catch((e) => setStatus('浏览器拦了自动播放，点一下 ▶'));
+      setMediaSession(s);
+      renderQueue();
+    } catch (e) {
+      setStatus('没成功：' + e.message);
+    } finally {
+      busy = false;
+    }
+  }
+
+  function setMediaSession(s) {
+    if (!('mediaSession' in navigator)) return;
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: s.title || '', artist: s.artist || '', album: 'mfhry.store',
+      });
+      navigator.mediaSession.setActionHandler('play', () => au.play());
+      navigator.mediaSession.setActionHandler('pause', () => au.pause());
+      navigator.mediaSession.setActionHandler('previoustrack', () => step(-1));
+      navigator.mediaSession.setActionHandler('nexttrack', () => step(1));
+    } catch (e) {}
+  }
+
+  function step(dir) {
+    if (!queue.length) return;
+    if (dir > 0 && loopMode === 2) return play(Math.floor(Math.random() * queue.length));
+    const n = idx + dir;
+    if (n < 0) return play(queue.length - 1);
+    if (n >= queue.length) return play(0);
+    play(n);
+  }
+
+  // ---------- 列表 ----------
+  function renderQueue() {
+    const wrap = $('queue');
+    wrap.innerHTML = '';
+    $('qcount').textContent = queue.length + ' 首';
+    if (!queue.length) {
+      wrap.innerHTML = '<div class="empty">播放列表是空的。搜歌后点「＋ 加入」。</div>';
+      return;
+    }
+    queue.forEach((s, i) => {
+      const d = document.createElement('div');
+      d.className = 'item' + (i === idx ? ' playing' : '');
+      const left = document.createElement('span');
+      left.style.cssText = 'display:flex;align-items:center;gap:9px;min-width:0;cursor:pointer';
+      left.appendChild(thumbFor(s.setId));
+      const txt = document.createElement('span');
+      txt.innerHTML = (i === idx ? '▶ ' : (i + 1) + '. ') + esc(s.title || '?') +
+        '<br><small>' + esc(s.artist || '') + '</small>';
+      txt.style.minWidth = '0';
+      left.appendChild(txt);
+      d.appendChild(left);
+      const right = document.createElement('span');
+      right.innerHTML = '<span class="act go">播放</span><span class="rm" title="移除">✕</span>';
+      d.appendChild(right);
+      left.onclick = () => play(i);
+      d.querySelector('.go').onclick = () => play(i);
+      d.querySelector('.rm').onclick = (e) => {
+        e.stopPropagation();
+        const wasPlaying = i === idx;
+        queue.splice(i, 1);
+        if (i < idx) idx--;
+        else if (wasPlaying) { au.pause(); idx = Math.min(idx, queue.length - 1); }
+        persist(); renderQueue();
+        if (wasPlaying && queue.length) play(idx);
+        else if (!queue.length) { $('npTitle').innerHTML = '还没选歌<small>搜索或点下面的推荐曲单</small>'; $('cur').textContent = '0:00'; $('dur').textContent = '0:00'; }
+      };
+      wrap.appendChild(d);
+    });
+  }
+
+  function renderResults(list) {
+    const wrap = $('results');
+    wrap.innerHTML = '';
+    if (!list.length) { wrap.innerHTML = '<div class="empty">没搜到，换个关键词（英文 / 罗马音更准）</div>'; return; }
+    for (const s of list) {
+      const d = document.createElement('div');
+      d.className = 'item';
+      const diffs = (s.ChildrenBeatmaps || []).length;
+      d.innerHTML = '<span>' + esc(s.Title || '?') + ' — ' + esc(s.Artist || '') +
+        '<br><small>' + esc(s.Creator || '') + ' · ' + diffs + ' 个难度 · ♥ ' + (s.Favourites || 0) + '</small></span>' +
+        '<span class="act">＋ 加入</span>';
+      d.querySelector('.act').onclick = () => addSong({
+        setId: s.SetID, title: s.Title || '未知曲目', artist: s.Artist || '',
+      });
+      wrap.appendChild(d);
+    }
+  }
+
+  function addSong(s) {
+    if (queue.some((x) => String(x.setId) === String(s.setId))) {
+      setStatus('《' + s.title + '》已经在列表里了');
+      const i = queue.findIndex((x) => String(x.setId) === String(s.setId));
+      renderQueue();
+      return;
+    }
+    queue.push(s);
+    persist();
+    renderQueue();
+    setStatus('已加入《' + s.title + '》');
+    if (idx < 0) play(queue.length - 1);
+  }
+
+  function persist() { save(LS_QUEUE, queue); save(LS_STATE, { idx }); }
+
+  // ---------- 搜索 ----------
+  function rankSets(list, q) {
+    const norm = (t) => String(t || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    const toks = norm(q).split(' ').filter((t) => t.length > 1);
+    const bad = /various artists|compilation|favourites|pack|collection|megamix|medley/i;
+    return list.map((s) => {
+      const title = norm(s.Title), artist = norm(s.Artist);
+      let k = 0;
+      for (const t of toks) { if (title.includes(t)) k += 6; else if (artist.includes(t)) k += 3; }
+      k += Math.min(6, Math.log10(1 + (s.Favourites || 0)) * 2);
+      if (bad.test((s.Title || '') + ' ' + (s.Artist || ''))) k -= 5;
+      if (/cover|instrumental|off vocal|karaoke|8-bit|chiptune|nightcore|remix/i.test(s.Title || '')) k -= 4;
+      if (/cover|instrumental|off vocal|karaoke|8-bit|chiptune|nightcore|remix/i.test(s.Title || '')) k -= 2;
+      const lens = (s.ChildrenBeatmaps || []).map((c) => c.TotalLength || 0);
+      if (lens.length && Math.max(...lens) > 480) k -= 4;
+      return { s, k };
+    }).sort((a, b) => b.k - a.k).map((x) => x.s);
+  }
+
+  async function search(q) {
+    setStatus('搜索中…');
+    for (let a = 0; a < 2; a++) {
+      try {
+        const r = await fetch(MIRROR + '/search?query=' + encodeURIComponent(q) + '&limit=10');
+        if (!r.ok) throw new Error('镜像返回 ' + r.status);
+        const list = rankSets(await r.json(), q);
+        renderResults(list);
+        setStatus(list.length ? '找到 ' + list.length + ' 个结果，点「＋ 加入」' : '没搜到，换个词');
+        return;
+      } catch (e) {
+        if (a === 1) setStatus('搜索失败：' + e.message + '（再点一次）');
+        else await new Promise((r) => setTimeout(r, 800));
+      }
+    }
+  }
+
+  function renderHot() {
+    const wrap = $('hot');
+    wrap.innerHTML = '';
+    for (const g of (window.MFHRY_SONGS || [])) {
+      const t = document.createElement('div');
+      t.className = 'gtitle';
+      t.textContent = g.title;
+      wrap.appendChild(t);
+      const row = document.createElement('div');
+      row.className = 'row';
+      for (const h of g.items) {
+        const b = document.createElement('span');
+        b.className = 'chip';
+        b.textContent = h.label;
+        b.onclick = () => { $('q').value = h.label; search(h.q); };
+        row.appendChild(b);
+      }
+      wrap.appendChild(row);
+    }
+  }
+
+  // ---------- 事件 ----------
+  $('toggle').onclick = () => {
+    if (!au.src) { if (queue.length) play(idx < 0 ? 0 : idx); return; }
+    if (au.paused) au.play().catch(() => {}); else au.pause();
+  };
+  au.addEventListener('play', () => { $('toggle').textContent = '⏸'; });
+  au.addEventListener('pause', () => { $('toggle').textContent = '▶'; });
+  au.addEventListener('ended', () => {
+    if (loopMode === 1) { au.currentTime = 0; au.play().catch(() => {}); return; }
+    step(1);
+  });
+  au.addEventListener('timeupdate', () => {
+    if (!au.duration || dragging) return;
+    $('cur').textContent = mmss(au.currentTime);
+    $('dur').textContent = mmss(au.duration);
+    $('seek').value = String(Math.round((au.currentTime / au.duration) * 1000));
+  });
+  au.addEventListener('loadedmetadata', () => { $('dur').textContent = mmss(au.duration); });
+  au.addEventListener('error', () => { if (au.src) setStatus('这个音频浏览器放不了，换一首'); });
+
+  let dragging = false;
+  $('seek').addEventListener('input', () => { dragging = true; });
+  $('seek').addEventListener('change', () => {
+    if (au.duration) au.currentTime = (+$('seek').value / 1000) * au.duration;
+    dragging = false;
+  });
+  $('vol').addEventListener('input', () => {
+    au.volume = +$('vol').value;
+    try { localStorage.setItem('mfhry_music_vol', $('vol').value); } catch (e) {}
+  });
+  $('loop').onclick = () => { loopMode = (loopMode + 1) % 3; $('loop').textContent = LOOP_TXT[loopMode]; };
+  $('prev').onclick = () => step(-1);
+  $('next').onclick = () => step(1);
+  $('search').onclick = () => { const q = $('q').value.trim(); if (q) search(q); };
+  $('q').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); const q = $('q').value.trim(); if (q) search(q); } });
+  window.addEventListener('keydown', (e) => {
+    if (e.target && /input|textarea/i.test(e.target.tagName)) return;
+    if (e.key === ' ') { e.preventDefault(); $('toggle').click(); }
+    if (e.key === 'ArrowRight' && au.duration) au.currentTime = Math.min(au.duration, au.currentTime + 5);
+    if (e.key === 'ArrowLeft' && au.duration) au.currentTime = Math.max(0, au.currentTime - 5);
+  });
+
+  // ---------- 启动 ----------
+  queue = Array.isArray(load(LS_QUEUE, [])) ? load(LS_QUEUE, []) : [];
+  const vol = load('mfhry_music_vol', 0.85);
+  au.volume = typeof vol === 'string' ? +vol : vol;
+  $('vol').value = au.volume;
+  $('loop').textContent = LOOP_TXT[loopMode];
+  renderHot();
+  renderQueue();
+  if (queue.length) {
+    const st = load(LS_STATE, { idx: 0 });
+    const i = Math.max(0, Math.min(queue.length - 1, st.idx | 0));
+    play(i, false);   // 恢复上次的歌，但不自动出声（浏览器要手势）
+  }
+
+  window.__music = {
+    queue: () => queue.slice(),
+    idx: () => idx,
+    add: (o) => addSong(o),
+    play: (i) => play(i),
+    search: (q) => search(q),
+    playing: () => !au.paused,
+    time: () => au.currentTime,
+    dur: () => au.duration,
+    src: () => au.src.slice(0, 24),
+  };
+})();
+</script>
+</body>
+</html>
