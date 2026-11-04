@@ -1203,7 +1203,6 @@ a.game:hover {
 /* ===== 液态玻璃按钮 ===== */
 button:not([hidden]),
 .btn,
-.btn:any(.primary),
 .chip,
 a.btn,
 .pick,
