@@ -242,7 +242,7 @@
     .fs-prog,.fs-vol{margin-top:16px}
   }
 
-  /* 歌词 / 缓存抽屉 */
+  /* 歌词抽屉 */
   .sheet{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);width:min(94vw,560px);
     max-height:min(70vh,560px);z-index:60;display:flex;flex-direction:column;border-radius:18px;
     background:linear-gradient(165deg,rgba(24,32,38,.92),rgba(14,19,24,.94));
@@ -261,15 +261,6 @@
   .lyr-line:hover{background:rgba(255,255,255,.05)}
   .lyr-line.on{color:var(--accent);font-weight:600;background:rgba(127,209,176,.10)}
   .lyr-empty{color:var(--muted);font-size:12.5px;line-height:1.8}
-  .cache-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:12.5px}
-  .cache-row .t{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .cache-row .sz{color:var(--muted);font-size:11.5px;font-variant-numeric:tabular-nums}
-  .cache-row button{border:1px solid rgba(255,255,255,.18);background:transparent;color:#e8a0a0;
-    border-radius:8px;font-size:11.5px;padding:3px 9px;cursor:pointer}
-  .cache-row button:hover{background:rgba(255,120,120,.12)}
-  .cache-total{display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:12px;color:var(--muted)}
-  .cache-total button{border:1px solid rgba(255,255,255,.2);background:transparent;color:var(--fg);
-    border-radius:9px;padding:5px 12px;font-size:12px;cursor:pointer}
 </style>
 </head>
 <body>
@@ -306,7 +297,6 @@
       <span class="chip" id="loop" title="播放模式">顺序</span>
       <button id="fsOpen" title="全屏播放" style="width:auto;padding:0 12px;font-size:12.5px">全屏 ⤢</button>
       <span class="chip" id="lyrBtn" title="歌词">歌词</span>
-      <span class="chip" id="cacheBtn" title="缓存管理">缓存</span>
     </div>
     <div class="vol">
       <span>音量</span><input type="range" id="vol" min="0" max="1" step="0.01" value="0.85" />
@@ -336,11 +326,6 @@
 <div class="sheet" id="lyrSheet" hidden>
   <div class="sheet-h"><b>歌词</b><span id="lyrMeta"></span><button class="x" id="lyrClose" aria-label="关闭">×</button></div>
   <div class="sheet-b" id="lyrBody"></div>
-</div>
-
-<div class="sheet" id="cacheSheet" hidden>
-  <div class="sheet-h"><b>本机缓存</b><span id="cacheMeta"></span><button class="x" id="cacheClose" aria-label="关闭">×</button></div>
-  <div class="sheet-b" id="cacheBody"></div>
 </div>
 
 
@@ -1147,81 +1132,9 @@
     else syncLyrics();
   }
 
-  // ---------- 缓存管理 ----------
-  const fmtSize = (n) => (n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB');
-
-  async function listCache() {
-    const body = $('cacheBody'), meta = $('cacheMeta');
-    body.innerHTML = '<p class="lyr-empty">统计中…</p>';
-    try {
-      const d = await db();
-      const keys = await new Promise((res) => {
-        const rq = d.transaction('osz', 'readonly').objectStore('osz').getAllKeys();
-        rq.onsuccess = () => res(rq.result || []);
-        rq.onerror = () => res([]);
-      });
-      const rows = [];
-      let total = 0;
-      for (const k of keys) {
-        const v = await cacheGet(k);
-        const size = v ? (v.byteLength || v.size || (v.length || 0)) : 0;
-        total += size;
-        rows.push({ key: String(k), size });
-      }
-      rows.sort((a, b) => b.size - a.size);
-      const audios = rows.filter((r) => r.key.startsWith('aud:')).length;
-      const sets = rows.filter((r) => r.key.startsWith('set')).length;
-      const bgs = rows.filter((r) => r.key.startsWith('bg:')).length;
-      meta.textContent = audios + ' 首有音频 · ' + sets + ' 个谱面包 · ' + bgs + ' 张封面';
-      body.innerHTML = '';
-      if (!rows.length) { body.innerHTML = '<p class="lyr-empty">还没有缓存，播一首歌就会存下来。</p>'; return; }
-      for (const r of rows) {
-        const div = document.createElement('div');
-        div.className = 'cache-row';
-        const name = r.key.replace(/^(aud|bg|set):?/, '');
-        const kind = r.key.startsWith('aud:') ? '音频' : r.key.startsWith('bg:') ? '封面' : '谱面包';
-        div.innerHTML = '<span class="t">' + kind + ' · ' + esc(name) + '</span><span class="sz">' + fmtSize(r.size) + '</span>';
-        const b = document.createElement('button');
-        b.textContent = '删除';
-        b.onclick = async () => {
-          await new Promise((res) => {
-            const tx = d.transaction('osz', 'readwrite');
-            tx.objectStore('osz').delete(r.key);
-            tx.oncomplete = res; tx.onerror = res;
-          });
-          bufCache.delete(name);
-          listCache();
-        };
-        div.appendChild(b);
-        body.appendChild(div);
-      }
-      const sum = document.createElement('div');
-      sum.className = 'cache-total';
-      sum.innerHTML = '<span>合计 ' + fmtSize(total) + '</span>';
-      const clr = document.createElement('button');
-      clr.textContent = '全部清空';
-      clr.onclick = async () => {
-        if (!confirm('清空本机缓存？下次播放要重新下载。')) return;
-        await new Promise((res) => {
-          const tx = d.transaction('osz', 'readwrite');
-          tx.objectStore('osz').clear();
-          tx.oncomplete = res; tx.onerror = res;
-        });
-        bufCache.clear();
-        listCache();
-      };
-      sum.appendChild(clr);
-      body.appendChild(sum);
-    } catch (e) {
-      body.innerHTML = '<p class="lyr-empty">读不到缓存：' + esc(e.message) + '</p>';
-    }
-  }
-
   // ---------- 按钮 / 快捷键 ----------
   $('lyrBtn').onclick = () => openLyrics();
   $('lyrClose').onclick = () => { $('lyrSheet').hidden = true; };
-  $('cacheBtn').onclick = () => { $('cacheSheet').hidden = false; listCache(); };
-  $('cacheClose').onclick = () => { $('cacheSheet').hidden = true; };
 
   document.addEventListener('keydown', (e) => {
     const tag = (e.target && e.target.tagName) || '';
@@ -1234,7 +1147,7 @@
     else if (k === 'ArrowDown') { e.preventDefault(); au.volume = Math.max(0, au.volume - 0.05); $('vol').value = String(au.volume); }
     else if (k === 'l' || k === 'L') { openLyrics(); }
     else if (k === 'f' || k === 'F') { fsEl.classList.contains('on') ? closeFS() : openFS(); }
-    else if (k === 'Escape') { $('lyrSheet').hidden = true; $('cacheSheet').hidden = true; }
+    else if (k === 'Escape') { $('lyrSheet').hidden = true; }
   });
 
   window.__music = {
