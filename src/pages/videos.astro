@@ -678,7 +678,9 @@ import Base from '../layouts/Base.astro';
       if (!file) return;
       if (file.size > SERVER_MAX) {
         vfEl.value = '';
-        serverFile = null;
+        serverFile = null; serverDuration = null;
+        vfrmEl.hidden = true; vprogEl.hidden = true; vprogEl.value = 0;
+        cover = ''; prevEl.innerHTML = '';
         vfhintEl.textContent = '这个文件超过 40MB，换小一点的视频';
         return;
       }

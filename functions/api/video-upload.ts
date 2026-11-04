@@ -48,6 +48,11 @@ async function ensureSchema(env: any) {
     data BLOB NOT NULL,
     PRIMARY KEY (upload_id, idx)
   )`).run();
+  // 浏览器中途关掉会留下未完成任务；顺手清掉一天前的，别让切片一直占 D1。
+  await env.DB.prepare(`DELETE FROM video_chunks WHERE upload_id IN (
+    SELECT id FROM video_uploads WHERE status = 'uploading' AND created_at < datetime('now', '-1 day')
+  )`).run();
+  await env.DB.prepare(`DELETE FROM video_uploads WHERE status = 'uploading' AND created_at < datetime('now', '-1 day')`).run();
   schemaReady = true;
 }
 
