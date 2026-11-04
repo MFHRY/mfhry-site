@@ -66,8 +66,14 @@ import Base from '../layouts/Base.astro';
     <div class="vbox">
       <button class="vx" data-close type="button">×</button>
       <h2>上传视频</h2>
+      <div class="crow">
+        <label class="pick"><input id="vf" type="file" accept="video/*" hidden />选择本地视频</label>
+        <button id="vfrm" class="pick" type="button" hidden>清除</button>
+        <span class="muted" id="vfhint">上传到服务器（≤40MB，实验性）；不选文件则用下方外链</span>
+      </div>
+      <progress id="vprog" max="100" value="0" hidden></progress>
       <input id="t" class="key" type="text" maxlength="120" placeholder="标题（必填）" />
-      <input id="u" class="key" type="url" placeholder="视频链接：B 站 / 腾讯 / 优酷 / 西瓜 / AcFun / YouTube / mp4 直链" />
+      <input id="u" class="key" type="url" placeholder="或填视频链接：B 站 / 腾讯 / 优酷 / 西瓜 / AcFun / YouTube / mp4 直链" />
       <textarea id="d" maxlength="2000" placeholder="简介（可选，最多 2000 字）"></textarea>
       <div class="crow">
         <label class="pick"><input id="f" type="file" accept="image/jpeg,image/png,image/webp" hidden />封面</label>
@@ -110,6 +116,7 @@ import Base from '../layouts/Base.astro';
     }
     .vid .vdel { top: 8px; right: 8px; z-index: 3; }
     .vmodal .vx { top: 10px; right: 12px; }
+    #vprog { width: 100%; height: 8px; margin: 2px 0 8px; accent-color: var(--accent); }
     .lpick { display: inline-flex; align-items: center; justify-content: center; margin-bottom: 10px; }
     .lfile { font-size: 12px; color: var(--muted); word-break: break-all; }
     #lprev .thumb img { width: 160px; height: 90px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); }
@@ -126,6 +133,7 @@ import Base from '../layouts/Base.astro';
     const keyEl = $('key'), gmsgEl = $('gmsg');
     const dnameEl = $('dname'), dkeyEl = $('dkey'), dmsgEl = $('dmsg');
     const tEl = $('t'), uEl = $('u'), dEl = $('d'), fEl = $('f'), prevEl = $('prev'), hintEl = $('hint'), cmsgEl = $('cmsg');
+    const vfEl = $('vf'), vfrmEl = $('vfrm'), vfhintEl = $('vfhint'), vprogEl = $('vprog');
     const ptitleEl = $('ptitle'), pbodyEl = $('pbody'), pmetaEl = $('pmeta');
     const lfEl = $('lf'), lfileEl = $('lfile'), lprevEl = $('lprev'), ltEl = $('lt'), ldEl = $('ld'), lmsgEl = $('lmsg');
 
@@ -133,6 +141,7 @@ import Base from '../layouts/Base.astro';
     try { KEY = sessionStorage.getItem('vkey') || ''; } catch (e) {}
     let cover = '';
     let busy = false;
+    let serverFile = null, serverDuration = null, pendingUpload = '';
 
     // ---------- 本机视频（IndexedDB，仅当前浏览器） ----------
     const VDB = 'mfhry_videos_local';
@@ -266,6 +275,9 @@ import Base from '../layouts/Base.astro';
     function close(el) { el.hidden = true; if (gateEl.hidden && compEl.hidden && lcompEl.hidden && playEl.hidden && delEl.hidden) document.body.style.overflow = ''; }
 
     function playerHtml(url) {
+      if (/^\/api\/video-stream\//.test(url)) {
+        return '<video controls preload="metadata" playsinline src="' + esc(url) + '"></video>';
+      }
       if (window.vplayerHtml) return window.vplayerHtml(url);
       return '<p class="nvlink"><a href="' + esc(url) + '" target="_blank" rel="noreferrer">打开视频 ↗</a></p>';
     }
@@ -388,15 +400,28 @@ import Base from '../layouts/Base.astro';
     // 关闭
     document.addEventListener('click', (e) => {
       const c = e.target.closest('[data-close]');
-      if (c) { close(c.closest('.vmodal')); if (c.closest('.vmodal') === playEl) clearPlayer(); return; }
+      if (c) {
+        const m = c.closest('.vmodal');
+        if (m === compEl && busy) { cmsgEl.textContent = '正在上传，等完成再关闭'; return; }
+        close(m);
+        if (m === playEl) clearPlayer();
+        return;
+      }
       if (e.target.classList && e.target.classList.contains('vmodal')) {
+        if (e.target === compEl && busy) { cmsgEl.textContent = '正在上传，等完成再关闭'; return; }
         close(e.target);
         if (e.target === playEl) clearPlayer();
       }
     });
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
-      [gateEl, compEl, lcompEl, playEl, delEl].forEach((m) => { if (!m.hidden) { close(m); if (m === playEl) clearPlayer(); } });
+      [gateEl, compEl, lcompEl, playEl, delEl].forEach((m) => {
+        if (!m.hidden) {
+          if (m === compEl && busy) return;
+          close(m);
+          if (m === playEl) clearPlayer();
+        }
+      });
     });
 
     // 本机视频
@@ -511,8 +536,10 @@ import Base from '../layouts/Base.astro';
     keyEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryKey(); });
 
     $('cout').addEventListener('click', () => {
+      if (busy) { cmsgEl.textContent = '正在上传，等完成再退出'; return; }
       KEY = '';
       try { sessionStorage.removeItem('vkey'); } catch (e) {}
+      resetRemoteFields();
       close(compEl);
       load();
     });
@@ -553,15 +580,157 @@ import Base from '../layouts/Base.astro';
       }
     });
 
+    const SERVER_MAX = 40 * 1024 * 1024;
+
+    function serverFileName(file) {
+      return String(file.name || '视频').replace(/\.[^.]+$/, '').slice(0, 120);
+    }
+
+    function showCoverPreview() {
+      if (!cover) { prevEl.innerHTML = ''; return; }
+      prevEl.innerHTML = '<span class="thumb"><img src="' + cover + '" alt="" /><button type="button" id="rmcover">×</button></span>';
+      $('rmcover').addEventListener('click', () => {
+        cover = '';
+        prevEl.innerHTML = '';
+        hintEl.textContent = '封面可选（不填就用播放图标代替）';
+      });
+    }
+
+    function resetRemoteFields() {
+      serverFile = null; serverDuration = null; pendingUpload = '';
+      vfEl.value = ''; vprogEl.hidden = true; vprogEl.value = 0;
+      vfhintEl.textContent = '上传到服务器（≤40MB，实验性）；不选文件则用下方外链';
+      tEl.value = ''; uEl.value = ''; dEl.value = ''; cover = '';
+      prevEl.innerHTML = '';
+      hintEl.textContent = '封面可选（不填就用播放图标代替）';
+      cmsgEl.textContent = '';
+    }
+
+    async function abortServerUpload(id) {
+      if (!id) return;
+      try { await fetch('/api/video-upload?id=' + encodeURIComponent(id), { method: 'DELETE', headers: { 'x-admin-key': KEY } }); } catch (e) {}
+      pendingUpload = '';
+    }
+
+    async function uploadServerVideo(file) {
+      cmsgEl.textContent = '创建上传任务…';
+      vprogEl.hidden = false; vprogEl.value = 1;
+      const createRes = await fetch('/api/video-upload', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-admin-key': KEY },
+        body: JSON.stringify({
+          key: KEY,
+          title: tEl.value.trim(),
+          body: dEl.value.trim(),
+          size: file.size,
+          mime: file.type || 'video/mp4',
+          duration: serverDuration,
+          cover,
+        }),
+      });
+      const task = await createRes.json().catch(() => ({}));
+      if (!createRes.ok) throw new Error(task.error || '创建上传任务失败');
+      pendingUpload = task.id;
+      const chunkSize = Number(task.chunkSize) || 1500000;
+      const group = chunkSize * 3;
+      let sent = 0;
+
+      while (sent < file.size) {
+        const start = sent;
+        const part = file.slice(start, Math.min(file.size, start + group));
+        let attempt = 0;
+        for (;;) {
+          try {
+            const res = await fetch('/api/video-upload?id=' + encodeURIComponent(task.id) + '&start=' + start, {
+              method: 'POST',
+              headers: { 'x-admin-key': KEY, 'content-type': 'application/octet-stream' },
+              body: part,
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || '切片上传失败');
+            break;
+          } catch (e) {
+            attempt++;
+            if (attempt >= 3) throw e;
+            cmsgEl.textContent = '网络抖动，重试切片 ' + attempt + '/3…';
+            await new Promise(r => setTimeout(r, 700 * attempt));
+          }
+        }
+        sent += part.size;
+        const pct = Math.min(99, Math.round((sent / file.size) * 100));
+        vprogEl.value = pct;
+        cmsgEl.textContent = '上传中… ' + pct + '%（' + Math.ceil(sent / 1024 / 1024) + ' / ' + Math.ceil(file.size / 1024 / 1024) + 'MB）';
+      }
+
+      cmsgEl.textContent = '合并并发布…';
+      vprogEl.value = 100;
+      const finRes = await fetch('/api/video-upload?finish=' + encodeURIComponent(task.id), {
+        method: 'POST',
+        headers: { 'x-admin-key': KEY },
+      });
+      const fin = await finRes.json().catch(() => ({}));
+      if (!finRes.ok) throw new Error(fin.error || '合并失败');
+      pendingUpload = '';
+    }
+
+    vfEl.addEventListener('change', async () => {
+      const file = (vfEl.files || [])[0];
+      if (!file) return;
+      if (file.size > SERVER_MAX) {
+        vfEl.value = '';
+        serverFile = null;
+        vfhintEl.textContent = '这个文件超过 40MB，换小一点的视频';
+        return;
+      }
+      serverFile = file;
+      serverDuration = null;
+      vfrmEl.hidden = false;
+      cover = '';
+      showCoverPreview();
+      if (!tEl.value.trim()) tEl.value = serverFileName(file);
+      vfhintEl.textContent = file.name + ' · ' + (file.size / 1024 / 1024).toFixed(1) + 'MB · 读取信息中…';
+      try {
+        const info = await probeVideo(file);
+        if (serverFile !== file) return;
+        serverDuration = info.duration;
+        if (info.cover) { cover = info.cover; showCoverPreview(); hintEl.textContent = '封面已自动截取'; }
+        vfhintEl.textContent = file.name + ' · ' + (file.size / 1024 / 1024).toFixed(1) + 'MB · ' +
+          (info.duration ? '时长 ' + Math.floor(info.duration / 60) + ':' + String(info.duration % 60).padStart(2, '0') : '时长未知') +
+          '，将上传到服务器';
+      } catch (e) {
+        if (serverFile !== file) return;
+        vfhintEl.textContent = file.name + ' · ' + (file.size / 1024 / 1024).toFixed(1) + 'MB · 浏览器读不出时长/封面，仍可上传';
+      }
+    });
+
+    vfrmEl.addEventListener('click', () => {
+      serverFile = null; serverDuration = null;
+      vfEl.value = ''; vfrmEl.hidden = true; vprogEl.hidden = true; vprogEl.value = 0;
+      cover = ''; prevEl.innerHTML = '';
+      hintEl.textContent = '封面可选（不填就用播放图标代替）';
+      vfhintEl.textContent = '上传到服务器（≤40MB，实验性）；不选文件则用下方外链';
+    });
+
     $('cok').addEventListener('click', async () => {
       if (busy) return;
+      const file = serverFile;
       const url = uEl.value.trim();
       if (!tEl.value.trim()) { cmsgEl.textContent = '先填标题'; return; }
-      if (!url) { cmsgEl.textContent = '先填视频链接'; return; }
-      if (!/^https?:\/\//i.test(url)) { cmsgEl.textContent = '链接要以 http(s):// 开头'; return; }
+      if (!file && !url) { cmsgEl.textContent = '选择本地视频，或填视频链接'; return; }
+      if (!file && !/^https?:\/\//i.test(url)) { cmsgEl.textContent = '链接要以 http(s):// 开头'; return; }
+
       busy = true;
-      cmsgEl.textContent = '上传中…';
       try {
+        if (file) {
+          if (!KEY) { cmsgEl.textContent = '口令已失效，退出重进'; return; }
+          await uploadServerVideo(file);
+          resetRemoteFields();
+          close(compEl);
+          load();
+          return;
+        }
+
+        cmsgEl.textContent = '上传中…';
         const res = await fetch('/api/videos', {
           method: 'POST',
           headers: { 'content-type': 'application/json', 'x-admin-key': KEY },
@@ -572,14 +741,13 @@ import Base from '../layouts/Base.astro';
           cmsgEl.textContent = data.error || '上传失败';
           return;
         }
-        cmsgEl.textContent = '';
-        tEl.value = ''; uEl.value = ''; dEl.value = ''; cover = '';
-        prevEl.innerHTML = '';
-        hintEl.textContent = '封面可选（不填就用播放图标代替）';
+        resetRemoteFields();
         close(compEl);
         load();
       } catch (e) {
-        cmsgEl.textContent = '网络错误，再试一次';
+        if (pendingUpload) await abortServerUpload(pendingUpload);
+        vprogEl.hidden = true;
+        cmsgEl.textContent = e.message || '网络错误，再试一次';
       } finally {
         busy = false;
       }

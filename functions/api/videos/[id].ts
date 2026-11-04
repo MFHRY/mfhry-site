@@ -14,10 +14,17 @@ export const onRequestDelete = async (ctx: any) => {
   const id = Number(params.id);
   if (!Number.isInteger(id) || id <= 0) return json({ error: 'id 不对' }, 400);
 
-  const row: any = await env.DB.prepare('SELECT cover FROM videos WHERE id = ?').bind(id).first();
+  const row: any = await env.DB.prepare('SELECT cover, url FROM videos WHERE id = ?').bind(id).first();
   if (!row) return json({ error: '没有这条' }, 404);
 
   if (row.cover) await env.DB.prepare('DELETE FROM media WHERE id = ?').bind(row.cover).run();
   await env.DB.prepare('DELETE FROM videos WHERE id = ?').bind(id).run();
+
+  // 服务器切片视频：连同 BLOB 切片和上传记录一起清理，避免占满 D1。
+  const m = /^\/api\/video-stream\/([0-9a-f-]{20,40})$/i.exec(String(row.url || ''));
+  if (m) {
+    await env.DB.prepare('DELETE FROM video_chunks WHERE upload_id = ?').bind(m[1]).run();
+    await env.DB.prepare('DELETE FROM video_uploads WHERE id = ?').bind(m[1]).run();
+  }
   return json({ ok: true });
 };
