@@ -1026,32 +1026,74 @@
   let chartRange = '5d';
   let chartRequestId = 0;
   let chartRefreshTimer = null;
+  let chartAbort = null;
+  // Per-device read cache: revisiting a pair+range renders instantly, then revalidates.
+  const candleCache = new Map();
+
+  function paintRange(pair, range) {
+    $('rangeSwitch').querySelectorAll('.range-btn').forEach(b => b.classList.toggle('active', b.dataset.range === range));
+    chartBadgeEl.textContent = pair + ' · ' + RANGE_LABELS[range] + ' · 服务端共享';
+  }
+
+  function applyCandles(pair, range, candles) {
+    const store = candleStore[pair];
+    store.candles = candles;
+    store.current = null;
+    store.range = range;
+    if (pair !== state.activePair || range !== chartRange) return;
+    paintRange(pair, range);
+    drawChart();
+  }
 
   async function loadCandles(pair = state.activePair, range = chartRange, silent = false) {
+    const key = pair + '|' + range;
     const requestId = ++chartRequestId;
     const syncEl = $('chartSync');
     const statusEl = $('chartDataStatus');
-    if (!silent) { syncEl.textContent = '正在读取共享数据…'; statusEl.textContent = '连接服务器数据库'; }
+    const cached = candleCache.get(key);
+
+    if (cached) {
+      applyCandles(pair, range, cached.candles);
+      if (pair === state.activePair && range === chartRange && !silent) {
+        syncEl.textContent = '本地缓存 · 正在校准…';
+        statusEl.textContent = '后台同步服务器数据';
+      }
+    } else if (!silent) {
+      syncEl.textContent = '正在读取共享数据…';
+      statusEl.textContent = '连接服务器数据库';
+    }
+
+    if (chartAbort) chartAbort.abort();
+    const controller = new AbortController();
+    chartAbort = controller;
+
     try {
-      const response = await fetch('/api/fx-candles?pair=' + encodeURIComponent(pair) + '&range=' + encodeURIComponent(range), { cache: 'no-store' });
+      const response = await fetch('/api/fx-candles?pair=' + encodeURIComponent(pair) + '&range=' + encodeURIComponent(range), {
+        cache: 'no-store',
+        signal: controller.signal,
+      });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || '共享行情不可用');
+      const candles = (data.candles || []).map(c => ({ t: Number(c.t), o: Number(c.o), h: Number(c.h), l: Number(c.l), c: Number(c.c) }));
+      candleCache.set(key, { candles, serverTime: data.serverTime });
       if (requestId !== chartRequestId) return;
-      const store = candleStore[pair];
-      store.candles = (data.candles || []).map(c => ({ t: Number(c.t), o: Number(c.o), h: Number(c.h), l: Number(c.l), c: Number(c.c) }));
-      store.current = null;
-      store.range = range;
-      const serverDate = new Date(data.serverTime);
-      const clock = serverDate.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Asia/Shanghai' });
-      syncEl.textContent = '服务器已同步 · ' + data.candles.length + ' 根 · ' + clock;
+      applyCandles(pair, range, candles);
+      if (pair !== state.activePair || range !== chartRange) return;
+      const clock = new Date(data.serverTime).toLocaleTimeString('zh-CN', {
+        hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Asia/Shanghai',
+      });
+      syncEl.textContent = '服务器已同步 · ' + candles.length + ' 根 · ' + clock;
       statusEl.textContent = 'D1 持久化 · 其他设备共享';
-      $('rangeSwitch').querySelectorAll('.range-btn').forEach(b => b.classList.toggle('active', b.dataset.range === range));
-      chartBadgeEl.textContent = pair + ' · ' + RANGE_LABELS[range] + ' · 服务端共享';
-      drawChart();
     } catch (error) {
+      if (error?.name === 'AbortError') return;
       if (requestId !== chartRequestId) return;
-      syncEl.textContent = '服务器行情暂不可用';
-      statusEl.textContent = String(error.message || 'K 线同步失败');
+      if (cached) {
+        syncEl.textContent = '本地缓存 · 校准失败';
+        statusEl.textContent = '网络异常，仍显示上次共享数据';
+      } else {
+        syncEl.textContent = '服务器行情暂不可用';
+        statusEl.textContent = String(error.message || 'K 线同步失败');
+      }
       drawChart();
     }
   }
@@ -1059,7 +1101,10 @@
   function selectChartRange(range) {
     if (!RANGE_LABELS[range] || range === chartRange) return;
     chartRange = range;
-    loadCandles(state.activePair, chartRange);
+    paintRange(state.activePair, range);
+    $('chartSync').textContent = '正在读取共享数据…';
+    $('chartDataStatus').textContent = '连接服务器数据库';
+    loadCandles(state.activePair, range);
   }
 
   // ============ 保证金与盈亏计算 ============

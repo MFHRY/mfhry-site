@@ -24,6 +24,7 @@ const json = (data: unknown, status = 200) => new Response(JSON.stringify(data),
   headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
 });
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
+let schemaReady = false;
 
 function hashSeed(s: string) {
   let h = 2166136261;
@@ -63,31 +64,36 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   }
 
   try {
-    await env.DB.prepare(`CREATE TABLE IF NOT EXISTS fx_candles (
-      pair TEXT NOT NULL,
-      range_key TEXT NOT NULL,
-      bucket INTEGER NOT NULL,
-      o REAL NOT NULL,
-      h REAL NOT NULL,
-      l REAL NOT NULL,
-      c REAL NOT NULL,
-      progress REAL NOT NULL DEFAULT 1,
-      updated_at TEXT NOT NULL,
-      PRIMARY KEY (pair, range_key, bucket)
-    )`).run();
+    if (!schemaReady) {
+      await env.DB.prepare(`CREATE TABLE IF NOT EXISTS fx_candles (
+        pair TEXT NOT NULL,
+        range_key TEXT NOT NULL,
+        bucket INTEGER NOT NULL,
+        o REAL NOT NULL,
+        h REAL NOT NULL,
+        l REAL NOT NULL,
+        c REAL NOT NULL,
+        progress REAL NOT NULL DEFAULT 1,
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY (pair, range_key, bucket)
+      )`).run();
+      schemaReady = true;
+    }
 
     const cfg = RANGES[range];
     const seriesKey = cfg.series;
     const now = Date.now();
     const currentBucket = Math.floor(now / cfg.step) * cfg.step;
     const startBucket = currentBucket - (cfg.count - 1) * cfg.step;
+    // Fetch one extra older bar in the same query; it gives continuity for the missing head.
     const rows = await env.DB.prepare(
       'SELECT bucket, o, h, l, c, progress FROM fx_candles WHERE pair = ? AND range_key = ? AND bucket BETWEEN ? AND ? ORDER BY bucket ASC',
-    ).bind(pair, seriesKey, startBucket, currentBucket).all();
-    const byBucket = new Map<number, any>((rows.results || []).map((r: any) => [Number(r.bucket), r]));
-    const previous: any = await env.DB.prepare(
-      'SELECT c FROM fx_candles WHERE pair = ? AND range_key = ? AND bucket < ? ORDER BY bucket DESC LIMIT 1',
-    ).bind(pair, seriesKey, startBucket).first();
+    ).bind(pair, seriesKey, startBucket - cfg.step, currentBucket).all();
+    const fetched = rows.results || [];
+    const previous = fetched.find((r: any) => Number(r.bucket) < startBucket) || null;
+    const byBucket = new Map<number, any>(
+      fetched.filter((r: any) => Number(r.bucket) >= startBucket).map((r: any) => [Number(r.bucket), r]),
+    );
 
     let priorClose = previous ? Number(previous.c) : PAIRS[pair].base;
     const writes: D1PreparedStatement[] = [];
