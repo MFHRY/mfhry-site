@@ -2,8 +2,10 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FX 梭哈模拟器 · 多品种杠杆外汇</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="description" content="多品种杠杆外汇模拟器：共享持久 K 线（5天 / 1月 / 1年），短线与长线行情、杠杆、止盈止损、强平与排行榜。">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<title>FX 模拟交易终端 · 共享 K 线 · 多品种杠杆外汇</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -496,14 +498,208 @@
 
   ::-webkit-scrollbar { width: 4px; }
   ::-webkit-scrollbar-thumb { background: #2b3139; border-radius: 2px; }
+
+  /* FX terminal refresh: responsive workstation layout */
+  :root { color-scheme: dark; }
+  body {
+    align-items: flex-start;
+    justify-content: center;
+    min-height: 100vh;
+    background:
+      radial-gradient(1000px 460px at 6% -20%, rgba(19, 94, 74, .18), transparent 65%),
+      radial-gradient(720px 420px at 100% 10%, rgba(156, 117, 27, .10), transparent 70%),
+      #080c10;
+    color: #e9f0f3;
+  }
+  .app {
+    width: min(100%, 1540px);
+    max-width: 1540px;
+    height: auto;
+    max-height: none;
+    min-height: 100vh;
+    padding: 18px clamp(12px, 2vw, 28px) 24px;
+    display: grid;
+    grid-template-columns: minmax(0, 1.55fr) minmax(350px, .88fr);
+    grid-template-rows: auto auto minmax(560px, calc(100vh - 220px));
+    gap: 14px;
+  }
+  .back-link {
+    position: fixed !important;
+    left: 14px !important;
+    top: 18px !important;
+    transform: none !important;
+    z-index: 100 !important;
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 13px !important;
+    display: grid !important;
+    place-items: center !important;
+    color: #cad5d9 !important;
+    text-decoration: none !important;
+    background: rgba(255,255,255,.055) !important;
+    border: 1px solid rgba(255,255,255,.13) !important;
+    box-shadow: inset 0 1px rgba(255,255,255,.12), 0 8px 24px rgba(0,0,0,.22) !important;
+    backdrop-filter: blur(18px) saturate(150%);
+  }
+  .topbar {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: auto auto minmax(110px, 1fr) auto;
+    align-items: center;
+    gap: 18px;
+    min-height: 70px;
+    padding: 10px 14px 10px 56px;
+    border: 1px solid rgba(255,255,255,.10);
+    border-radius: 18px;
+    background: linear-gradient(135deg, rgba(24,34,38,.86), rgba(15,21,25,.82));
+    box-shadow: inset 0 1px rgba(255,255,255,.10), 0 14px 34px rgba(0,0,0,.24);
+    backdrop-filter: blur(22px) saturate(145%);
+  }
+  .terminal-brand { display:flex; align-items:center; gap:10px; min-width:150px; }
+  .terminal-brand > span:last-child { display:flex; flex-direction:column; gap:3px; }
+  .terminal-brand strong { color:#eaf1f2; font-size:13px; line-height:1.1; }
+  .terminal-brand small { color:#71827f; font-size:10px; letter-spacing:.2px; }
+  .brand-mark { width:34px; height:34px; border-radius:11px; display:grid; place-items:center; color:#a8efd0; font-weight:850; font-size:12px; letter-spacing:.5px; background:linear-gradient(145deg,rgba(50,178,129,.25),rgba(27,90,71,.12)); border:1px solid rgba(115,226,178,.28); box-shadow:inset 0 1px rgba(255,255,255,.22),0 5px 16px rgba(5,30,23,.4); }
+  .pair-tabs { gap:5px; padding:4px; border-radius:13px; border:1px solid rgba(255,255,255,.08); background:rgba(0,0,0,.18); }
+  .pair-tab { border:1px solid transparent; border-radius:9px; background:transparent; color:#9aabad; padding:8px 11px; font-size:11px; transition:all .16s ease; }
+  .pair-tab:hover { background:rgba(255,255,255,.06); color:#eaf1f2; }
+  .pair-tab.active { color:#a7ebc8; border-color:rgba(87,202,148,.28); background:linear-gradient(145deg,rgba(42,155,105,.22),rgba(26,92,69,.13)); box-shadow:inset 0 1px rgba(255,255,255,.13),0 4px 14px rgba(0,0,0,.2); }
+  .price-big { justify-self:center; min-width:150px; font-size:25px; letter-spacing:.3px; color:#e9f2ef; }
+  .top-stats { gap:13px; font-size:10px; color:#80918e; text-align:left; }
+  .top-stats b { font-size:12px; color:#e5efec; }
+  .btn-recharge { display:inline-flex; align-items:center; justify-content:center; gap:5px; padding:8px 12px; border-radius:11px; border:1px solid rgba(239,196,82,.34); color:#f5d780; background:linear-gradient(145deg,rgba(206,160,44,.22),rgba(126,92,21,.15)); box-shadow:inset 0 1px rgba(255,255,255,.22),0 5px 15px rgba(0,0,0,.18); animation:none; text-decoration:none; }
+  .btn-recharge:hover { filter:brightness(1.15); transform:translateY(-1px); }
+  .chart-wrap {
+    grid-column:1;
+    grid-row:3;
+    min-width:0;
+    min-height:560px;
+    display:grid;
+    grid-template-rows:auto minmax(0,1fr) auto;
+    overflow:hidden;
+    border:1px solid rgba(255,255,255,.10);
+    border-radius:18px;
+    background:linear-gradient(155deg,rgba(19,27,31,.96),rgba(11,16,20,.96));
+    box-shadow:inset 0 1px rgba(255,255,255,.08),0 16px 38px rgba(0,0,0,.28);
+  }
+  .chart-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:13px 15px; border-bottom:1px solid rgba(255,255,255,.07); }
+  .chart-title { display:flex; align-items:center; gap:10px; }
+  .chart-title > div { display:flex; flex-direction:column; gap:4px; }
+  .chart-title strong { font-size:13px; font-weight:700; color:#e4eeeb; }
+  .chart-title small { color:#71817e; font-size:10px; }
+  .live-dot,.market-state i { width:7px; height:7px; display:inline-block; border-radius:50%; background:#55d59a; box-shadow:0 0 12px rgba(85,213,154,.65); }
+  .range-switch { display:flex; align-items:center; gap:3px; padding:3px; border-radius:11px; background:rgba(0,0,0,.22); border:1px solid rgba(255,255,255,.08); }
+  .range-btn { appearance:none; border:1px solid transparent; border-radius:8px; color:#8fa09d; background:transparent; padding:7px 13px; font:600 11px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; cursor:pointer; transition:all .16s ease; }
+  .range-btn:hover { color:#e5efec; background:rgba(255,255,255,.06); }
+  .range-btn.active { color:#b4f0d1; border-color:rgba(91,207,151,.25); background:linear-gradient(145deg,rgba(42,155,105,.24),rgba(28,94,70,.12)); box-shadow:inset 0 1px rgba(255,255,255,.14),0 3px 10px rgba(0,0,0,.2); }
+  .canvas-area { min-height:0; position:relative; background:radial-gradient(ellipse at 50% 25%,rgba(19,47,39,.10),transparent 65%); }
+  #chartCanvas { display:block; width:100%; height:100%; }
+  .chart-badge { top:10px; left:13px; padding:5px 8px; color:#9aaba7; background:rgba(12,18,20,.74); border:1px solid rgba(255,255,255,.08); border-radius:8px; font-size:10px; backdrop-filter:blur(8px); }
+  .tick-widget { top:10px; right:12px; border:1px solid rgba(255,255,255,.09); border-radius:10px; background:rgba(13,19,22,.78); padding:7px 9px; backdrop-filter:blur(12px); }
+  .chart-foot { display:flex; justify-content:space-between; gap:12px; padding:9px 14px; color:#72817f; font-size:10px; border-top:1px solid rgba(255,255,255,.06); font-variant-numeric:tabular-nums; }
+  #chartDataStatus { color:#8bbca7; }
+  .account-bar { grid-column:1 / -1; grid-row:2; display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:8px; background:transparent; }
+  .acct-cell { padding:10px 13px; text-align:left; border:1px solid rgba(255,255,255,.09); border-radius:13px; background:linear-gradient(145deg,rgba(26,36,39,.84),rgba(15,21,24,.84)); box-shadow:inset 0 1px rgba(255,255,255,.07); }
+  .acct-cell:first-child { border-color:rgba(80,195,139,.24); }
+  .acct-cell .label { color:#80918e; font-size:10px; margin-bottom:5px; }
+  .acct-cell .val { font-size:15px; }
+  .trade-panel { grid-column:2; grid-row:3; min-width:0; min-height:560px; display:flex; flex-direction:column; overflow:auto; border:1px solid rgba(255,255,255,.10); border-radius:18px; background:linear-gradient(155deg,rgba(19,27,31,.96),rgba(11,16,20,.96)); box-shadow:inset 0 1px rgba(255,255,255,.08),0 16px 38px rgba(0,0,0,.28); }
+  .panel-heading { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:14px 15px 12px; border-bottom:1px solid rgba(255,255,255,.07); }
+  .panel-heading > div { display:flex; flex-direction:column; gap:4px; }
+  .panel-heading strong { font-size:13px; color:#e4eeeb; }
+  .panel-heading small { color:#71817e; font-size:10px; }
+  .market-state { display:flex; gap:7px; align-items:center; color:#8aa199; font-size:10px; white-space:nowrap; }
+  .market-state i { width:6px; height:6px; }
+  .mode-row,.leverage-row { padding:11px 14px; gap:7px; border-color:rgba(255,255,255,.06); }
+  .mode-row label,.leverage-row label,.lot-row label,.tpsl-row label { color:#93a29f; font-size:10px; }
+  .mode-btn,.lev-btn,.quick-lot-btn { border:1px solid rgba(255,255,255,.10); border-radius:9px; color:#aab8b5; background:rgba(255,255,255,.035); font-size:10px; padding:7px 10px; }
+  .mode-btn:hover,.lev-btn:hover,.quick-lot-btn:hover { background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.18); }
+  .mode-btn.active { color:#a9f0ca; border-color:rgba(86,206,148,.3); background:rgba(47,153,104,.18); }
+  .lev-btn.active { color:#f4d681; border-color:rgba(233,191,78,.34); background:rgba(198,151,35,.15); }
+  .lev-btn.danger { color:#f18189; }
+  .lev-btn.danger.active { background:rgba(205,64,76,.22); border-color:rgba(246,70,93,.38); color:#ff9da5; }
+  .mode-hint { color:#75837f; font-size:9px; }
+  .lot-row { padding:8px 14px 7px; }
+  .lot-row input,.tpsl-row input { background:rgba(0,0,0,.22); border:1px solid rgba(255,255,255,.10); border-radius:9px; color:#e9f0ed; }
+  .lot-row input:focus,.tpsl-row input:focus { border-color:rgba(93,205,151,.45); }
+  .margin-hint { color:#7f908c; }
+  .quick-lot-row { padding:0 14px 10px; }
+  .quick-lot-btn { min-width:38px; padding:6px 9px; }
+  .quick-lot-btn.active { color:#f2d17c; border-color:rgba(233,191,78,.34); background:rgba(198,151,35,.13); }
+  .tpsl-row { padding:0 14px 11px; }
+  .btn-row { padding:0 14px 12px; }
+  .btn-row .btn { min-height:40px; border-radius:11px; box-shadow:inset 0 1px rgba(255,255,255,.16),0 6px 18px rgba(0,0,0,.2); }
+  .btn-long { background:linear-gradient(145deg,rgba(24,166,111,.86),rgba(17,112,79,.84)); border:1px solid rgba(94,226,168,.4); color:#eafff4; }
+  .btn-short { background:linear-gradient(145deg,rgba(213,70,83,.86),rgba(148,43,55,.86)); border:1px solid rgba(255,128,139,.36); color:#fff0f1; }
+  .btn-allin { background:linear-gradient(145deg,rgba(201,154,43,.8),rgba(137,99,25,.82)); border:1px solid rgba(246,209,110,.38); color:#fff5d9; }
+  .position-panel { border-top:1px solid rgba(255,255,255,.07); padding:12px 14px 14px; flex:1; min-height:130px; overflow:auto; }
+  .pos-header { color:#dbe6e3; margin-bottom:9px; }
+  .pos-header span:last-child { color:#8a9b97; }
+  .pos-card { border-color:rgba(255,255,255,.09) !important; border-radius:11px !important; background:rgba(255,255,255,.025) !important; }
+  .btn-close-pos { border-radius:8px; border:1px solid rgba(255,255,255,.12); color:#edaaaa; background:rgba(173,58,68,.12); }
+  .pos-empty { color:#6f807c; }
+  .modal-mask { background:rgba(2,7,9,.72); backdrop-filter:blur(12px); }
+  .modal { border:1px solid rgba(255,255,255,.14); border-radius:16px; background:linear-gradient(155deg,#172125,#10171b); box-shadow:inset 0 1px rgba(255,255,255,.12),0 22px 70px rgba(0,0,0,.55); }
+  .amount-btn,.modal-btn { border-radius:10px; }
+  .amount-btn { border-color:rgba(255,255,255,.1); background:rgba(255,255,255,.04); }
+  .modal-btn.primary { border:1px solid rgba(246,209,110,.38); background:linear-gradient(145deg,rgba(201,154,43,.86),rgba(137,99,25,.9)); color:#fff5d9; }
+  .modal-btn.ghost { border-color:rgba(255,255,255,.1); background:rgba(255,255,255,.04); }
+  .toast { border-radius:14px; border-color:rgba(255,255,255,.14); background:rgba(16,24,27,.94); backdrop-filter:blur(18px); box-shadow:0 20px 60px rgba(0,0,0,.42); }
+  @media (max-width: 1050px) {
+    .app { grid-template-columns:minmax(0,1fr) minmax(320px,.82fr); gap:10px; }
+    .topbar { display:flex; flex-wrap:wrap; justify-content:space-between; gap:10px; }
+    .terminal-brand { min-width:120px; }
+    .top-stats { gap:8px; flex:1 1 auto; justify-content:flex-end; }
+  }
+  @media (max-width: 760px) {
+    body { display:block; }
+    .app { width:100%; min-height:100vh; padding:10px 10px 24px; display:flex; flex-direction:column; gap:10px; }
+    .back-link { left:10px !important; top:10px !important; width:34px !important; height:34px !important; }
+    .topbar { display:flex; flex-wrap:wrap; justify-content:space-between; gap:8px; padding:10px 10px 10px 48px; border-radius:15px; }
+    .terminal-brand { min-width:0; flex:1 1 130px; }
+    .terminal-brand strong { font-size:12px; }
+    .pair-tabs { order:3; width:100%; justify-content:space-between; }
+    .pair-tab { flex:1; padding:7px 5px; font-size:10px; }
+    .price-big { flex:0 0 auto; min-width:100px; font-size:20px; }
+    .top-stats { width:100%; order:4; justify-content:space-between; flex-wrap:wrap; text-align:left; }
+    .top-stats > div { min-width:76px; }
+    .top-stats b { font-size:11px; }
+    .chart-wrap { order:2; flex:0 0 auto; min-height:370px; height:min(54vh,470px); border-radius:15px; }
+    .chart-toolbar { padding:10px 10px; }
+    .range-btn { padding:7px 10px; }
+    .chart-title strong { font-size:12px; }
+    .chart-foot { padding:8px 10px; font-size:9px; }
+    .tick-widget { top:auto; bottom:8px; right:8px; }
+    .account-bar { order:3; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; }
+    .acct-cell { padding:9px 10px; border-radius:11px; }
+    .acct-cell:last-child { grid-column:span 2; }
+    .acct-cell .val { font-size:14px; }
+    .trade-panel { order:4; min-height:0; overflow:visible; border-radius:15px; }
+    .panel-heading { padding:12px; }
+    .mode-row,.leverage-row { padding:9px 11px; }
+    .mode-hint { margin-left:auto; }
+    .lot-row,.quick-lot-row,.tpsl-row,.btn-row { padding-left:11px; padding-right:11px; }
+    .position-panel { max-height:34vh; }
+  }
+  @media (max-width: 420px) {
+    .app { padding:8px; }
+    .chart-wrap { min-height:330px; height:48vh; }
+    .chart-title small { max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .mode-hint { display:none; }
+    .quick-lot-btn { min-width:34px; }
+    .top-stats { gap:5px; }
+    .top-stats > div { min-width:68px; }
+  }
+
 </style>
 </head>
 <body>
-<a href="/games/" title="返回小游戏列表" style="position:fixed;left:10px;top:50%;transform:translateY(-50%);z-index:9999;width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:#eaecef;text-decoration:none;font:16px/1 -apple-system,sans-serif;opacity:.6">←</a>
+<a class="back-link" href="/games/" title="返回小游戏" aria-label="返回小游戏">←</a>
 <div class="app">
 
   <!-- 顶栏 -->
   <div class="topbar">
+    <div class="terminal-brand"><span class="brand-mark">FX</span><span><strong>模拟交易终端</strong><small>练习模式 · 虚拟行情</small></span></div>
     <div class="pair-tabs" id="pairTabs">
       <button class="pair-tab active" data-pair="EUR/USD">EUR/USD</button>
       <button class="pair-tab" data-pair="USD/JPY">USD/JPY</button>
@@ -520,30 +716,43 @@
   </div>
 
   <!-- K线图 -->
-  <div class="chart-wrap">
-    <canvas id="chartCanvas"></canvas>
-    <div class="chart-badge" id="chartBadge">EUR/USD · 短线 · 0.2s 跳 · K线 5s</div>
+  <section class="chart-wrap" aria-label="共享模拟 K 线">
+    <div class="chart-toolbar">
+      <div class="chart-title"><span class="live-dot"></span><div><strong>共享模拟 K 线</strong><small id="chartSync">连接服务器行情…</small></div></div>
+      <div class="range-switch" id="rangeSwitch" role="group" aria-label="K 线时间范围">
+        <button type="button" class="range-btn active" data-range="5d">5天</button>
+        <button type="button" class="range-btn" data-range="1m">1月</button>
+        <button type="button" class="range-btn" data-range="1y">1年</button>
+      </div>
+    </div>
+    <div class="canvas-area">
+      <canvas id="chartCanvas" aria-label="外汇蜡烛图"></canvas>
+      <div class="chart-badge" id="chartBadge">EUR/USD · 5 天 · 服务端共享</div>
 
-    <!-- 每跳涨跌指示器 -->
-    <div class="tick-widget">
+      <!-- 每跳涨跌指示器 -->
+      <div class="tick-widget">
       <div class="tw-line">
         <span class="tw-dir flat" id="tickDir">— 持平</span>
         <span class="tw-delta flat" id="tickDelta">0.0 pip</span>
       </div>
       <div class="tick-progress"><div class="tick-progress-fill" id="tickFill"></div></div>
+      </div>
     </div>
-  </div>
+    <div class="chart-foot"><span id="chartDataStatus">K 线写入共享数据库</span><span id="chartOhlc">悬停查看 OHLC</span></div>
+  </section>
 
   <!-- 账户信息 -->
-  <div class="account-bar">
+  <div class="account-bar" aria-label="账户概况">
     <div class="acct-cell"><div class="label">净值 (Equity)</div><div class="val" id="equityVal">$10,000.00</div></div>
     <div class="acct-cell"><div class="label">可用保证金</div><div class="val" id="freeMarginVal">$10,000.00</div></div>
     <div class="acct-cell"><div class="label">已用保证金</div><div class="val" id="usedMarginVal">$0.00</div></div>
     <div class="acct-cell"><div class="label">浮动盈亏</div><div class="val" id="floatingPnlVal">$0.00</div></div>
+    <div class="acct-cell"><div class="label">已结算余额</div><div class="val" id="balanceVal">$10,000.00</div></div>
   </div>
 
   <!-- 交易面板 -->
-  <div class="trade-panel">
+  <section class="trade-panel" aria-label="交易控制台">
+    <div class="panel-heading"><div><strong>下单控制</strong><small>订单与风险管理</small></div><span class="market-state"><i></i>模拟盘运行中</span></div>
     <!-- 周期切换 -->
     <div class="mode-row" id="modeRow">
       <label>周期</label>
@@ -596,7 +805,7 @@
       <div class="pos-header"><span>当前持仓</span><span id="posCount">0 笔</span></div>
       <div id="posList"><div class="pos-empty">暂无持仓，选择杠杆后下单</div></div>
     </div>
-  </div>
+  </section>
 </div>
 
 <!-- 充值弹窗 -->
@@ -714,6 +923,7 @@
   const freeMarginEl  = $('freeMarginVal');
   const usedMarginEl  = $('usedMarginVal');
   const floatingPnlEl = $('floatingPnlVal');
+  const balanceValEl  = $('balanceVal');
   const marginLevelTopEl = $('marginLevelTop');
   const marginHintEl  = $('marginHint');
   const lotInput      = $('lotInput');
@@ -798,52 +1008,49 @@
     state.prices['USD/JPY'] = Math.max(50,  state.prices['USD/JPY'] + dJp);
     state.prices['EUR/JPY'] = state.prices['EUR/USD'] * state.prices['USD/JPY'];
 
-    PAIR_KEYS.forEach(k => updateCandles(k, state.prices[k]));
-
     checkTpSl();
     checkLiquidation();
     render();
   }
 
-  function updateCandles(pair, price) {
-    const store = candleStore[pair];
-    const now = Date.now();
-    const cm = candleMs();
-    const bucket = Math.floor(now / cm) * cm;
+  const RANGE_LABELS = { '5d': '5 天', '1m': '1 月', '1y': '1 年' };
+  let chartRange = '5d';
+  let chartRequestId = 0;
+  let chartRefreshTimer = null;
 
-    if (!store.current || bucket > store.bucket) {
-      if (store.current) {
-        store.candles.push(store.current);
-        if (store.candles.length > 120) store.candles.shift();
-      }
-      store.current = { o: price, h: price, l: price, c: price };
-      store.bucket = bucket;
-    } else {
-      const c = store.current;
-      c.c = price;
-      if (price > c.h) c.h = price;
-      if (price < c.l) c.l = price;
+  async function loadCandles(pair = state.activePair, range = chartRange, silent = false) {
+    const requestId = ++chartRequestId;
+    const syncEl = $('chartSync');
+    const statusEl = $('chartDataStatus');
+    if (!silent) { syncEl.textContent = '正在读取共享数据…'; statusEl.textContent = '连接服务器数据库'; }
+    try {
+      const response = await fetch('/api/fx-candles?pair=' + encodeURIComponent(pair) + '&range=' + encodeURIComponent(range), { cache: 'no-store' });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || '共享行情不可用');
+      if (requestId !== chartRequestId) return;
+      const store = candleStore[pair];
+      store.candles = (data.candles || []).map(c => ({ t: Number(c.t), o: Number(c.o), h: Number(c.h), l: Number(c.l), c: Number(c.c) }));
+      store.current = null;
+      store.range = range;
+      const serverDate = new Date(data.serverTime);
+      const clock = serverDate.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Asia/Shanghai' });
+      syncEl.textContent = '服务器已同步 · ' + data.candles.length + ' 根 · ' + clock;
+      statusEl.textContent = 'D1 持久化 · 其他设备共享';
+      $('rangeSwitch').querySelectorAll('.range-btn').forEach(b => b.classList.toggle('active', b.dataset.range === range));
+      chartBadgeEl.textContent = pair + ' · ' + RANGE_LABELS[range] + ' · 服务端共享';
+      drawChart();
+    } catch (error) {
+      if (requestId !== chartRequestId) return;
+      syncEl.textContent = '服务器行情暂不可用';
+      statusEl.textContent = String(error.message || 'K 线同步失败');
+      drawChart();
     }
   }
 
-  function seedHistory(pair) {
-    const store = candleStore[pair];
-    const spec = PAIRS[pair];
-    const mode = curMode();
-    // 种子 K 线的波动幅度：随模式放大（√volMul）
-    const seedVol = spec.pip * 8 * Math.sqrt(mode.volMul);
-    store.candles = [];
-    let p = state.prices[pair];
-    for (let i = 0; i < 50; i++) {
-      const o = p;
-      const c = o + (Math.random() - 0.5) * seedVol;
-      const h = Math.max(o, c) + Math.random() * seedVol * 0.25;
-      const l = Math.min(o, c) - Math.random() * seedVol * 0.25;
-      store.candles.push({ o, h, l, c });
-      p = c;
-    }
-    store.current = { o: p, h: p, l: p, c: p };
-    store.bucket = Math.floor(Date.now() / candleMs()) * candleMs();
+  function selectChartRange(range) {
+    if (!RANGE_LABELS[range] || range === chartRange) return;
+    chartRange = range;
+    loadCandles(state.activePair, chartRange);
   }
 
   // ============ 保证金与盈亏计算 ============
@@ -1083,7 +1290,6 @@
     PAIR_KEYS.forEach(k => { state.prevPrices[k] = state.prices[k]; });
     state.nextId = 1;
     state.lastTickAt = Date.now();
-    PAIR_KEYS.forEach(seedHistory);
     render();
   }
 
@@ -1131,7 +1337,7 @@
     bigPriceEl.textContent = fmtPrice(price, pair);
     bigPriceEl.className = 'price-big ' + (price >= prev ? 'up' : 'down');
     spreadValEl.textContent = spec.spreadPips + ' pip';
-    chartBadgeEl.textContent = pair + ' · ' + mode.badge;
+    chartBadgeEl.textContent = pair + ' · ' + RANGE_LABELS[chartRange] + ' · 服务端共享';
 
     // 涨跌指示器
     const deltaPips = (price - prev) / spec.pip;
@@ -1153,6 +1359,8 @@
     usedMarginEl.textContent = fmtUsd(used);
     floatingPnlEl.textContent = fmtUsd(floating, true);
     floatingPnlEl.className = 'val ' + (floating > 0 ? 'pos' : floating < 0 ? 'neg' : '');
+    balanceValEl.textContent = fmtUsd(state.balance);
+    balanceValEl.className = 'val ' + (state.balance >= START_BALANCE ? 'pos' : 'neg');
 
     const earned = earnedTotal();
     earnedValEl.textContent = fmtUsd(earned, true);
@@ -1177,7 +1385,6 @@
 
     syncQuickLotActive(lots);
     renderPositions();
-    drawChart();
   }
 
   function syncQuickLotActive(lots) {
@@ -1277,11 +1484,16 @@
 
     ctx.clearRect(0, 0, W, H);
 
-    const all = [...store.candles];
-    if (store.current) all.push(store.current);
-    if (all.length === 0) return;
+    const all = store.candles || [];
+    if (all.length === 0) {
+      ctx.fillStyle = '#71817e';
+      ctx.font = '12px -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('等待服务器 K 线数据…', W / 2, H / 2);
+      return;
+    }
 
-    const padTop = 42, padBottom = 18, padRight = 66, padLeft = 8;
+    const padTop = 42, padBottom = 30, padRight = 74, padLeft = 12;
     const chartW = W - padLeft - padRight;
     const chartH = H - padTop - padBottom;
 
@@ -1293,7 +1505,7 @@
 
     const priceToY = p => padTop + (1 - (p - min) / (max - min)) * chartH;
     const gap = chartW / all.length;
-    const candleW = Math.max(2, Math.min(10, gap * 0.65));
+    const candleW = Math.max(1, Math.min(8, gap * 0.68));
 
     // 网格 + 右侧价格刻度
     ctx.strokeStyle = '#1e2329';
@@ -1330,8 +1542,8 @@
       ctx.fillRect(x - candleW / 2, bodyTop, candleW, Math.max(1, bodyBot - bodyTop));
     });
 
-    // 当前价虚线
-    const cur = state.prices[pair];
+    // Shared candle close is the chart reference; the trading simulator quote remains separately visible above.
+    const cur = all[all.length - 1].c;
     const lastY = priceToY(cur);
     ctx.setLineDash([4, 4]);
     ctx.strokeStyle = '#f0b90b';
@@ -1346,11 +1558,33 @@
     const label = cur.toFixed(spec.digits);
     ctx.font = 'bold 10px monospace';
     const tw = ctx.measureText(label).width;
-    ctx.fillStyle = '#f0b90b';
+    ctx.fillStyle = '#75d7a8';
     ctx.fillRect(padLeft + chartW + 2, lastY - 8, tw + 12, 16);
-    ctx.fillStyle = '#0b0e11';
+    ctx.fillStyle = '#08110d';
     ctx.fillText(label, padLeft + chartW + 7, lastY + 3.5);
+
+    const start = new Date(all[0].t);
+    const finish = new Date(all[all.length - 1].t);
+    const dateLabel = (d, yearly) => yearly
+      ? d.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit', timeZone: 'Asia/Shanghai' })
+      : d.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Shanghai' });
+    ctx.fillStyle = '#71817e'; ctx.font = '9px -apple-system, sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText(dateLabel(start, chartRange === '1y'), padLeft, H - 8);
+    ctx.textAlign = 'right';
+    ctx.fillText(dateLabel(finish, chartRange === '1y'), padLeft + chartW, H - 8);
   }
+
+  canvas.addEventListener('pointermove', e => {
+    const all = candleStore[state.activePair].candles || [];
+    if (!all.length) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const chartW = rect.width - 12 - 74;
+    const index = Math.max(0, Math.min(all.length - 1, Math.floor((x - 12) / chartW * all.length)));
+    const c = all[index];
+    $('chartOhlc').textContent = 'O ' + fmtPrice(c.o, state.activePair) + '  H ' + fmtPrice(c.h, state.activePair) + '  L ' + fmtPrice(c.l, state.activePair) + '  C ' + fmtPrice(c.c, state.activePair);
+  });
+  canvas.addEventListener('pointerleave', () => { $('chartOhlc').textContent = '悬停查看 OHLC'; });
 
   // ============ 倒计时进度条（自动适配当前周期） ============
   function tickProgressLoop() {
@@ -1380,9 +1614,8 @@
     });
     modeHintEl.textContent = curMode().hint;
 
-    // 重置趋势与 K 线（不同周期的 K 线不可混用）
+    // Trading speed is independent from the persisted chart range.
     trendEu = 0; trendJp = 0; trendTimer = 0;
-    PAIR_KEYS.forEach(k => seedHistory(k));
 
     // 重启行情定时器
     startTickTimer();
@@ -1411,7 +1644,13 @@
     pairTabsEl.querySelectorAll('.pair-tab').forEach(b => {
       b.classList.toggle('active', b.dataset.pair === pair);
     });
+    loadCandles(pair, chartRange);
     render();
+  });
+
+  $('rangeSwitch').addEventListener('click', e => {
+    const button = e.target.closest('[data-range]');
+    if (button) selectChartRange(button.dataset.range);
   });
 
   // 杠杆
@@ -1499,9 +1738,10 @@
 
   // ============ 启动 ============
   state.lastTickAt = Date.now();
-  PAIR_KEYS.forEach(seedHistory);
   resizeCanvas();
   render();
+  loadCandles();
+  chartRefreshTimer = setInterval(() => loadCandles(state.activePair, chartRange, true), 30000);
   tickProgressLoop();
   startTickTimer();
 
