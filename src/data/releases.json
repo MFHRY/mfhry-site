@@ -1,6 +1,28 @@
 {
   "mcai": [
     {
+      "tag": "1.21.11-v1.0.0",
+      "name": "mcAI 1.0.0 — Minecraft 1.21.11 (Fabric)",
+      "published_at": "2026-11-03T15:17:01Z",
+      "html_url": "https://github.com/MFHRY/mcai/releases/tag/1.21.11-v1.0.0",
+      "prerelease": false,
+      "body": "# mcAI 1.0.0 — Minecraft 1.21.11 (Fabric)\n\nVersion numbering restarts here for the 1.21.11 line. This is the whole 1.25.1 feature set ported to **Minecraft 1.21.11** — nothing dropped, nothing stubbed. Most of the work was API migration: 1.21.11 reworked input handling, GUI drawing, key binding categories, item creation, tooltips, text colours and the recipe tables.\n\n---\n\n## Requirements\n\n| | |\n|---|---|\n| Minecraft | 1.21.11 |\n| Loader | Fabric Loader **0.20.1** or newer |\n| Fabric API | **0.141.6+1.21.11** or newer |\n| Java | 21+ |\n| Mod Menu | optional (in-game config shortcut) |\n\n## Everything from 1.25.1, still working\n\n- `!ai <question>` in chat, streaming answers, cancellable requests, automatic retry, per-call cost display, daily budget cap\n- Vision: **H** full screenshot, **R** region picker, **G** build/redstone analysis, **V** crosshair inspect, optional preview + privacy mask\n- Multiple API keys with failover, personas, long-term memory, per-world context\n- Local (zero-token) helpers: inventory analysis, recipe lookup, sign/book translation, world-context advice\n- Death recap, Discord webhook, danger alerts, text-to-speech\n- Draggable whale HUD widget with usage rings, rebindable hotkeys, searchable config screen, 8 languages\n\n## Fixed while porting\n\n- **The config screen had no text at all — only the search box.** 1.21.11 feeds the colour you pass to `drawText` straight into the text render state and reads its alpha, so `0xFFFFFF` (the classic \"white\") is *fully transparent*. Every label the mod drew itself vanished, while vanilla widgets (which pass `0xFFFFFFFF`) stayed visible. All text colours now carry `FF`, and `tools/check_text_colors.py` fails the build if a 6-digit colour ever reaches a text call again.\n- **Item textures rendered as the purple/black missing texture.** 1.21.4+ needs an `assets/mcai/items/<id>.json` definition on top of the old `models/item` file; without it the client never loads the model. Both definitions are in the jar, and `tools/check_jar.py` fails the build if a model, definition or referenced texture goes missing.\n- **\"Item id not set\" crash on startup.** 1.21.11 requires a registry key on `Item.Settings` before the item is constructed.\n- **\"Category 'mcai:hud' is already registered\".** Key binding categories are registered objects now, so the mod creates the category exactly once and shares it.\n- The recipe helper reads the client recipe book, because `RecipeManager` no longer exposes iteration on the client.\n\n## Verified\n\n`gradlew build` green; brace-balance, language-sync, lang-usage, text-colour and jar-completeness checks all pass. A real 1.21.11 client launch initialises the mod, registers both switcher items (hotbar icons render with their real textures — zero missing-texture pixels in a pixel scan of the frame), hands them to the player and prints the feature guide in chat with no exceptions.\n\n---\n\n## 中文说明\n\n**这是 mcAI 1.25.1 完整移植到 Minecraft 1.21.11（Fabric）的版本，功能一项不少；版本号从 1.0.0 重新起算。**\n\n**这一轮修掉的真问题：**\n\n1. **`/ai config` 界面只剩一个搜索框，其它文字全没了** —— 1.21.11 把传给 `drawText` 的颜色原样送进文字渲染状态并读取其 alpha，`0xFFFFFF` 等于「全透明白」。原版控件（传 `0xFFFFFFFF`）正常，模组自己画的标题、分组、行文字全部隐形。现在所有文字颜色都带 `FF`，并加了 `check_text_colors.py` 把这类问题卡在 CI。\n2. **物品贴图紫黑格** —— 1.21.4 之后除 `models/item` 还需要 `items/<id>.json` 定义，缺了客户端根本不加载模型。已补齐并在 `check_jar.py` 里加了强校验。\n3. **启动崩溃 \"Item id not set\"** —— 新版要求先给 `Item.Settings` 注册键。\n4. **\"Category 'mcai:hud' is already registered\"** —— 按键分类变成注册对象，模组只创建一次、各处共用。\n\n安装：丢进 `mods/`，配 Fabric API 与 Java 21。\n",
+      "assets": [
+        {
+          "name": "mcai-1.0.0-sources.jar",
+          "size": 275496,
+          "path": "/downloads/mcai/1.21.11-v1.0.0/mcai-1.0.0-sources.jar",
+          "url": "https://github.com/MFHRY/mcai/releases/download/1.21.11-v1.0.0/mcai-1.0.0-sources.jar"
+        },
+        {
+          "name": "mcai-1.0.0.jar",
+          "size": 351645,
+          "path": "/downloads/mcai/1.21.11-v1.0.0/mcai-1.0.0.jar",
+          "url": "https://github.com/MFHRY/mcai/releases/download/1.21.11-v1.0.0/mcai-1.0.0.jar"
+        }
+      ]
+    },
+    {
       "tag": "forge-26.1-v1.0.0",
       "name": "mcAI Forge 26.1 — Minecraft 26.1.2 (Forge 64.1.5)",
       "published_at": "2026-11-02T04:51:53Z",
@@ -195,28 +217,6 @@
           "size": 163860,
           "path": "/downloads/mcai/v1.21/mcai-1.21.jar",
           "url": "https://github.com/MFHRY/mcai/releases/download/v1.21/mcai-1.21.jar"
-        }
-      ]
-    },
-    {
-      "tag": "v1.20",
-      "name": "mcAI 1.20",
-      "published_at": "2026-10-09T12:52:59Z",
-      "html_url": "https://github.com/MFHRY/mcai/releases/tag/v1.20",
-      "prerelease": false,
-      "body": "# mcAI 1.20\n\nThis is the biggest update so far: **16 new modules**, and the mod is now useful even\nwithout paying for an API.\n\n## New: it can be free\n\n- **Local models need no API key.** Point the endpoint at Ollama or LM Studio\n  (`http://localhost:11434/v1`) and mcAI works offline, for free.\n- **`/ai craft` costs nothing.** It reads the recipe table the server already sent you and\n  lists what you can build from your inventory right now. Asking `!ai how do I craft X` is\n  answered locally too — no tokens, no network.\n- **Discord broadcasts cost nothing** (webhook only, no model call).\n\n## New: you can see what you spend\n\n- **Cost in CNY, from the official DeepSeek price table**, with peak / off-peak rates\n  applied automatically by Beijing time. `/ai cost` shows the rate and today's total.\n- **A hard daily budget.** Set `daily_budget_yuan` and requests are refused once you reach\n  it, instead of finding out at the end of the month.\n- **`/ai chart`** draws your last 7 days of usage as a bar chart in chat.\n\n## New: it keeps working when things go wrong\n\n- **Multiple API keys with automatic failover.** Add `backup_api_keys` and mcAI rotates to\n  the next one on 401 / 402 / 429.\n\n## New: it remembers the conversation\n\n- **Multi-turn context**, kept **in memory only** — nothing is written to disk, and\n  `/ai clear` forgets it. Off by default? No: set `history_turns` to `0` to disable.\n- **Persona presets**: `/ai persona builder|redstone|survival|english`.\n- **Streaming output**: the answer appears live on the action bar as it is generated.\n\n## New: more ways to use the camera\n\n- **`G` key** — analyse the build or redstone circuit you are looking at.\n- **`/ai describe`** — read the screen out loud, for players who cannot see it well.\n- **Automatic GUI crop**: when you press `H` with a chest or inventory open, only the\n  container is sent. Image tokens drop to roughly a quarter and the model reads the slots\n  more reliably.\n- **Death recap**: screenshot the death screen, get told what killed you and what to do\n  differently. Optional, **off by default**. Can also post to a Discord webhook.\n\n## New: cheaper ways to ask about text and places\n\n- **`/ai read`** — translate the sign you are looking at, or the book you are holding.\n  This sends **text, not an image**, so it is far cheaper and far more accurate than OCR.\n- **`/ai where`** — sends your coordinates, biome, light level, dimension and health as\n  context, so you can ask \"what should I look for here?\".\n- **`/ai task`** — generates tasks from what is actually in your inventory.\n\n## Everything is still bilingual\n\nAll 224 user-facing strings exist in both English and Chinese, in the same jar.\n\n---\n\n# mcAI 1.20（中文）\n\n这是目前为止最大的一次更新：**16 个新模块**，而且不花钱也能用了。\n\n## 新增：可以不花钱\n\n- **本地模型不需要 API Key。** 把接口地址指向 Ollama 或 LM Studio\n  （`http://localhost:11434/v1`）就能离线、免费使用。\n- **`/ai craft` 不花一分钱。** 它读取服务器已经同步给你的配方表，列出你现在背包里\n  的材料能做出的东西。用 `!ai 怎么做某某` 提问也会被本地直接回答——不消耗 token、\n  不用联网。\n- **Discord 播报不花钱**（只发 webhook，不调用模型）。\n\n## 新增：能看见花费\n\n- **按官方 DeepSeek 价格表估算人民币花费**，并自动按北京时间套用高峰 / 空闲两档单价。\n  `/ai cost` 会显示当前单价和今日合计。\n- **每日硬预算。** 设置 `daily_budget_yuan` 后，一旦达到上限就直接拒绝新请求，\n  而不是等到月底才发现超支。\n- **`/ai chart`** 在聊天栏画出最近 7 天的用量柱状图。\n\n## 新增：出错时不中断\n\n- **多 Key 自动降级。** 填上 `backup_api_keys`，遇到 401 / 402 / 429 会自动切到下一个。\n\n## 新增：能记住上下文\n\n- **多轮上下文**，**只存在内存里**——不写盘，`/ai clear` 立即忘记。\n  把 `history_turns` 设为 `0` 即可关闭。\n- **人格预设**：`/ai persona builder|redstone|survival|english`。\n- **流式输出**：回答会随着生成实时显示在头顶 Action Bar。\n\n## 新增：更多看画面的方式\n\n- **`G` 键** —— 分析你正在看的建筑或红石电路。\n- **`/ai describe`** —— 把屏幕内容念出来，方便看不清屏幕的玩家。\n- **自动裁剪界面**：开着箱子或背包按 `H` 时，只把容器那一块发出去。图片 token 大约\n  降到四分之一，模型也更容易看清格子里的东西。\n- **死亡复盘**：截取死亡画面，告诉你被什么杀了、下次该注意什么。可选，**默认关闭**。\n  也可以同时播报到 Discord webhook。\n\n## 新增：更便宜地问文字和位置\n\n- **`/ai read`** —— 翻译准星指向的告示牌，或你手中的成书。发的是**文本而不是图片**，\n  所以比 OCR 便宜得多、也准得多。\n- **`/ai where`** —— 把坐标、群系、光照、维度、生命值作为上下文发出去，\n  于是可以问\"这附近我该找什么？\"。\n- **`/ai task`** —— 根据你背包里真实有的东西生成任务。\n\n## 仍然是双语的\n\n224 条面向玩家的文案在中英文里都存在，同一个 jar。\n",
-      "assets": [
-        {
-          "name": "mcai-1.20-sources.jar",
-          "size": 119117,
-          "path": "/downloads/mcai/v1.20/mcai-1.20-sources.jar",
-          "url": "https://github.com/MFHRY/mcai/releases/download/v1.20/mcai-1.20-sources.jar"
-        },
-        {
-          "name": "mcai-1.20.jar",
-          "size": 157553,
-          "path": "/downloads/mcai/v1.20/mcai-1.20.jar",
-          "url": "https://github.com/MFHRY/mcai/releases/download/v1.20/mcai-1.20.jar"
         }
       ]
     }
