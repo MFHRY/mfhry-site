@@ -4,9 +4,12 @@ import Base from '../layouts/Base.astro';
 <Base title="视频">
   <div class="vhead">
     <h1>视频</h1>
-    <button id="upbtn" class="send">＋ 上传</button>
+    <div class="vacts">
+      <button id="uplocal" class="pick" type="button">＋ 本机视频</button>
+      <button id="upbtn" class="send" type="button">＋ 上传</button>
+    </div>
   </div>
-  <p class="muted">点开就看。上传、删除都要口令。</p>
+  <p class="muted">点开就看。站内发布、删除需要口令；本机视频只存当前浏览器，不上传服务器。</p>
 
   <div id="grid" class="vids"></div>
   <p class="muted" id="empty" hidden>还没有视频。</p>
@@ -33,6 +36,27 @@ import Base from '../layouts/Base.astro';
       <div class="crow">
         <button id="dok" class="send" type="button">确认删除</button>
         <button id="dcancel" class="pick" type="button">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 本机视频 -->
+  <div id="lcomp" class="vmodal" hidden>
+    <div class="vbox">
+      <button class="vx" data-close type="button">×</button>
+      <h2>添加本机视频</h2>
+      <p class="muted">只保存在当前浏览器，不上传服务器；换设备或清理站点数据后不可见。</p>
+      <div class="crow">
+        <label class="pick lpick"><input id="lf" type="file" accept="video/*" hidden />选择视频文件</label>
+        <span class="lfile" id="lfile">未选择</span>
+      </div>
+      <div id="lprev" class="preview"></div>
+      <input id="lt" class="key" type="text" maxlength="120" placeholder="标题（默认用文件名）" />
+      <textarea id="ld" maxlength="2000" placeholder="简介（可选，最多 2000 字）"></textarea>
+      <p class="vmsg" id="lmsg"></p>
+      <div class="crow">
+        <button id="lok" class="send" type="button">加入本机</button>
+        <button id="lout" class="pick" type="button">退出</button>
       </div>
     </div>
   </div>
@@ -68,19 +92,133 @@ import Base from '../layouts/Base.astro';
     </div>
   </div>
 
+  <style is:global>
+    .vacts { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+    .vlocal {
+      position: absolute; top: 8px; left: 8px; z-index: 2;
+      background: rgba(127, 209, 176, .94); color: #081410;
+      font-size: 10.5px; font-weight: 700; letter-spacing: .4px;
+      padding: 2px 7px; border-radius: 999px;
+    }
+    .vid.local { border-color: rgba(127, 209, 176, .42); }
+    .lpick { display: inline-flex; align-items: center; justify-content: center; margin-bottom: 10px; }
+    .lfile { font-size: 12px; color: var(--muted); word-break: break-all; }
+    #lprev .thumb img { width: 160px; height: 90px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); }
+    @media (max-width: 520px) {
+      .vhead { flex-direction: column; align-items: flex-start; }
+      .vacts { width: 100%; justify-content: flex-start; }
+    }
+  </style>
+
   <script is:inline>
     const $ = (id) => document.getElementById(id);
     const gridEl = $('grid'), emptyEl = $('empty');
-    const gateEl = $('gate'), compEl = $('comp'), playEl = $('play'), delEl = $('del');
+    const gateEl = $('gate'), compEl = $('comp'), playEl = $('play'), delEl = $('del'), lcompEl = $('lcomp');
     const keyEl = $('key'), gmsgEl = $('gmsg');
     const dnameEl = $('dname'), dkeyEl = $('dkey'), dmsgEl = $('dmsg');
     const tEl = $('t'), uEl = $('u'), dEl = $('d'), fEl = $('f'), prevEl = $('prev'), hintEl = $('hint'), cmsgEl = $('cmsg');
     const ptitleEl = $('ptitle'), pbodyEl = $('pbody'), pmetaEl = $('pmeta');
+    const lfEl = $('lf'), lfileEl = $('lfile'), lprevEl = $('lprev'), ltEl = $('lt'), ldEl = $('ld'), lmsgEl = $('lmsg');
 
     let KEY = '';
     try { KEY = sessionStorage.getItem('vkey') || ''; } catch (e) {}
     let cover = '';
     let busy = false;
+
+    // ---------- 本机视频（IndexedDB，仅当前浏览器） ----------
+    const VDB = 'mfhry_videos_local';
+    const VSTORE = 'videos';
+    let localFile = null, localCover = '', localDuration = null, localProbe = 0;
+
+    function vdbOpen() {
+      return new Promise((resolve, reject) => {
+        if (!('indexedDB' in window)) { reject(new Error('浏览器不支持本机视频')); return; }
+        const req = indexedDB.open(VDB, 1);
+        req.onupgradeneeded = () => {
+          const d = req.result;
+          if (!d.objectStoreNames.contains(VSTORE)) d.createObjectStore(VSTORE, { keyPath: 'id' });
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error || new Error('打不开本机视频库'));
+      });
+    }
+
+    async function localAll() {
+      const d = await vdbOpen();
+      return new Promise((resolve, reject) => {
+        const r = d.transaction(VSTORE, 'readonly').objectStore(VSTORE).getAll();
+        r.onsuccess = () => resolve(r.result || []);
+        r.onerror = () => reject(r.error || new Error('读取本机视频失败'));
+      });
+    }
+
+    async function localPut(rec) {
+      const d = await vdbOpen();
+      return new Promise((resolve, reject) => {
+        const tx = d.transaction(VSTORE, 'readwrite');
+        tx.objectStore(VSTORE).put(rec);
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => reject(tx.error || new Error('保存本机视频失败'));
+      });
+    }
+
+    async function localDel(id) {
+      const d = await vdbOpen();
+      return new Promise((resolve, reject) => {
+        const tx = d.transaction(VSTORE, 'readwrite');
+        tx.objectStore(VSTORE).delete(id);
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => reject(tx.error || new Error('删除本机视频失败'));
+      });
+    }
+
+    function probeVideo(file) {
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const v = document.createElement('video');
+        let done = false, duration = null, cover = '', seekTimer = null;
+        const finish = (ok) => {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          clearTimeout(seekTimer);
+          try { v.removeAttribute('src'); v.load(); } catch (e) {}
+          URL.revokeObjectURL(url);
+          if (ok) resolve({ duration, cover });
+          else reject(new Error('这个浏览器读不了这个视频格式'));
+        };
+        const timer = setTimeout(() => finish(false), 8000);
+        v.preload = 'metadata';
+        v.muted = true;
+        v.playsInline = true;
+        v.onloadedmetadata = () => {
+          duration = Number.isFinite(v.duration) ? Math.round(v.duration) : null;
+          // 有些 WebM 的时长是 Infinity，seek 也可能不触发；取不到封面也要能添加。
+          seekTimer = setTimeout(() => finish(true), 2500);
+          v.onseeked = () => {
+            try {
+              const vw = v.videoWidth || 640, vh = v.videoHeight || 360;
+              const w = Math.min(640, vw), h = Math.round(w * vh / vw);
+              const cv = document.createElement('canvas');
+              cv.width = w; cv.height = h;
+              cv.getContext('2d').drawImage(v, 0, 0, w, h);
+              cover = cv.toDataURL('image/jpeg', 0.78);
+            } catch (e) {}
+            finish(true);
+          };
+          try { v.currentTime = Math.min(Math.max((duration || 1) * 0.1, 0.2), 2); } catch (e) {}
+        };
+        v.onerror = () => finish(false);
+        v.src = url;
+      });
+    }
+
+    function resetLocal() {
+      localFile = null; localCover = ''; localDuration = null; localProbe++;
+      lfEl.value = ''; ltEl.value = ''; ldEl.value = '';
+      lprevEl.innerHTML = ''; lfileEl.textContent = '未选择';
+      lmsgEl.textContent = ''; lmsgEl.classList.remove('ok');
+    }
 
     // 粘 PeerTube 链接时自动补标题（这些站的 API 允许跨域）
     let ptTimer = null;
@@ -116,7 +254,7 @@ import Base from '../layouts/Base.astro';
     };
 
     function open(el) { el.hidden = false; document.body.style.overflow = 'hidden'; }
-    function close(el) { el.hidden = true; if (gateEl.hidden && compEl.hidden && playEl.hidden && delEl.hidden) document.body.style.overflow = ''; }
+    function close(el) { el.hidden = true; if (gateEl.hidden && compEl.hidden && lcompEl.hidden && playEl.hidden && delEl.hidden) document.body.style.overflow = ''; }
 
     function playerHtml(url) {
       if (window.vplayerHtml) return window.vplayerHtml(url);
@@ -124,28 +262,45 @@ import Base from '../layouts/Base.astro';
     }
 
     let VIDEOS = [];
+    let localPlayUrl = '';
+
+    function clearPlayer() {
+      const vid = pbodyEl.querySelector('video');
+      if (vid) { try { vid.pause(); vid.removeAttribute('src'); vid.load(); } catch (e) {} }
+      pbodyEl.innerHTML = '';
+      if (localPlayUrl) { URL.revokeObjectURL(localPlayUrl); localPlayUrl = ''; }
+    }
 
     async function load() {
+      let locals = [];
+      try { locals = await localAll(); } catch (e) { console.warn('本机视频不可用', e); }
+      let remote = [], remoteError = false;
       try {
         const res = await fetch('/api/videos', { cache: 'no-store' });
         const data = await res.json();
-        const vs = data.videos || [];
-        VIDEOS = vs;
-        emptyEl.hidden = vs.length > 0;
-        gridEl.innerHTML = vs.map((v) => {
-          const c = v.cover ? '/api/media/' + v.cover : '';
-          const dd = dur(v.duration);
-          return '<article class="vid" data-id="' + v.id + '">' +
-            '<div class="vthumb' + (c ? '' : ' noimg') + '">' + (c ? '<img loading="lazy" src="' + c + '" alt="" />' : '') +
-            '<span class="vplay">▶</span>' + (dd ? '<span class="vdur">' + dd + '</span>' : '') + '</div>' +
-            '<div class="vmeta"><h3>' + esc(v.title) + '</h3><p>' + (v.author ? esc(v.author) + ' · ' : '') + fmt(v.created_at) + '</p></div>' +
-            '<button class="vdel" data-del="' + v.id + '" title="删除（需要口令）">×</button>' +
-            '</article>';
-        }).join('');
-      } catch (e) {
-        emptyEl.hidden = false;
-        emptyEl.textContent = '加载失败，刷新试试。';
-      }
+        remote = data.videos || [];
+      } catch (e) { remoteError = true; }
+
+      locals.sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
+      const all = [...locals, ...remote];
+      VIDEOS = all;
+      emptyEl.hidden = all.length > 0;
+      gridEl.innerHTML = all.map((v) => {
+        const isLocal = v.local === true;
+        const c = isLocal ? (v.cover || '') : (v.cover ? '/api/media/' + v.cover : '');
+        const dd = dur(v.duration);
+        const meta = isLocal
+          ? ['本机视频', dd, fmt(v.created_at)].filter(Boolean).join(' · ')
+          : [(v.author ? esc(v.author) : ''), fmt(v.created_at)].filter(Boolean).join(' · ');
+        return '<article class="vid' + (isLocal ? ' local' : '') + '" data-id="' + esc(String(v.id)) + '">' +
+          '<div class="vthumb' + (c ? '' : ' noimg') + '">' + (c ? '<img loading="lazy" src="' + c + '" alt="" />' : '') +
+          (isLocal ? '<span class="vlocal">本机</span>' : '') +
+          '<span class="vplay">▶</span>' + (dd ? '<span class="vdur">' + dd + '</span>' : '') + '</div>' +
+          '<div class="vmeta"><h3>' + esc(v.title) + '</h3><p>' + meta + '</p></div>' +
+          '<button class="vdel" data-del="' + esc(String(v.id)) + '" title="' + (isLocal ? '删除本机视频' : '删除（需要口令）') + '">×</button>' +
+          '</article>';
+      }).join('');
+      if (!all.length) emptyEl.textContent = remoteError ? '站内视频加载失败；也可以添加本机视频。' : '还没有视频。';
     }
 
     gridEl.addEventListener('click', async (e) => {
@@ -159,20 +314,38 @@ import Base from '../layouts/Base.astro';
       if (!card) return;
       const v = VIDEOS.find((x) => String(x.id) === card.dataset.id);
       if (!v) return;
+      clearPlayer();
       ptitleEl.textContent = v.title || '';
-      pbodyEl.innerHTML = playerHtml(v.url);
-      pmetaEl.innerHTML = [v.author ? esc(v.author) : '', dur(v.duration), fmt(v.created_at)].filter(Boolean).join(' · ') +
-        ' · <a href="' + esc(v.url) + '" target="_blank" rel="noreferrer">原视频 ↗</a>';
+      if (v.local === true) {
+        if (!v.blob) {
+          pbodyEl.innerHTML = '<p class="nvlink">这个本机视频的数据已经不在了，删掉后重新添加。</p>';
+          open(playEl);
+          return;
+        }
+        localPlayUrl = URL.createObjectURL(v.blob);
+        pbodyEl.innerHTML = '<video controls autoplay playsinline src="' + localPlayUrl + '"></video>';
+        pmetaEl.innerHTML = ['本机视频', dur(v.duration), fmt(v.created_at)].filter(Boolean).join(' · ');
+      } else {
+        pbodyEl.innerHTML = playerHtml(v.url);
+        pmetaEl.innerHTML = [v.author ? esc(v.author) : '', dur(v.duration), fmt(v.created_at)].filter(Boolean).join(' · ') +
+          ' · <a href="' + esc(v.url) + '" target="_blank" rel="noreferrer">原视频 ↗</a>';
+      }
       if (v.body) pmetaEl.innerHTML += '<br />' + esc(v.body);
       open(playEl);
     });
 
-    // 删除：每次都要口令
+    // 删除：站内视频要口令；本机视频只删当前浏览器，直接确认
     let delId = null;
 
-    function askDelete(id) {
-      delId = id;
+    async function askDelete(id) {
       const v = VIDEOS.find((x) => String(x.id) === String(id));
+      if (String(id).startsWith('local:')) {
+        if (!v) return;
+        if (!confirm('删除本机视频「' + (v.title || '未命名') + '」？只影响当前浏览器，文件不会上传或备份。')) return;
+        try { await localDel(id); load(); } catch (e) { alert(e.message || '删除失败'); }
+        return;
+      }
+      delId = id;
       dnameEl.textContent = v ? v.title : '';
       dkeyEl.value = '';
       dmsgEl.textContent = '';
@@ -206,15 +379,86 @@ import Base from '../layouts/Base.astro';
     // 关闭
     document.addEventListener('click', (e) => {
       const c = e.target.closest('[data-close]');
-      if (c) { close(c.closest('.vmodal')); if (c.closest('.vmodal') === playEl) pbodyEl.innerHTML = ''; return; }
+      if (c) { close(c.closest('.vmodal')); if (c.closest('.vmodal') === playEl) clearPlayer(); return; }
       if (e.target.classList && e.target.classList.contains('vmodal')) {
         close(e.target);
-        if (e.target === playEl) pbodyEl.innerHTML = '';
+        if (e.target === playEl) clearPlayer();
       }
     });
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
-      [gateEl, compEl, playEl, delEl].forEach((m) => { if (!m.hidden) { close(m); if (m === playEl) pbodyEl.innerHTML = ''; } });
+      [gateEl, compEl, lcompEl, playEl, delEl].forEach((m) => { if (!m.hidden) { close(m); if (m === playEl) clearPlayer(); } });
+    });
+
+    // 本机视频
+    const fmtBytes = (n) => n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+
+    $('uplocal').addEventListener('click', () => {
+      resetLocal();
+      open(lcompEl);
+    });
+    $('lout').addEventListener('click', () => { close(lcompEl); resetLocal(); });
+
+    lfEl.addEventListener('change', async () => {
+      const file = (lfEl.files || [])[0];
+      if (!file) return;
+      localFile = file;
+      localCover = ''; localDuration = null;
+      const token = ++localProbe;
+      lfileEl.textContent = file.name + ' · ' + fmtBytes(file.size);
+      lmsgEl.textContent = '读取视频信息…';
+      lmsgEl.classList.add('ok');
+      try {
+        const info = await probeVideo(file);
+        if (token !== localProbe) return;
+        localCover = info.cover;
+        localDuration = info.duration;
+        if (!ltEl.value.trim()) ltEl.value = file.name.replace(/\.[^.]+$/, '').slice(0, 120);
+        lprevEl.innerHTML = info.cover ? '<span class="thumb"><img src="' + info.cover + '" alt="" /></span>' : '';
+        lmsgEl.textContent = '已选择 · ' + fmtBytes(file.size) + (info.duration ? ' · ' + dur(info.duration) : '');
+        lmsgEl.classList.add('ok');
+      } catch (err) {
+        if (token !== localProbe) return;
+        localFile = null; localCover = ''; localDuration = null;
+        lprevEl.innerHTML = '';
+        lmsgEl.classList.remove('ok');
+        lmsgEl.textContent = err.message || '这个浏览器读不了这个视频';
+      }
+    });
+
+    $('lok').addEventListener('click', async () => {
+      if (!localFile) { lmsgEl.textContent = '先选择一个视频文件'; return; }
+      const title = (ltEl.value.trim() || localFile.name.replace(/\.[^.]+$/, '')).slice(0, 120);
+      if (!title) { lmsgEl.textContent = '先填标题'; return; }
+      const rec = {
+        id: 'local:' + (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random().toString(16).slice(2)),
+        local: true,
+        title,
+        body: ldEl.value.trim().slice(0, 2000) || null,
+        author: '本机',
+        duration: localDuration,
+        created_at: new Date().toISOString(),
+        mime: localFile.type || '',
+        size: localFile.size,
+        cover: localCover,
+        blob: localFile,
+      };
+      lmsgEl.textContent = '保存中…';
+      lmsgEl.classList.add('ok');
+      try {
+        // 尽量让浏览器别在空间紧张时自动清掉本机视频。
+        try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) {}
+        await localPut(rec);
+        close(lcompEl);
+        resetLocal();
+        load();
+      } catch (e) {
+        lmsgEl.classList.remove('ok');
+        const quota = e && (e.name === 'QuotaExceededError' || /quota|space/i.test(e.message || ''));
+        lmsgEl.textContent = quota
+          ? '浏览器空间不够：换小一点的视频，或清理站点数据后再试。'
+          : (e.message || '保存失败');
+      }
     });
 
     // 口令
