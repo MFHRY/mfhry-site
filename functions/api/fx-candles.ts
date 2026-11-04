@@ -1,19 +1,23 @@
 // Shared, persisted synthetic FX candles for the simulator.
-// GET /api/fx-candles?pair=EUR/USD&range=5d|1m|1y
+// GET /api/fx-candles?pair=EUR/USD&range=1min|10min|1day|5d|1m|1y
 interface Env { DB: D1Database }
 
 type Pair = 'EUR/USD' | 'USD/JPY' | 'EUR/JPY';
-type RangeKey = '5d' | '1m' | '1y';
+type RangeKey = '1min' | '10min' | '1day' | '5d' | '1m' | '1y';
 
 const PAIRS: Record<Pair, { base: number; digits: number }> = {
   'EUR/USD': { base: 1.085, digits: 5 },
   'USD/JPY': { base: 150, digits: 3 },
   'EUR/JPY': { base: 162.75, digits: 3 },
 };
-const RANGES: Record<RangeKey, { step: number; count: number; sigma: number; label: string }> = {
-  '5d': { step: 15 * 60_000, count: 480, sigma: 0.00022, label: '5 天 · 15 分钟' },
-  '1m': { step: 60 * 60_000, count: 720, sigma: 0.00052, label: '1 月 · 1 小时' },
-  '1y': { step: 24 * 60 * 60_000, count: 365, sigma: 0.0018, label: '1 年 · 1 天' },
+const RANGES: Record<RangeKey, { step: number; count: number; sigma: number; label: string; series: string }> = {
+  '1min': { step: 60_000, count: 120, sigma: 0.00005, label: '1 分钟', series: '1min' },
+  '10min': { step: 10 * 60_000, count: 144, sigma: 0.00012, label: '10 分钟', series: '10min' },
+  // 1day and 1y are different zoom levels over the same persisted daily series.
+  '1day': { step: 24 * 60 * 60_000, count: 120, sigma: 0.0018, label: '1 日', series: '1d' },
+  '5d': { step: 15 * 60_000, count: 480, sigma: 0.00022, label: '5 天 · 15 分钟', series: '5d' },
+  '1m': { step: 60 * 60_000, count: 720, sigma: 0.00052, label: '1 月 · 1 小时', series: '1m' },
+  '1y': { step: 24 * 60 * 60_000, count: 365, sigma: 0.0018, label: '1 年 · 1 天', series: '1d' },
 };
 const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), {
   status,
@@ -36,9 +40,8 @@ function random01(seed: number, salt: number) {
 function roundPrice(n: number, digits: number) {
   return Number(n.toFixed(digits));
 }
-function makeBar(pair: Pair, range: RangeKey, bucket: number, open: number, progress: number) {
-  const cfg = RANGES[range];
-  const seed = hashSeed(pair + ':' + range + ':' + bucket);
+function makeBar(pair: Pair, cfg: { sigma: number }, series: string, bucket: number, open: number, progress: number) {
+  const seed = hashSeed(pair + ':' + series + ':' + bucket);
   const drift = (random01(seed, 0) - 0.5) * cfg.sigma * 2.1;
   // Gentle mean reversion keeps 5d/1m/1y endpoints near the same instrument level.
   const pull = (PAIRS[pair].base - open) * 0.03;
@@ -74,16 +77,17 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     )`).run();
 
     const cfg = RANGES[range];
+    const seriesKey = cfg.series;
     const now = Date.now();
     const currentBucket = Math.floor(now / cfg.step) * cfg.step;
     const startBucket = currentBucket - (cfg.count - 1) * cfg.step;
     const rows = await env.DB.prepare(
       'SELECT bucket, o, h, l, c, progress FROM fx_candles WHERE pair = ? AND range_key = ? AND bucket BETWEEN ? AND ? ORDER BY bucket ASC',
-    ).bind(pair, range, startBucket, currentBucket).all();
+    ).bind(pair, seriesKey, startBucket, currentBucket).all();
     const byBucket = new Map<number, any>((rows.results || []).map((r: any) => [Number(r.bucket), r]));
     const previous: any = await env.DB.prepare(
       'SELECT c FROM fx_candles WHERE pair = ? AND range_key = ? AND bucket < ? ORDER BY bucket DESC LIMIT 1',
-    ).bind(pair, range, startBucket).first();
+    ).bind(pair, seriesKey, startBucket).first();
 
     let priorClose = previous ? Number(previous.c) : PAIRS[pair].base;
     const writes: D1PreparedStatement[] = [];
@@ -97,13 +101,13 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       if (old) {
         const open = Number(old.o);
         if (Number(old.progress) < targetProgress) {
-          const bar = makeBar(pair, range, bucket, open, targetProgress);
+          const bar = makeBar(pair, cfg, seriesKey, bucket, open, targetProgress);
           writes.push(env.DB.prepare(`UPDATE fx_candles
             SET h = MAX(h, ?), l = MIN(l, ?),
                 c = CASE WHEN progress < ? THEN ? ELSE c END,
                 progress = MAX(progress, ?), updated_at = ?
             WHERE pair = ? AND range_key = ? AND bucket = ?`)
-            .bind(bar.h, bar.l, targetProgress, bar.c, targetProgress, stamp, pair, range, bucket));
+            .bind(bar.h, bar.l, targetProgress, bar.c, targetProgress, stamp, pair, seriesKey, bucket));
           old.h = Math.max(Number(old.h), bar.h);
           old.l = Math.min(Number(old.l), bar.l);
           old.c = bar.c;
@@ -112,11 +116,11 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
         priorClose = Number(old.c);
         continue;
       }
-      const bar = makeBar(pair, range, bucket, priorClose, progress);
+      const bar = makeBar(pair, cfg, seriesKey, bucket, priorClose, progress);
       writes.push(env.DB.prepare(`INSERT OR IGNORE INTO fx_candles
         (pair, range_key, bucket, o, h, l, c, progress, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-        .bind(pair, range, bucket, bar.o, bar.h, bar.l, bar.c, progress, stamp));
+        .bind(pair, seriesKey, bucket, bar.o, bar.h, bar.l, bar.c, progress, stamp));
       byBucket.set(bucket, { bucket, ...bar, progress });
       priorClose = bar.c;
     }
@@ -124,7 +128,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
 
     const result = await env.DB.prepare(
       'SELECT bucket AS t, o, h, l, c FROM fx_candles WHERE pair = ? AND range_key = ? AND bucket BETWEEN ? AND ? ORDER BY bucket ASC',
-    ).bind(pair, range, startBucket, currentBucket).all();
+    ).bind(pair, seriesKey, startBucket, currentBucket).all();
     return json({
       pair,
       range,
