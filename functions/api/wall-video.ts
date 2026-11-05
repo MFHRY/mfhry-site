@@ -64,24 +64,22 @@ export const onRequestPost = async (ctx: any) => {
 
   const key = prefix + String(9_999_999_999_999 - now).padStart(13, '0') + '-' +
     crypto.randomUUID() + extFor(url.searchParams.get('name') || '', mime);
-  let size = 0;
-  const body = request.body;
-  if (!body) return json({ error: '没有文件内容' }, 400);
-  const limited = body.pipeThrough(new TransformStream({
-    transform(chunk, controller) {
-      size += chunk.byteLength;
-      if (size > MAX) controller.error(new Error('too large'));
-      else controller.enqueue(chunk);
-    },
-  }));
+  let bytes: Uint8Array;
+  try {
+    bytes = new Uint8Array(await request.arrayBuffer());
+  } catch (e) {
+    return json({ error: '读取文件失败' }, 400);
+  }
+  let size = bytes.byteLength;
+  if (size > MAX) return json({ error: '墙上视频最多 50MB' }, 413);
 
   try {
-    await bucket.put(key, limited, {
+    await bucket.put(key, bytes, {
       httpMetadata: { contentType: mime, cacheControl: 'public, max-age=31536000, immutable' },
     });
   } catch (e: any) {
     try { await bucket.delete(key); } catch {}
-    return json({ error: size > MAX ? '墙上视频最多 50MB' : '上传失败' }, size > MAX ? 413 : 500);
+    return json({ error: '上传失败', detail: String(e && e.message || e) }, 500);
   }
   if (!size) {
     try { await bucket.delete(key); } catch {}

@@ -35,22 +35,22 @@ export const onRequestPost = async (ctx: any) => {
   if (!request.body) return json({ error: '没有文件内容' }, 400);
 
   const key = 'videos/' + crypto.randomUUID() + extFor(url.searchParams.get('name') || '', mime);
-  let size = 0;
-  const limited = request.body.pipeThrough(new TransformStream({
-    transform(chunk, controller) {
-      size += chunk.byteLength;
-      if (size > MAX) controller.error(new Error('too large'));
-      else controller.enqueue(chunk);
-    },
-  }));
+  let bytes: Uint8Array;
+  try {
+    bytes = new Uint8Array(await request.arrayBuffer());
+  } catch (e) {
+    return json({ error: '读取文件失败' }, 400);
+  }
+  const size = bytes.byteLength;
+  if (size > MAX) return json({ error: '单条视频最多 80MB' }, 413);
 
   try {
-    await bucket.put(key, limited, {
+    await bucket.put(key, bytes, {
       httpMetadata: { contentType: mime, cacheControl: 'public, max-age=31536000, immutable' },
     });
   } catch (e: any) {
     try { await bucket.delete(key); } catch {}
-    return json({ error: size > MAX ? '单条视频最多 80MB' : 'R2 上传失败' }, size > MAX ? 413 : 500);
+    return json({ error: 'R2 上传失败', detail: String(e && e.message || e) }, 500);
   }
   if (!size) {
     try { await bucket.delete(key); } catch {}
