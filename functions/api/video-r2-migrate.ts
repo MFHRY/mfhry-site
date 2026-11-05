@@ -1,3 +1,5 @@
+import { r2Bucket } from '../lib/r2';
+
 // 把旧 D1 切片视频迁到 R2：POST /api/video-r2-migrate { key, id }
 // 成功后更新 videos.url，并删除 D1 切片，释放 D1 空间。
 const json = (data: any, status = 200) =>
@@ -20,7 +22,8 @@ function toBytes(value: any): Uint8Array {
 
 export const onRequestPost = async (ctx: any) => {
   const { env, request } = ctx;
-  if (!env.R2) return json({ error: 'R2 未绑定' }, 503);
+  const bucket = r2Bucket(env);
+  if (!bucket) return json({ error: 'R2 未绑定' }, 503);
   let p: any;
   try { p = await request.json(); } catch { return json({ error: '请求格式错误' }, 400); }
   const key = String(p?.key || '');
@@ -58,7 +61,7 @@ export const onRequestPost = async (ctx: any) => {
 
   const mime = String(meta.mime || 'video/mp4');
   const r2key = 'videos/' + sid + (EXT[mime] || '.mp4');
-  await env.R2.put(r2key, out, {
+  await bucket.put(r2key, out, {
     httpMetadata: { contentType: mime, cacheControl: 'public, max-age=31536000, immutable' },
   });
   const url = '/api/r2?key=' + encodeURIComponent(r2key);

@@ -1,3 +1,5 @@
+import { r2Bucket } from '../lib/r2';
+
 // R2 视频流代理：GET/HEAD /api/r2?key=wall/... 或 videos/...
 // 不要求桶公开；Range 直接交给 R2，视频可拖动进度。
 const json = (data: any, status = 200) =>
@@ -23,14 +25,15 @@ function baseHeaders(obj: any) {
 
 export const onRequestGet = async (ctx: any) => {
   const { env, request } = ctx;
-  if (!env.R2) return json({ error: 'R2 未绑定' }, 503);
+  const bucket = r2Bucket(env);
+  if (!bucket) return json({ error: 'R2 未绑定' }, 503);
   const url = new URL(request.url);
   const key = url.searchParams.get('key') || '';
   if (!validKey(key)) return new Response('not found', { status: 404 });
 
   let obj: any;
   try {
-    obj = await env.R2.get(key, request.headers.get('range') ? { range: request.headers } : undefined);
+    obj = await bucket.get(key, request.headers.get('range') ? { range: request.headers } : undefined);
   } catch (e: any) {
     return new Response('bad range', { status: 416 });
   }
@@ -51,10 +54,11 @@ export const onRequestGet = async (ctx: any) => {
 
 export const onRequestHead = async (ctx: any) => {
   const { env, request } = ctx;
-  if (!env.R2) return json({ error: 'R2 未绑定' }, 503);
+  const bucket = r2Bucket(env);
+  if (!bucket) return json({ error: 'R2 未绑定' }, 503);
   const key = new URL(request.url).searchParams.get('key') || '';
   if (!validKey(key)) return new Response('not found', { status: 404 });
-  const obj = await env.R2.head(key);
+  const obj = await bucket.head(key);
   if (!obj) return new Response('not found', { status: 404 });
   const headers = baseHeaders(obj);
   headers['content-length'] = String(obj.size);

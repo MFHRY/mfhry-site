@@ -1,3 +1,5 @@
+import { r2Bucket } from '../lib/r2';
+
 // 视频页 R2 上传：POST /api/r2-upload?name=xxx（原始文件字节，x-admin-key）
 // 返回 { key, url }，再由 /api/videos 写入标题/封面。
 const MAX = 80 * 1024 * 1024;
@@ -21,7 +23,8 @@ function extFor(name: string, mime: string) {
 
 export const onRequestPost = async (ctx: any) => {
   const { env, request } = ctx;
-  if (!env.R2) return json({ error: 'R2 未绑定' }, 503);
+  const bucket = r2Bucket(env);
+  if (!bucket) return json({ error: 'R2 未绑定' }, 503);
   if (!isAdmin(env, request)) return json({ error: '口令不对' }, 403);
 
   const url = new URL(request.url);
@@ -42,15 +45,15 @@ export const onRequestPost = async (ctx: any) => {
   }));
 
   try {
-    await env.R2.put(key, limited, {
+    await bucket.put(key, limited, {
       httpMetadata: { contentType: mime, cacheControl: 'public, max-age=31536000, immutable' },
     });
   } catch (e: any) {
-    try { await env.R2.delete(key); } catch {}
+    try { await bucket.delete(key); } catch {}
     return json({ error: size > MAX ? '单条视频最多 80MB' : 'R2 上传失败' }, size > MAX ? 413 : 500);
   }
   if (!size) {
-    try { await env.R2.delete(key); } catch {}
+    try { await bucket.delete(key); } catch {}
     return json({ error: '文件是空的' }, 400);
   }
 
@@ -59,10 +62,11 @@ export const onRequestPost = async (ctx: any) => {
 
 export const onRequestDelete = async (ctx: any) => {
   const { env, request } = ctx;
-  if (!env.R2) return json({ error: 'R2 未绑定' }, 503);
+  const bucket = r2Bucket(env);
+  if (!bucket) return json({ error: 'R2 未绑定' }, 503);
   if (!isAdmin(env, request)) return json({ error: '口令不对' }, 403);
   const key = new URL(request.url).searchParams.get('key') || '';
   if (!key.startsWith('videos/') || key.includes('..')) return json({ error: 'key 不对' }, 400);
-  await env.R2.delete(key);
+  await bucket.delete(key);
   return json({ ok: true });
 };

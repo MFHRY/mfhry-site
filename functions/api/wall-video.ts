@@ -1,3 +1,5 @@
+import { r2Bucket } from '../lib/r2';
+
 // 留言墙视频上传：POST /api/wall-video?name=xxx（原始字节，匿名）
 // 只进 R2，不写 D1；按 IP 哈希分目录，利用 R2 list 做频率/容量限制。
 const MAX = 50 * 1024 * 1024;
@@ -32,7 +34,8 @@ function prefixFor(hash: string) {
 
 export const onRequestPost = async (ctx: any) => {
   const { env, request } = ctx;
-  if (!env.R2) return json({ error: 'R2 未绑定' }, 503);
+  const bucket = r2Bucket(env);
+  if (!bucket) return json({ error: 'R2 未绑定' }, 503);
 
   const url = new URL(request.url);
   const mime = String(request.headers.get('content-type') || 'video/mp4').split(';')[0].toLowerCase();
@@ -44,7 +47,7 @@ export const onRequestPost = async (ctx: any) => {
   const prefix = prefixFor(hash);
   let recent: any[] = [];
   try {
-    const list = await env.R2.list({ prefix, limit: 100 });
+    const list = await bucket.list({ prefix, limit: 100 });
     recent = list.objects || [];
   } catch {
     return json({ error: '存储暂时不可用' }, 503);
@@ -73,19 +76,19 @@ export const onRequestPost = async (ctx: any) => {
   }));
 
   try {
-    await env.R2.put(key, limited, {
+    await bucket.put(key, limited, {
       httpMetadata: { contentType: mime, cacheControl: 'public, max-age=31536000, immutable' },
     });
   } catch (e: any) {
-    try { await env.R2.delete(key); } catch {}
+    try { await bucket.delete(key); } catch {}
     return json({ error: size > MAX ? '墙上视频最多 50MB' : '上传失败' }, size > MAX ? 413 : 500);
   }
   if (!size) {
-    try { await env.R2.delete(key); } catch {}
+    try { await bucket.delete(key); } catch {}
     return json({ error: '文件是空的' }, 400);
   }
   if (size > MAX || dayBytes + size > PER_DAY) {
-    try { await env.R2.delete(key); } catch {}
+    try { await bucket.delete(key); } catch {}
     return json({ error: size > MAX ? '墙上视频最多 50MB' : '今天上传的视频总量到上限了' }, 413);
   }
 
@@ -94,10 +97,11 @@ export const onRequestPost = async (ctx: any) => {
 
 export const onRequestDelete = async (ctx: any) => {
   const { env, request } = ctx;
-  if (!env.R2) return json({ error: 'R2 未绑定' }, 503);
+  const bucket = r2Bucket(env);
+  if (!bucket) return json({ error: 'R2 未绑定' }, 503);
   const key = new URL(request.url).searchParams.get('key') || '';
   const hash = await hashIp(env, ipOf(request));
   if (!key.startsWith(prefixFor(hash)) || key.includes('..')) return json({ error: 'key 不对' }, 400);
-  await env.R2.delete(key);
+  await bucket.delete(key);
   return json({ ok: true });
 };
