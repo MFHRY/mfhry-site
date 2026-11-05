@@ -179,3 +179,6 @@ async function delVideo(ctx: any) {
   return json({ ok: true });
 }
 
+export const onRequestGet = (ctx: any) => list(ctx);
+export const onRequestPost = (ctx: any) => create(ctx);
+export const onRequestDelete = (ctx: any) => delVideo(ctx);

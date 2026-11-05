@@ -240,20 +240,40 @@ import Base from '../layouts/Base.astro';
     listEl.addEventListener('click', async (e) => {
       const del = e.target.closest('.delbtn');
       if (del) {
-        const key = prompt('输入口令，删掉这条的视频/链接：');
-        if (!key) return;
+        let key = '';
+        try { key = sessionStorage.getItem('wkey') || ''; } catch (e2) {}
+        if (!key) {
+          key = prompt('输入口令，删掉这条的视频/链接：') || '';
+          if (!key) return;
+        }
         del.disabled = true; del.textContent = '…';
-        try {
+        const attempt = async (k) => {
           const r = await fetch('/api/wall?id=' + encodeURIComponent(del.dataset.id), {
             method: 'DELETE',
-            headers: { 'x-admin-key': key },
+            headers: { 'x-admin-key': k },
           });
-          const d = await r.json().catch(() => ({}));
-          if (!r.ok) throw new Error(d.error || '删除失败');
+          return { r, d: await r.json().catch(() => ({})) };
+        };
+        try {
+          let out = await attempt(key);
+          if (out.r.status === 403 && sessionStorage.getItem('wkey')) {
+            // 缓存的口令失效，重新问一次
+            sessionStorage.removeItem('wkey');
+            const k2 = prompt('口令已失效，重新输入：') || '';
+            if (!k2) { del.disabled = false; del.textContent = '删视频'; return; }
+            key = k2;
+            out = await attempt(key);
+          }
+          if (!out.r.ok) throw new Error(out.d.error || '删除失败');
+          try { sessionStorage.setItem('wkey', key); } catch (e3) {}
           const art = del.closest('.post');
           if (art) {
             const v = art.querySelector('.nvideo');
-            if (v) v.remove();
+            if (v) {
+              const vd = v.querySelector('video');
+              if (vd) { try { vd.pause(); vd.removeAttribute('src'); vd.load(); } catch (e4) {} }
+              v.remove();
+            }
             del.remove();
           }
         } catch (err) {
@@ -340,5 +360,13 @@ import Base from '../layouts/Base.astro';
       object-fit: contain;
     }
     #vhint { font-size: 11.5px; word-break: break-all; }
+    #list .post { position: relative; }
+    .delbtn {
+      position: absolute; top: 8px; right: 8px; z-index: 3;
+      background: rgba(8, 20, 16, .55); color: rgba(255, 255, 255, .72);
+      border: 1px solid rgba(255, 255, 255, .14); border-radius: 999px;
+      font-size: 10.5px; padding: 2px 9px; cursor: pointer;
+    }
+    .delbtn:hover { color: #ff8f8f; border-color: rgba(255, 143, 143, .45); }
   </style>
 </Base>
