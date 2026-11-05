@@ -231,7 +231,6 @@ import Base from '../layouts/Base.astro';
             '<p class="geo">' + esc(loc(p)) + '</p>' +
             (p.body ? '<p class="pbody" id="pb-' + p.id + '" data-plain="' + esc(p.body) + '" data-tr="0">' + esc(p.body).replace(/\n/g, '<br>') + '</p><button class="trbtn" data-t="pb-' + p.id + '">译</button>' : '') +
             gallery + videoHtml(p.video) + xHtml(p.x, p.id) +
-            (p.video ? '<button class="delbtn" type="button" data-id="' + esc(String(p.id)) + '" title="去掉这条的视频/链接（需要口令）">删视频</button>' : '') +
             '</article>'
           );
         })
@@ -279,50 +278,6 @@ import Base from '../layouts/Base.astro';
         } catch (err) {
           alert(err.message || '删除失败');
           delpost.disabled = false; delpost.textContent = '×';
-        }
-        return;
-      }
-      const del = e.target.closest('.delbtn');
-      if (del) {
-        let key = '';
-        try { key = sessionStorage.getItem('wkey') || ''; } catch (e2) {}
-        if (!key) {
-          key = prompt('输入口令，删掉这条的视频/链接：') || '';
-          if (!key) return;
-        }
-        del.disabled = true; del.textContent = '…';
-        const attempt = async (k) => {
-          const r = await fetch('/api/wall?id=' + encodeURIComponent(del.dataset.id), {
-            method: 'DELETE',
-            headers: { 'x-admin-key': k },
-          });
-          return { r, d: await r.json().catch(() => ({})) };
-        };
-        try {
-          let out = await attempt(key);
-          if (out.r.status === 403 && sessionStorage.getItem('wkey')) {
-            // 缓存的口令失效，重新问一次
-            sessionStorage.removeItem('wkey');
-            const k2 = prompt('口令已失效，重新输入：') || '';
-            if (!k2) { del.disabled = false; del.textContent = '删视频'; return; }
-            key = k2;
-            out = await attempt(key);
-          }
-          if (!out.r.ok) throw new Error(out.d.error || '删除失败');
-          try { sessionStorage.setItem('wkey', key); } catch (e3) {}
-          const art = del.closest('.post');
-          if (art) {
-            const v = art.querySelector('.nvideo');
-            if (v) {
-              const vd = v.querySelector('video');
-              if (vd) { try { vd.pause(); vd.removeAttribute('src'); vd.load(); } catch (e4) {} }
-              v.remove();
-            }
-            del.remove();
-          }
-        } catch (err) {
-          alert(err.message || '删除失败');
-          del.disabled = false; del.textContent = '删视频';
         }
         return;
       }
@@ -405,15 +360,8 @@ import Base from '../layouts/Base.astro';
     }
     #vhint { font-size: 11.5px; word-break: break-all; }
     #list .post { position: relative; }
-    .delbtn {
-      position: absolute; top: 8px; right: 8px; z-index: 3;
-      background: rgba(8, 20, 16, .55); color: rgba(255, 255, 255, .72);
-      border: 1px solid rgba(255, 255, 255, .14); border-radius: 999px;
-      font-size: 10.5px; padding: 2px 9px; cursor: pointer;
-    }
-    .delbtn:hover { color: #ff8f8f; border-color: rgba(255, 143, 143, .45); }
     .delpost {
-      position: absolute; top: 8px; left: 8px; z-index: 3;
+      position: absolute; top: 8px; right: 8px; z-index: 3;
       width: 22px; height: 22px; line-height: 1;
       background: rgba(8, 20, 16, .45); color: rgba(255, 255, 255, .55);
       border: 1px solid rgba(255, 255, 255, .12); border-radius: 6px;
