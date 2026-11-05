@@ -164,5 +164,18 @@ async function create(ctx: any) {
   return json({ ok: true, id: postId, images: ids.length, x: xStore });
 }
 
-export const onRequestGet = (ctx: any) => list(ctx);
-export const onRequestPost = (ctx: any) => create(ctx);
+async function delVideo(ctx: any) {
+  const { env, request } = ctx;
+  const url = new URL(request.url);
+  const idStr = url.searchParams.get('id') || '';
+  const keyHeader = request.headers.get('x-admin-key') || url.searchParams.get('key') || '';
+  if (!env.ADMIN_KEY || keyHeader !== env.ADMIN_KEY) return json({ error: '无权删除' }, 403);
+  const id = Number(idStr);
+  if (!Number.isInteger(id) || id <= 0) return json({ error: 'id 不对' }, 400);
+  const row = await env.DB.prepare('SELECT video FROM posts WHERE id = ?').bind(id).first();
+  if (!row) return json({ error: '没有这条' }, 404);
+  if (!row.video) return json({ error: '没有视频' }, 400);
+  await env.DB.prepare('UPDATE posts SET video = NULL WHERE id = ?').bind(id).run();
+  return json({ ok: true });
+}
+

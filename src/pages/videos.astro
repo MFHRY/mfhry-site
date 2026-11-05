@@ -48,7 +48,7 @@ import Base from '../layouts/Base.astro';
       <div class="crow">
         <label class="pick"><input id="vf" type="file" accept="video/*" hidden />选择本地视频</label>
         <button id="vfrm" class="pick" type="button" hidden>清除</button>
-        <span class="muted" id="vfhint">上传到服务器（≤80MB，实验性）；不选文件则用下方外链</span>
+        <span class="muted" id="vfhint">上传到服务器（≤1GB，分片上传）；不选文件则用下方外链</span>
       </div>
       <progress id="vprog" max="100" value="0" hidden></progress>
       <input id="t" class="key" type="text" maxlength="120" placeholder="标题（必填）" />
@@ -110,7 +110,7 @@ import Base from '../layouts/Base.astro';
     try { KEY = sessionStorage.getItem('vkey') || ''; } catch (e) {}
     let cover = '';
     let busy = false;
-    let serverFile = null, serverDuration = null, pendingUpload = '';
+    let serverFile = null, serverDuration = null, pendingUpload = '', pendingUploadId = '';
 
     // 粘 PeerTube 链接时自动补标题（这些站的 API 允许跨域）
     let ptTimer = null;
@@ -357,7 +357,8 @@ import Base from '../layouts/Base.astro';
       }
     });
 
-    const SERVER_MAX = 80 * 1024 * 1024;
+    const SERVER_MAX = 1024 * 1024 * 1024;
+    const MP_PART = 8 * 1024 * 1024; // 单片 8MB
 
     function serverFileName(file) {
       return String(file.name || '视频').replace(/\.[^.]+$/, '').slice(0, 120);
@@ -374,9 +375,9 @@ import Base from '../layouts/Base.astro';
     }
 
     function resetRemoteFields() {
-      serverFile = null; serverDuration = null; pendingUpload = '';
+      serverFile = null; serverDuration = null; pendingUpload = ''; pendingUploadId = '';
       vfEl.value = ''; vprogEl.hidden = true; vprogEl.value = 0;
-      vfhintEl.textContent = '上传到服务器（≤80MB，实验性）；不选文件则用下方外链';
+      vfhintEl.textContent = '上传到服务器（≤1GB，分片上传）；不选文件则用下方外链';
       tEl.value = ''; uEl.value = ''; dEl.value = ''; cover = '';
       prevEl.innerHTML = '';
       hintEl.textContent = '封面可选（不填就用播放图标代替）';
@@ -384,9 +385,16 @@ import Base from '../layouts/Base.astro';
     }
 
     async function abortServerUpload(key) {
-      if (!key) return;
-      try { await fetch('/api/r2-upload?key=' + encodeURIComponent(key), { method: 'DELETE', headers: { 'x-admin-key': KEY } }); } catch (e) {}
-      pendingUpload = '';
+      if (!key) { pendingUploadId = ''; return; }
+      try {
+        if (pendingUploadId) {
+          await fetch('/api/r2-mp?action=abort&key=' + encodeURIComponent(key) +
+            '&uploadId=' + encodeURIComponent(pendingUploadId), { method: 'DELETE', headers: { 'x-admin-key': KEY } });
+        } else {
+          await fetch('/api/r2-mp?action=delete&key=' + encodeURIComponent(key), { method: 'DELETE', headers: { 'x-admin-key': KEY } });
+        }
+      } catch (e) {}
+      pendingUpload = ''; pendingUploadId = '';
     }
 
     function probeVideo(file) {
@@ -429,29 +437,67 @@ import Base from '../layouts/Base.astro';
       });
     }
 
-    function uploadToR2(file) {
-      return new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', '/api/r2-upload?name=' + encodeURIComponent(file.name || 'video'));
-        xhr.setRequestHeader('x-admin-key', KEY);
-        xhr.setRequestHeader('content-type', file.type || 'video/mp4');
-        xhr.timeout = 10 * 60 * 1000;
-        xhr.upload.onprogress = (e) => {
-          if (!e.lengthComputable) return;
-          const pct = Math.min(99, Math.round((e.loaded / e.total) * 100));
-          vprogEl.value = pct;
-          cmsgEl.textContent = '上传到 R2… ' + pct + '%（' + Math.ceil(e.loaded / 1024 / 1024) + ' / ' + Math.ceil(e.total / 1024 / 1024) + 'MB）';
-        };
-        xhr.onload = () => {
-          let data = {};
-          try { data = JSON.parse(xhr.responseText || '{}'); } catch (e) {}
-          if (xhr.status >= 200 && xhr.status < 300 && data.url) resolve(data);
-          else reject(new Error(data.error || 'R2 上传失败'));
-        };
-        xhr.onerror = () => reject(new Error('网络错误，视频上传中断'));
-        xhr.ontimeout = () => reject(new Error('上传超时，换小一点的视频或重试'));
-        xhr.send(file);
+    async function uploadToR2(file) {
+      // 分片上传：create → 逐片 PUT → complete，单片 8MB，绕开单请求体积限制。
+      const h = { 'x-admin-key': KEY };
+      const cre = await fetch('/api/r2-mp?action=create', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-admin-key': KEY },
+        body: JSON.stringify({ name: file.name || 'video', mime: file.type || 'video/mp4', size: file.size }),
       });
+      const cd = await cre.json().catch(() => ({}));
+      if (!cre.ok || !cd.uploadId) throw new Error(cd.error || '创建上传失败');
+      const key = cd.key, uploadId = cd.uploadId;
+      pendingUpload = key; pendingUploadId = uploadId;
+      const total = file.size;
+      const parts = [];
+      let loaded = 0, idx = 0;
+      const show = (extra) => {
+        const pct = Math.min(99, Math.round((loaded / total) * 100));
+        vprogEl.value = pct;
+        cmsgEl.textContent = '上传到 R2… ' + pct + '%（' + Math.ceil(loaded / 1048576) + ' / ' + Math.ceil(total / 1048576) + 'MB）' + (extra || '');
+      };
+      try {
+        for (let off = 0; off < total; off += MP_PART) {
+          const blob = file.slice(off, Math.min(off + MP_PART, total));
+          let lastErr = null;
+          for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+              const r = await fetch('/api/r2-mp?action=part&key=' + encodeURIComponent(key) +
+                '&uploadId=' + encodeURIComponent(uploadId) + '&partNumber=' + (idx + 1), {
+                method: 'PUT', headers: h, body: blob,
+              });
+              const d = await r.json().catch(() => ({}));
+              if (!r.ok) throw new Error(d.error || '分片失败');
+              parts.push({ partNumber: d.partNumber, etag: d.etag });
+              loaded += blob.size; idx++; show();
+              lastErr = null; break;
+            } catch (e) {
+              lastErr = e;
+              await new Promise((r2) => setTimeout(r2, 600 * (attempt + 1)));
+            }
+          }
+          if (lastErr) throw lastErr;
+        }
+        show(' · 合并中…');
+        const cm = await fetch('/api/r2-mp?action=complete&key=' + encodeURIComponent(key) +
+          '&uploadId=' + encodeURIComponent(uploadId), {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'x-admin-key': KEY },
+          body: JSON.stringify({ parts, size: total }),
+        });
+        const cmd = await cm.json().catch(() => ({}));
+        if (!cm.ok || !cmd.url) throw new Error(cmd.error || '合并分片失败');
+        pendingUploadId = '';
+        return cmd;
+      } catch (e) {
+        try {
+          await fetch('/api/r2-mp?action=abort&key=' + encodeURIComponent(key) +
+            '&uploadId=' + encodeURIComponent(uploadId), { method: 'DELETE', headers: h });
+        } catch (e2) {}
+        pendingUpload = ''; pendingUploadId = '';
+        throw e;
+      }
     }
 
     async function uploadServerVideo(file) {
@@ -486,7 +532,7 @@ import Base from '../layouts/Base.astro';
         serverFile = null; serverDuration = null;
         vfrmEl.hidden = true; vprogEl.hidden = true; vprogEl.value = 0;
         cover = ''; prevEl.innerHTML = '';
-        vfhintEl.textContent = '这个文件超过 80MB，换小一点的视频';
+        vfhintEl.textContent = '这个文件超过 1GB，换小一点的视频';
         return;
       }
       serverFile = file;
@@ -515,7 +561,7 @@ import Base from '../layouts/Base.astro';
       vfEl.value = ''; vfrmEl.hidden = true; vprogEl.hidden = true; vprogEl.value = 0;
       cover = ''; prevEl.innerHTML = '';
       hintEl.textContent = '封面可选（不填就用播放图标代替）';
-      vfhintEl.textContent = '上传到服务器（≤80MB，实验性）；不选文件则用下方外链';
+      vfhintEl.textContent = '上传到服务器（≤1GB，分片上传）；不选文件则用下方外链';
     });
 
     $('cok').addEventListener('click', async () => {

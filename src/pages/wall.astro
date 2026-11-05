@@ -3,7 +3,7 @@ import Base from '../layouts/Base.astro';
 ---
 <Base title="墙">
   <h1>墙</h1>
-  <p class="muted">匿名留言，不记名。每 IP 每小时 5 条，最多 9 张图；视频可直接上传（≤50MB）或填链接。</p>
+  <p class="muted">匿名留言，不记名。每 IP 每小时 5 条，最多 9 张图；视频可直接上传（≤80MB，分片上传）或填链接。</p>
 
   <div class="composer">
     <input id="nick" class="key" type="text" maxlength="20" placeholder="网名（可选，留空即匿名）" />
@@ -106,7 +106,7 @@ import Base from '../layouts/Base.astro';
       const parts = [];
       if (images.length) parts.push('已选 ' + images.length + ' 张图');
       if (videoFile) parts.push('视频 ' + (videoFile.size / 1024 / 1024).toFixed(1) + 'MB');
-      hintEl.textContent = parts.length ? parts.join(' · ') : '最多 9 张，视频 ≤50MB';
+      hintEl.textContent = parts.length ? parts.join(' · ') : '最多 9 张，视频 ≤80MB';
     }
 
     fileEl.addEventListener('change', async () => {
@@ -120,8 +120,8 @@ import Base from '../layouts/Base.astro';
       const f = (vfileEl.files || [])[0];
       vfileEl.value = '';
       if (!f) return;
-      if (f.size > 50 * 1024 * 1024) {
-        videoFile = null; vrmEl.hidden = true; vhintEl.textContent = '视频最多 50MB';
+      if (f.size > 80 * 1024 * 1024) {
+        videoFile = null; vrmEl.hidden = true; vhintEl.textContent = '视频最多 80MB';
         updateHint();
         return;
       }
@@ -137,24 +137,60 @@ import Base from '../layouts/Base.astro';
     });
 
     function uploadWallVideo(file, onProgress) {
-      return new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', '/api/wall-video?name=' + encodeURIComponent(file.name || 'video'));
-        xhr.setRequestHeader('content-type', file.type || 'video/mp4');
-        xhr.timeout = 10 * 60 * 1000;
-        xhr.upload.onprogress = (e) => {
-          if (e.lengthComputable) onProgress(Math.min(99, Math.round((e.loaded / e.total) * 100)));
-        };
-        xhr.onload = () => {
-          let data = {};
-          try { data = JSON.parse(xhr.responseText || '{}'); } catch (e) {}
-          if (xhr.status >= 200 && xhr.status < 300 && data.url) resolve(data);
-          else reject(new Error(data.error || '视频上传失败'));
-        };
-        xhr.onerror = () => reject(new Error('网络错误，视频上传中断'));
-        xhr.ontimeout = () => reject(new Error('视频上传超时，换小一点的视频'));
-        xhr.send(file);
-      });
+      // 分片上传：create → 逐片 PUT → complete（匿名，无口令）
+      const MP = 8 * 1024 * 1024;
+      return (async () => {
+        const cre = await fetch('/api/r2-mp?action=create', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ name: file.name || 'video', mime: file.type || 'video/mp4', size: file.size }),
+        });
+        const cd = await cre.json().catch(() => ({}));
+        if (!cre.ok || !cd.uploadId) throw new Error(cd.error || '创建上传失败');
+        const key = cd.key, uploadId = cd.uploadId;
+        const total = file.size;
+        const parts = [];
+        let loaded = 0;
+        try {
+          for (let off = 0, idx = 1; off < total; off += MP, idx++) {
+            const blob = file.slice(off, Math.min(off + MP, total));
+            let lastErr = null;
+            for (let attempt = 0; attempt < 3; attempt++) {
+              try {
+                const r = await fetch('/api/r2-mp?action=part&key=' + encodeURIComponent(key) +
+                  '&uploadId=' + encodeURIComponent(uploadId) + '&partNumber=' + idx, {
+                  method: 'PUT', body: blob,
+                });
+                const d = await r.json().catch(() => ({}));
+                if (!r.ok) throw new Error(d.error || '分片失败');
+                parts.push({ partNumber: d.partNumber, etag: d.etag });
+                loaded += blob.size;
+                if (onProgress) onProgress(Math.min(99, Math.round((loaded / total) * 100)));
+                lastErr = null; break;
+              } catch (e) {
+                lastErr = e;
+                await new Promise((r2) => setTimeout(r2, 600 * (attempt + 1)));
+              }
+            }
+            if (lastErr) throw lastErr;
+          }
+          const cm = await fetch('/api/r2-mp?action=complete&key=' + encodeURIComponent(key) +
+            '&uploadId=' + encodeURIComponent(uploadId), {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ parts, size: total }),
+          });
+          const cmd = await cm.json().catch(() => ({}));
+          if (!cm.ok || !cmd.url) throw new Error(cmd.error || '合并分片失败');
+          return cmd;
+        } catch (e) {
+          try {
+            await fetch('/api/r2-mp?action=abort&key=' + encodeURIComponent(key) +
+              '&uploadId=' + encodeURIComponent(uploadId), { method: 'DELETE' });
+          } catch (e2) {}
+          throw e;
+        }
+      })();
     }
 
     const CN = { CN: '中国', HK: '中国香港', TW: '中国台湾', MO: '中国澳门', JP: '日本', US: '美国', SG: '新加坡', KR: '韩国', GB: '英国', DE: '德国', AU: '澳大利亚', CA: '加拿大', MY: '马来西亚', TH: '泰国', VN: '越南', FR: '法国', RU: '俄罗斯', IN: '印度', ID: '印度尼西亚', PH: '菲律宾', NL: '荷兰' };
@@ -194,6 +230,7 @@ import Base from '../layouts/Base.astro';
             '<p class="geo">' + esc(loc(p)) + '</p>' +
             (p.body ? '<p class="pbody" id="pb-' + p.id + '" data-plain="' + esc(p.body) + '" data-tr="0">' + esc(p.body).replace(/\n/g, '<br>') + '</p><button class="trbtn" data-t="pb-' + p.id + '">译</button>' : '') +
             gallery + videoHtml(p.video) + xHtml(p.x, p.id) +
+            (p.video ? '<button class="delbtn" type="button" data-id="' + esc(String(p.id)) + '" title="去掉这条的视频/链接（需要口令）">删视频</button>' : '') +
             '</article>'
           );
         })
@@ -201,6 +238,30 @@ import Base from '../layouts/Base.astro';
     }
 
     listEl.addEventListener('click', async (e) => {
+      const del = e.target.closest('.delbtn');
+      if (del) {
+        const key = prompt('输入口令，删掉这条的视频/链接：');
+        if (!key) return;
+        del.disabled = true; del.textContent = '…';
+        try {
+          const r = await fetch('/api/wall?id=' + encodeURIComponent(del.dataset.id), {
+            method: 'DELETE',
+            headers: { 'x-admin-key': key },
+          });
+          const d = await r.json().catch(() => ({}));
+          if (!r.ok) throw new Error(d.error || '删除失败');
+          const art = del.closest('.post');
+          if (art) {
+            const v = art.querySelector('.nvideo');
+            if (v) v.remove();
+            del.remove();
+          }
+        } catch (err) {
+          alert(err.message || '删除失败');
+          del.disabled = false; del.textContent = '删视频';
+        }
+        return;
+      }
       const btn = e.target.closest('.trbtn');
       if (!btn) return;
       const el = document.getElementById(btn.dataset.t);
@@ -259,7 +320,7 @@ import Base from '../layouts/Base.astro';
         await load();
       } catch (e) {
         if (uploadedKey) {
-          try { await fetch('/api/wall-video?key=' + encodeURIComponent(uploadedKey), { method: 'DELETE' }); } catch {}
+          try { await fetch('/api/r2-mp?action=delete&key=' + encodeURIComponent(uploadedKey), { method: 'DELETE' }); } catch {}
         }
         hintEl.textContent = e.message;
       } finally {

@@ -26,5 +26,17 @@ export const onRequestDelete = async (ctx: any) => {
     await env.DB.prepare('DELETE FROM video_chunks WHERE upload_id = ?').bind(m[1]).run();
     await env.DB.prepare('DELETE FROM video_uploads WHERE id = ?').bind(m[1]).run();
   }
+  // R2 视频：删除对应对象，释放存储。
+  const rm = /^\/api\/r2\?key=([^&]+)/i.exec(String(row.url || ''));
+  if (rm) {
+    const r2key = decodeURIComponent(rm[1]);
+    if (r2key.startsWith('videos/')) {
+      try {
+        const { r2Bucket } = await import('../../lib/r2');
+        const bucket = r2Bucket(env);
+        if (bucket) await bucket.delete(r2key);
+      } catch (e) {}
+    }
+  }
   return json({ ok: true });
 };
