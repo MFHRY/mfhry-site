@@ -13,10 +13,11 @@ const releases = (releasesData[repo.name] ?? []).filter((r: any) => !r.prereleas
 // 同一个仓库可以有多条版本线（比如 mcai 的 Fabric / Forge 1.20.1 / Forge 26.1）
 const TRACKS: Record<string, { label: string; match: (tag: string) => boolean }[]> = {
   mcai: [
+    { label: 'Fabric · Minecraft 26.1', match: (t: string) => t.startsWith('fabric-26.1-') },
     { label: 'Fabric · Minecraft 1.21.11', match: (t: string) => t.startsWith('1.21.11-') },
     {
       label: 'Fabric · Minecraft 1.21.1',
-      match: (t: string) => !t.startsWith('forge-') && !t.startsWith('1.21.11-'),
+      match: (t: string) => !t.startsWith('forge-') && !t.startsWith('1.21.11-') && !t.startsWith('fabric-26.1-'),
     },
     {
       label: 'Forge · Minecraft 26.1',
