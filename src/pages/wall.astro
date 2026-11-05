@@ -226,6 +226,7 @@ import Base from '../layouts/Base.astro';
               : '<span class="nick anon">匿名</span>';
           return (
             '<article class="post">' +
+            '<button class="delpost" type="button" data-id="' + esc(String(p.id)) + '" title="删除整条帖子（需要口令）">×</button>' +
             '<header><span class="pid">#' + p.id + '</span>' + who + '<time>' + esc(fmt(p.created_at)) + '</time></header>' +
             '<p class="geo">' + esc(loc(p)) + '</p>' +
             (p.body ? '<p class="pbody" id="pb-' + p.id + '" data-plain="' + esc(p.body) + '" data-tr="0">' + esc(p.body).replace(/\n/g, '<br>') + '</p><button class="trbtn" data-t="pb-' + p.id + '">译</button>' : '') +
@@ -238,6 +239,49 @@ import Base from '../layouts/Base.astro';
     }
 
     listEl.addEventListener('click', async (e) => {
+      const delpost = e.target.closest('.delpost');
+      if (delpost) {
+        let key = '';
+        try { key = sessionStorage.getItem('wkey') || ''; } catch (e2) {}
+        if (!key) {
+          key = prompt('输入口令，删除这条帖子：') || '';
+          if (!key) return;
+        }
+        delpost.disabled = true; delpost.textContent = '…';
+        const attempt = async (k) => {
+          const r = await fetch('/api/wall/' + encodeURIComponent(delpost.dataset.id), {
+            method: 'DELETE',
+            headers: { 'x-admin-key': k },
+          });
+          return { r, d: await r.json().catch(() => ({})) };
+        };
+        try {
+          let out = await attempt(key);
+          if (out.r.status === 403 && sessionStorage.getItem('wkey')) {
+            sessionStorage.removeItem('wkey');
+            const k2 = prompt('口令已失效，重新输入：') || '';
+            if (!k2) { delpost.disabled = false; delpost.textContent = '×'; return; }
+            key = k2;
+            out = await attempt(key);
+          }
+          if (!out.r.ok) throw new Error(out.d.error || '删除失败');
+          try { sessionStorage.setItem('wkey', key); } catch (e3) {}
+          const art = delpost.closest('.post');
+          if (art) {
+            art.querySelectorAll('video').forEach((vd) => {
+              try { vd.pause(); vd.removeAttribute('src'); vd.load(); } catch (e4) {}
+            });
+            art.remove();
+          }
+          if (!document.querySelectorAll('.post').length && document.getElementById('empty')) {
+            document.getElementById('empty').hidden = false;
+          }
+        } catch (err) {
+          alert(err.message || '删除失败');
+          delpost.disabled = false; delpost.textContent = '×';
+        }
+        return;
+      }
       const del = e.target.closest('.delbtn');
       if (del) {
         let key = '';
@@ -368,5 +412,13 @@ import Base from '../layouts/Base.astro';
       font-size: 10.5px; padding: 2px 9px; cursor: pointer;
     }
     .delbtn:hover { color: #ff8f8f; border-color: rgba(255, 143, 143, .45); }
+    .delpost {
+      position: absolute; top: 8px; left: 8px; z-index: 3;
+      width: 22px; height: 22px; line-height: 1;
+      background: rgba(8, 20, 16, .45); color: rgba(255, 255, 255, .55);
+      border: 1px solid rgba(255, 255, 255, .12); border-radius: 6px;
+      font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+    .delpost:hover { color: #ff8f8f; border-color: rgba(255, 143, 143, .45); }
   </style>
 </Base>
