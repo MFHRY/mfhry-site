@@ -77,7 +77,8 @@ async function create(ctx: any) {
   if (!body && !imgs.length && !video && !xUrl) return json({ error: '写点什么吧' }, 400);
   const nickname = String(p?.nickname ?? '').replace(/[<>]/g, '').trim().slice(0, 20);
   if (body.length > MAX_BODY) return json({ error: `最多 ${MAX_BODY} 字` }, 400);
-  if (video.length > 300 || (video && !/^https?:\/\//i.test(video))) return json({ error: '视频链接不对' }, 400);
+  const ownVideo = /^\/api\/r2\?key=wall(?:%2F|\/)/i.test(video);
+  if (video.length > 500 || (video && !/^https?:\/\//i.test(video) && !ownVideo)) return json({ error: '视频链接不对' }, 400);
   if (xUrl && !tweetId(xUrl)) return json({ error: 'X 链接格式不对' }, 400);
 
   for (const img of imgs) {

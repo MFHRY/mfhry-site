@@ -5,6 +5,7 @@ import Base from '../layouts/Base.astro';
   <div class="vhead">
     <h1>视频</h1>
     <div class="vacts">
+      <button id="migrate" class="pick" type="button" hidden>迁移旧视频</button>
       <button id="uplocal" class="pick" type="button">＋ 本机视频</button>
       <button id="upbtn" class="send" type="button">＋ 上传</button>
     </div>
@@ -69,7 +70,7 @@ import Base from '../layouts/Base.astro';
       <div class="crow">
         <label class="pick"><input id="vf" type="file" accept="video/*" hidden />选择本地视频</label>
         <button id="vfrm" class="pick" type="button" hidden>清除</button>
-        <span class="muted" id="vfhint">上传到服务器（≤40MB，实验性）；不选文件则用下方外链</span>
+        <span class="muted" id="vfhint">上传到服务器（≤80MB，实验性）；不选文件则用下方外链</span>
       </div>
       <progress id="vprog" max="100" value="0" hidden></progress>
       <input id="t" class="key" type="text" maxlength="120" placeholder="标题（必填）" />
@@ -117,6 +118,7 @@ import Base from '../layouts/Base.astro';
     .vid .vdel { top: 8px; right: 8px; z-index: 3; }
     .vmodal .vx { top: 10px; right: 12px; }
     #vprog { width: 100%; height: 8px; margin: 2px 0 8px; accent-color: var(--accent); }
+    .vplayer video { aspect-ratio: auto; max-height: 70vh; min-height: 180px; object-fit: contain; }
     .lpick { display: inline-flex; align-items: center; justify-content: center; margin-bottom: 10px; }
     .lfile { font-size: 12px; color: var(--muted); word-break: break-all; }
     #lprev .thumb img { width: 160px; height: 90px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); }
@@ -136,6 +138,7 @@ import Base from '../layouts/Base.astro';
     const vfEl = $('vf'), vfrmEl = $('vfrm'), vfhintEl = $('vfhint'), vprogEl = $('vprog');
     const ptitleEl = $('ptitle'), pbodyEl = $('pbody'), pmetaEl = $('pmeta');
     const lfEl = $('lf'), lfileEl = $('lfile'), lprevEl = $('lprev'), ltEl = $('lt'), ldEl = $('ld'), lmsgEl = $('lmsg');
+    const migrateEl = $('migrate');
 
     let KEY = '';
     try { KEY = sessionStorage.getItem('vkey') || ''; } catch (e) {}
@@ -275,7 +278,7 @@ import Base from '../layouts/Base.astro';
     function close(el) { el.hidden = true; if (gateEl.hidden && compEl.hidden && lcompEl.hidden && playEl.hidden && delEl.hidden) document.body.style.overflow = ''; }
 
     function playerHtml(url) {
-      if (/^\/api\/video-stream\//.test(url)) {
+      if (/^\/api\/(?:video-stream\/|r2\?key=)/.test(url)) {
         return '<video controls preload="metadata" playsinline src="' + esc(url) + '"></video>';
       }
       if (window.vplayerHtml) return window.vplayerHtml(url);
@@ -305,6 +308,7 @@ import Base from '../layouts/Base.astro';
       locals.sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
       const all = [...locals, ...remote];
       VIDEOS = all;
+      migrateEl.hidden = !(KEY && remote.some((v) => String(v.url || '').startsWith('/api/video-stream/')));
       emptyEl.hidden = all.length > 0;
       gridEl.innerHTML = all.map((v) => {
         const isLocal = v.local === true;
@@ -580,7 +584,7 @@ import Base from '../layouts/Base.astro';
       }
     });
 
-    const SERVER_MAX = 40 * 1024 * 1024;
+    const SERVER_MAX = 80 * 1024 * 1024;
 
     function serverFileName(file) {
       return String(file.name || '视频').replace(/\.[^.]+$/, '').slice(0, 120);
@@ -599,77 +603,65 @@ import Base from '../layouts/Base.astro';
     function resetRemoteFields() {
       serverFile = null; serverDuration = null; pendingUpload = '';
       vfEl.value = ''; vprogEl.hidden = true; vprogEl.value = 0;
-      vfhintEl.textContent = '上传到服务器（≤40MB，实验性）；不选文件则用下方外链';
+      vfhintEl.textContent = '上传到服务器（≤80MB，实验性）；不选文件则用下方外链';
       tEl.value = ''; uEl.value = ''; dEl.value = ''; cover = '';
       prevEl.innerHTML = '';
       hintEl.textContent = '封面可选（不填就用播放图标代替）';
       cmsgEl.textContent = '';
     }
 
-    async function abortServerUpload(id) {
-      if (!id) return;
-      try { await fetch('/api/video-upload?id=' + encodeURIComponent(id), { method: 'DELETE', headers: { 'x-admin-key': KEY } }); } catch (e) {}
+    async function abortServerUpload(key) {
+      if (!key) return;
+      try { await fetch('/api/r2-upload?key=' + encodeURIComponent(key), { method: 'DELETE', headers: { 'x-admin-key': KEY } }); } catch (e) {}
       pendingUpload = '';
     }
 
+    function uploadToR2(file) {
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/r2-upload?name=' + encodeURIComponent(file.name || 'video'));
+        xhr.setRequestHeader('x-admin-key', KEY);
+        xhr.setRequestHeader('content-type', file.type || 'video/mp4');
+        xhr.timeout = 10 * 60 * 1000;
+        xhr.upload.onprogress = (e) => {
+          if (!e.lengthComputable) return;
+          const pct = Math.min(99, Math.round((e.loaded / e.total) * 100));
+          vprogEl.value = pct;
+          cmsgEl.textContent = '上传到 R2… ' + pct + '%（' + Math.ceil(e.loaded / 1024 / 1024) + ' / ' + Math.ceil(e.total / 1024 / 1024) + 'MB）';
+        };
+        xhr.onload = () => {
+          let data = {};
+          try { data = JSON.parse(xhr.responseText || '{}'); } catch (e) {}
+          if (xhr.status >= 200 && xhr.status < 300 && data.url) resolve(data);
+          else reject(new Error(data.error || 'R2 上传失败'));
+        };
+        xhr.onerror = () => reject(new Error('网络错误，视频上传中断'));
+        xhr.ontimeout = () => reject(new Error('上传超时，换小一点的视频或重试'));
+        xhr.send(file);
+      });
+    }
+
     async function uploadServerVideo(file) {
-      cmsgEl.textContent = '创建上传任务…';
+      cmsgEl.textContent = '上传到 R2… 0%';
       vprogEl.hidden = false; vprogEl.value = 1;
-      const createRes = await fetch('/api/video-upload', {
+      const up = await uploadToR2(file);
+      pendingUpload = up.key;
+      cmsgEl.textContent = '写入视频信息…';
+      const res = await fetch('/api/videos', {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'x-admin-key': KEY },
         body: JSON.stringify({
           key: KEY,
           title: tEl.value.trim(),
           body: dEl.value.trim(),
-          size: file.size,
-          mime: file.type || 'video/mp4',
-          duration: serverDuration,
+          url: up.url,
           cover,
+          author: '服务器上传',
+          duration: serverDuration,
         }),
       });
-      const task = await createRes.json().catch(() => ({}));
-      if (!createRes.ok) throw new Error(task.error || '创建上传任务失败');
-      pendingUpload = task.id;
-      const chunkSize = Number(task.chunkSize) || 1500000;
-      const group = chunkSize * 3;
-      let sent = 0;
-
-      while (sent < file.size) {
-        const start = sent;
-        const part = file.slice(start, Math.min(file.size, start + group));
-        let attempt = 0;
-        for (;;) {
-          try {
-            const res = await fetch('/api/video-upload?id=' + encodeURIComponent(task.id) + '&start=' + start, {
-              method: 'POST',
-              headers: { 'x-admin-key': KEY, 'content-type': 'application/octet-stream' },
-              body: part,
-            });
-            const data = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(data.error || '切片上传失败');
-            break;
-          } catch (e) {
-            attempt++;
-            if (attempt >= 3) throw e;
-            cmsgEl.textContent = '网络抖动，重试切片 ' + attempt + '/3…';
-            await new Promise(r => setTimeout(r, 700 * attempt));
-          }
-        }
-        sent += part.size;
-        const pct = Math.min(99, Math.round((sent / file.size) * 100));
-        vprogEl.value = pct;
-        cmsgEl.textContent = '上传中… ' + pct + '%（' + Math.ceil(sent / 1024 / 1024) + ' / ' + Math.ceil(file.size / 1024 / 1024) + 'MB）';
-      }
-
-      cmsgEl.textContent = '合并并发布…';
-      vprogEl.value = 100;
-      const finRes = await fetch('/api/video-upload?finish=' + encodeURIComponent(task.id), {
-        method: 'POST',
-        headers: { 'x-admin-key': KEY },
-      });
-      const fin = await finRes.json().catch(() => ({}));
-      if (!finRes.ok) throw new Error(fin.error || '合并失败');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || '写入视频信息失败');
       pendingUpload = '';
     }
 
@@ -681,7 +673,7 @@ import Base from '../layouts/Base.astro';
         serverFile = null; serverDuration = null;
         vfrmEl.hidden = true; vprogEl.hidden = true; vprogEl.value = 0;
         cover = ''; prevEl.innerHTML = '';
-        vfhintEl.textContent = '这个文件超过 40MB，换小一点的视频';
+        vfhintEl.textContent = '这个文件超过 80MB，换小一点的视频';
         return;
       }
       serverFile = file;
@@ -710,7 +702,7 @@ import Base from '../layouts/Base.astro';
       vfEl.value = ''; vfrmEl.hidden = true; vprogEl.hidden = true; vprogEl.value = 0;
       cover = ''; prevEl.innerHTML = '';
       hintEl.textContent = '封面可选（不填就用播放图标代替）';
-      vfhintEl.textContent = '上传到服务器（≤40MB，实验性）；不选文件则用下方外链';
+      vfhintEl.textContent = '上传到服务器（≤80MB，实验性）；不选文件则用下方外链';
     });
 
     $('cok').addEventListener('click', async () => {
@@ -753,6 +745,33 @@ import Base from '../layouts/Base.astro';
       } finally {
         busy = false;
       }
+    });
+
+    migrateEl.addEventListener('click', async () => {
+      if (busy) return;
+      const old = VIDEOS.filter((v) => !v.local && String(v.url || '').startsWith('/api/video-stream/'));
+      if (!old.length) return;
+      if (!confirm('把 ' + old.length + ' 条旧 D1 视频迁到 R2？迁移后会删除 D1 切片。')) return;
+      busy = true; migrateEl.disabled = true;
+      let done = 0, fail = 0;
+      for (const v of old) {
+        migrateEl.textContent = '迁移 ' + (done + fail + 1) + '/' + old.length + '…';
+        try {
+          const res = await fetch('/api/video-r2-migrate', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', 'x-admin-key': KEY },
+            body: JSON.stringify({ key: KEY, id: v.id }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.error || '迁移失败');
+          done++;
+        } catch (e) {
+          fail++;
+        }
+      }
+      busy = false; migrateEl.disabled = false; migrateEl.textContent = '迁移旧视频';
+      alert('迁移完成：成功 ' + done + ' 条' + (fail ? '，失败 ' + fail + ' 条' : ''));
+      load();
     });
 
     load();

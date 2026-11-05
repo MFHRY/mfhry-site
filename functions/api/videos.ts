@@ -127,7 +127,8 @@ export const onRequestPost = async (ctx: any) => {
   let title = String(p?.title ?? '').trim();
   const body = String(p?.body ?? '').trim();
 
-  if (!url || !/^https?:\/\//i.test(url) || url.length > 500) return json({ error: '视频链接不对' }, 400);
+  const ownR2 = /^\/api\/r2\?key=(?:videos|wall)(?:%2F|\/)/i.test(url);
+  if (!url || (!/^https?:\/\//i.test(url) && !ownR2) || url.length > 500) return json({ error: '视频链接不对' }, 400);
   if (title.length > MAX_TITLE) return json({ error: `标题最多 ${MAX_TITLE} 字` }, 400);
   if (body.length > MAX_BODY) return json({ error: `简介最多 ${MAX_BODY} 字` }, 400);
 
