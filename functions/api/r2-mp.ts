@@ -25,11 +25,14 @@ const json = (data: any, status = 200) =>
 const EXT: Record<string, string> = {
   'video/mp4': '.mp4', 'video/webm': '.webm', 'video/quicktime': '.mov',
   'video/x-m4v': '.m4v', 'video/ogg': '.ogv', 'video/x-matroska': '.mkv',
+  'audio/mpeg': '.mp3', 'audio/mp3': '.mp3', 'audio/ogg': '.ogg',
+  'audio/wav': '.wav', 'audio/x-wav': '.wav', 'audio/flac': '.flac',
+  'audio/mp4': '.m4a', 'audio/x-m4a': '.m4a', 'audio/aac': '.aac',
 };
 function extFor(name: string, mime: string) {
-  const m = /\.(mp4|webm|mov|m4v|ogv|ogg|mkv)$/i.exec(name || '');
+  const m = /\.(mp4|webm|mov|m4v|ogv|ogg|mkv|mp3|wav|flac|m4a|aac)$/i.exec(name || '');
   if (m) return '.' + m[1].toLowerCase();
-  return EXT[mime] || '.mp4';
+  return EXT[mime] || (mime.startsWith('audio/') ? '.mp3' : '.mp4');
 }
 const ipOf = (req: Request) => req.headers.get('CF-Connecting-IP') || req.headers.get('x-forwarded-for') || 'unknown';
 
@@ -46,7 +49,7 @@ const isAdmin = (env: any, req: Request) =>
 
 async function ownerOk(env: any, request: Request, key: string): Promise<boolean> {
   if (key.includes('..') || key.includes('\\')) return false;
-  if (isAdmin(env, request)) return key.startsWith('videos/');
+  if (isAdmin(env, request)) return key.startsWith('videos/') || key.startsWith('music/');
   const hash = await hashIp(env, ipOf(request));
   return key.startsWith(prefixFor(hash));
 }
@@ -61,15 +64,20 @@ export const onRequestPost = async (ctx: any) => {
   if (action === 'create') {
     const body: any = await request.json().catch(() => ({}));
     const mime = String(body.mime || 'video/mp4').split(';')[0].toLowerCase();
-    if (!mime.startsWith('video/')) return json({ error: '只能上传视频' }, 415);
+    if (!mime.startsWith('video/') && !mime.startsWith('audio/')) return json({ error: '只能上传视频或音频' }, 415);
     const size = Number(body.size || 0);
     const admin = isAdmin(env, request);
     const MAX = admin ? ADMIN_MAX : ANON_MAX;
-    if (!size || size > MAX) return json({ error: admin ? '视频最多 1GB' : '墙上视频最多 80MB' }, 413);
+    if (!size || size > MAX) return json({ error: admin ? '最多 1GB' : '墙上最多 80MB' }, 413);
 
     let key: string;
     if (admin) {
-      key = 'videos/' + crypto.randomUUID() + extFor(String(body.name || ''), mime);
+      const customKey = String(body.key || '').trim();
+      if (customKey && (customKey.startsWith('music/') || customKey.startsWith('videos/')) && !customKey.includes('..') && !customKey.includes('\\') && customKey.length < 300) {
+        key = customKey;
+      } else {
+        key = 'videos/' + crypto.randomUUID() + extFor(String(body.name || ''), mime);
+      }
     } else {
       // 匿名：按 IP 哈希分目录 + 限频
       const hash = await hashIp(env, ipOf(request));
