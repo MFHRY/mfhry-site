@@ -336,6 +336,7 @@
         <svg viewBox="0 0 24 24" width="15" height="15"><path d="M4 9.5v5h3.5L12 18V6L7.5 9.5H4z" fill="currentColor"/><path d="M15 8.5a5 5 0 0 1 0 7M17.6 6a8.5 8.5 0 0 1 0 12" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
       </div>
     </div>
+    <div class="fs-ly" id="fsLy"></div>
   </div>
   <div class="fs-queue" id="fsQueue"></div>
 </div>
@@ -661,13 +662,13 @@
     renderQueue();
     renderFsQueue();
     $('npTitle').innerHTML = esc(s.title || '未知曲目') + '<small>' + esc(s.artist || '') + '</small>';
-    setArt(coverOf(s.setId));
+    setArt(s.cover || (s.r2 ? PLACEHOLDER : coverOf(s.setId)));
     document.title = (s.title || '音乐') + ' · mfhry.store';
     $('bar').classList.add('on');
     $('bari').style.width = '0%';
     setStatus('准备音频…');
     try {
-      let url = bufCache.get(String(s.setId));
+      let url = s.r2 || bufCache.get(String(s.setId));
       if (!url) {
         const got = await loadTrack(s, (msg, frac) => {
           setStatus(msg);
@@ -684,13 +685,16 @@
         bufCache.set(String(s.setId), url);
         if (got.bgUrl && idx === i) { bgUrl = got.bgUrl; setArt(got.bgUrl); }
         setStatus('已存到本机缓存');
+      } else if (s.r2) {
+        url = s.r2;
+        setStatus('R2 直链' + (autoplay ? '，开始播放' : ''));
       }
       if (blobUrl && blobUrl !== url) URL.revokeObjectURL(blobUrl);
       blobUrl = url;
       au.src = url;
       au.load();
       $('bar').classList.remove('on');
-      setStatus((s.artist ? s.artist + ' · ' : '') + '本地缓存' + (autoplay ? '，开始播放' : ''));
+      if (!s.r2) setStatus((s.artist ? s.artist + ' · ' : '') + '本地缓存' + (autoplay ? '，开始播放' : ''));
       if (autoplay) await au.play().catch((e) => setStatus('浏览器拦了自动播放，点一下 ▶'));
       setMediaSession(s);
       renderQueue();
@@ -861,7 +865,11 @@
         const b = document.createElement('span');
         b.className = 'chip';
         b.textContent = h.label;
-        b.onclick = () => { $('q').value = h.label; search(h.q); };
+        b.onclick = () => {
+          if (h.r2) {
+            addSong({ setId: 'r2:' + h.label, title: h.label, artist: h.artist || '', r2: h.r2, lyrics: h.lyrics || '' });
+          } else { $('q').value = h.label; search(h.q); }
+        };
         row.appendChild(b);
       }
       wrap.appendChild(row);
@@ -885,6 +893,7 @@
     $('dur').textContent = mmss(au.duration);
     $('seek').value = String(Math.round((au.currentTime / au.duration) * 1000));
     if (fsEl.classList.contains('on')) syncFS();
+    syncLyrics(au.currentTime);
   });
   au.addEventListener('loadedmetadata', () => { $('dur').textContent = mmss(au.duration); });
   au.addEventListener('error', () => { if (au.src) setStatus('这个音频浏览器放不了，换一首'); });
@@ -1020,6 +1029,62 @@
     else if (k === 'ArrowDown') { e.preventDefault(); au.volume = Math.max(0, au.volume - 0.05); $('vol').value = String(au.volume); }
     else if (k === 'f' || k === 'F') { fsEl.classList.contains('on') ? closeFS() : openFS(); }
   });
+
+
+  // ---------- 歌词 ----------
+  let lyrics = null, lyIdx = -1;
+  function lyOffset() { return (+$('lyOffset').value || 0) / 1000; }
+  $('lyOffset').addEventListener('input', () => {
+    $('lyOffVal').textContent = $('lyOffset').value + 'ms';
+    try { localStorage.setItem('mfhry_ly_off_' + (queue[idx]?.setId || ''), $('lyOffset').value); } catch(e){}
+  });
+  async function loadLyrics(s) {
+    lyrics = null; lyIdx = -1;
+    $('lyricsCard').classList.remove('on');
+    $('fsLy').innerHTML = '';
+    if (!s || !s.lyrics) return;
+    try {
+      const r = await fetch(s.lyrics, { cache: 'no-store' });
+      const d = await r.json();
+      lyrics = Array.isArray(d.lines) ? d.lines : [];
+      const saved = localStorage.getItem('mfhry_ly_off_' + s.setId);
+      $('lyOffset').value = saved != null ? saved : '0';
+      $('lyOffVal').textContent = $('lyOffset').value + 'ms';
+      $('lyTitle').textContent = (d.artist ? d.artist + ' · ' : '') + (d.song || '');
+      renderLyrics();
+      $('lyricsCard').classList.add('on');
+    } catch(e) { console.warn('lyrics load failed', e); }
+  }
+  function renderLyrics() {
+    if (!lyrics) return;
+    const mk = (box) => {
+      box.innerHTML = lyrics.map((l, i) =>
+        '<div class="ly-line" data-i="' + i + '" data-t="' + l.t + '">' +
+        '<div class="ly-ja">' + esc(l.ja || '') + '</div>' +
+        (l.zh ? '<div class="ly-zh">' + esc(l.zh) + '</div>' : '') + '</div>'
+      ).join('');
+      box.onclick = (e) => {
+        const line = e.target.closest('.ly-line');
+        if (line && au.duration) au.currentTime = Math.max(0, (+line.dataset.t || 0) - lyOffset());
+      };
+    };
+    mk($('lyricsBox'));
+    mk($('fsLy'));
+  }
+  function syncLyrics(t) {
+    if (!lyrics || !lyrics.length) return;
+    const ct = t + lyOffset();
+    let ni = 0;
+    for (let i = 0; i < lyrics.length; i++) { if (lyrics[i].t <= ct) ni = i; else break; }
+    if (ni === lyIdx) return;
+    lyIdx = ni;
+    for (const box of [$('lyricsBox'), $('fsLy')]) {
+      const prev = box.querySelector('.ly-line.active');
+      if (prev) prev.classList.remove('active');
+      const cur = box.querySelector('.ly-line[data-i="' + ni + '"]');
+      if (cur) { cur.classList.add('active'); cur.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+    }
+  }
 
   window.__music = {
     openFS: () => openFS(),

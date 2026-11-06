@@ -1,6 +1,12 @@
 /* 二次元曲单（音游 / 音乐页共用）。日文名在 osu 镜像里搜不准，chip 显示日文、实际查英文关键词 */
 window.MFHRY_SONGS = [
   {
+    title: '精选 · R2',
+    items: [
+      { label: 'アイドル (TV Size)', q: 'idol yoasobi tv', r2: '/api/r2?key=music/idol-tv.mp3', lyrics: '/music/idol-lyrics.json', artist: 'YOASOBI' },
+    ],
+  },
+  {
     title: '热门',
     items: [
       { label: 'アイドル', q: 'idol yoasobi' },

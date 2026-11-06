@@ -1,7 +1,7 @@
 import { r2Bucket } from '../lib/r2';
 
-// R2 视频流代理：GET/HEAD /api/r2?key=wall/... 或 videos/...
-// 不要求桶公开；Range 直接交给 R2，视频可拖动进度。
+// R2 媒体代理：GET/HEAD /api/r2?key=wall/... | videos/... | music/...
+// 不要求桶公开；Range 直接交给 R2，视频/音频可拖动进度。
 const json = (data: any, status = 200) =>
   new Response(JSON.stringify(data), {
     status,
@@ -10,7 +10,7 @@ const json = (data: any, status = 200) =>
 
 function validKey(key: string) {
   return key.length > 5 && key.length < 300 &&
-    (key.startsWith('wall/') || key.startsWith('videos/')) &&
+    (key.startsWith('wall/') || key.startsWith('videos/') || key.startsWith('music/')) &&
     !key.includes('..') && !key.includes('\\');
 }
 
