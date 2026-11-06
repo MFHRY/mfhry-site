@@ -3,8 +3,8 @@ window.MFHRY_SONGS = [
   {
     title: '精选 · R2',
     items: [
-      { label: 'アイドル (TV Size)', q: 'idol yoasobi tv', r2: '/api/r2?key=music/idol-tv.mp3', lyrics: '/music/idol-lyrics.json', artist: 'YOASOBI', cover: 'https://assets.ppy.sh/beatmaps/2114239/covers/cover.jpg' },
-      { label: '金星のダンス', q: 'kinsei no dance', r2: '/api/r2?key=music/venus-dance.mp3', lyrics: '/music/venus-lyrics.json', artist: 'ナユタン星人', cover: 'https://assets.ppy.sh/beatmaps/1878668/covers/cover.jpg' },
+      { label: 'アイドル (TV Size)', q: 'idol yoasobi tv', r2: '/api/r2?key=music/idol-tv.mp3', lyrics: '/music/idol-lyrics.json', artist: 'YOASOBI', cover: '/api/r2?key=music/cover-idol.jpg' },
+      { label: '金星のダンス', q: 'kinsei no dance', r2: '/api/r2?key=music/venus-dance.mp3', lyrics: '/music/venus-lyrics.json', artist: 'ナユタン星人', cover: '/api/r2?key=music/cover-venus.jpg' },
     ],
   },
   {
