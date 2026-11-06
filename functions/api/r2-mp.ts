@@ -30,8 +30,10 @@ const EXT: Record<string, string> = {
   'audio/mp4': '.m4a', 'audio/x-m4a': '.m4a', 'audio/aac': '.aac',
 };
 function extFor(name: string, mime: string) {
-  const m = /\.(mp4|webm|mov|m4v|ogv|ogg|mkv|mp3|wav|flac|m4a|aac)$/i.exec(name || '');
+  const m = /\.(mp4|webm|mov|m4v|ogv|ogg|mkv|mp3|wav|flac|m4a|aac|jpe?g|png)$/i.exec(name || '');
   if (m) return '.' + m[1].toLowerCase();
+  if (mime === 'image/jpeg') return '.jpg';
+  if (mime === 'image/png') return '.png';
   return EXT[mime] || (mime.startsWith('audio/') ? '.mp3' : '.mp4');
 }
 const ipOf = (req: Request) => req.headers.get('CF-Connecting-IP') || req.headers.get('x-forwarded-for') || 'unknown';
@@ -64,9 +66,10 @@ export const onRequestPost = async (ctx: any) => {
   if (action === 'create') {
     const body: any = await request.json().catch(() => ({}));
     const mime = String(body.mime || 'video/mp4').split(';')[0].toLowerCase();
-    if (!mime.startsWith('video/') && !mime.startsWith('audio/')) return json({ error: '只能上传视频或音频' }, 415);
+    const admin0 = isAdmin(env, request);
+    if (!mime.startsWith('video/') && !mime.startsWith('audio/') && !(admin0 && mime === 'image/jpeg')) return json({ error: '只能上传视频或音频' }, 415);
     const size = Number(body.size || 0);
-    const admin = isAdmin(env, request);
+    const admin = admin0;
     const MAX = admin ? ADMIN_MAX : ANON_MAX;
     if (!size || size > MAX) return json({ error: admin ? '最多 1GB' : '墙上最多 80MB' }, 413);
 
