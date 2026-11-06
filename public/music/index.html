@@ -699,6 +699,7 @@
       setMediaSession(s);
       renderQueue();
       syncFS();
+      loadLyrics(s);
     } catch (e) {
       setStatus('没成功：' + e.message);
     } finally {

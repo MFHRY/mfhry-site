@@ -3,7 +3,7 @@ window.MFHRY_SONGS = [
   {
     title: '精选 · R2',
     items: [
-      { label: 'アイドル (TV Size)', q: 'idol yoasobi tv', r2: '/api/r2?key=music/idol-tv.mp3', lyrics: '/music/idol-lyrics.json', artist: 'YOASOBI' },
+      { label: 'アイドル (TV Size)', q: 'idol yoasobi tv', r2: '/api/r2?key=music/idol-tv.mp3', lyrics: '/music/idol-lyrics.json', artist: 'YOASOBI', cover: 'https://assets.ppy.sh/beatmaps/2114239/covers/cover.jpg' },
     ],
   },
   {
