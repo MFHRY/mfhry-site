@@ -66,6 +66,14 @@ import JSZip from 'jszip';
       <div id="zlist" class="zlist"></div>
     </div>
   </div>
+  <!-- 图片 / 文本 / PDF 预览 -->
+  <div id="view" class="vmodal" hidden>
+    <div class="vbox wide">
+      <button class="vx" data-close type="button">×</button>
+      <h2 id="vtitle">预览</h2>
+      <div id="vbox"></div>
+    </div>
+  </div>
 
   <style is:global>
     .flist { display: flex; flex-direction: column; gap: 10px; margin: 14px 0; }
@@ -103,6 +111,10 @@ import JSZip from 'jszip';
       border-radius: 8px; padding: 5px 10px; cursor: pointer; font-size: 12px;
     }
     .zitem .zdl:hover { color: #4a9; border-color: #4a9; }
+    .vbox-img { max-width: 100%; max-height: 62vh; border-radius: 12px; display: block; margin: 0 auto; background: #000; }
+    .vbox-pre { width: 100%; max-height: 62vh; min-height: 300px; border: none; border-radius: 12px; background: #fff; }
+    .vbox-txt { width: 100%; max-height: 62vh; overflow: auto; white-space: pre-wrap; word-break: break-all;
+      background: var(--card, #fff); border: 1px solid var(--border, #e2e6ea); border-radius: 12px; padding: 14px; }
     .pbox-a, .pbox-v { width: 100%; }
     .pbox-v video { width: 100%; max-height: 62vh; border-radius: 12px; background: #000; }
     .pbox-a audio { width: 100%; }
@@ -138,6 +150,17 @@ import JSZip from 'jszip';
         if (/^text\//.test(type)) return '📝';
         return '📦';
       };
+      const kindOf = (name, type) => {
+        const n = String(name || '').toLowerCase();
+        if (/^(video\/|.*\.(mp4|webm|mov|mkv|m4v|ogv|ogg)$)/.test(type) || /\.(mp4|webm|mov|mkv|m4v)$/.test(n)) return 'video';
+        if (/^(audio\/|.*\.(mp3|wav|flac|ogg|m4a|aac)$)/.test(type) || /\.(mp3|wav|flac|ogg|m4a|aac)$/.test(n)) return 'audio';
+        if (/\.(zip)$/.test(n) || /zip/.test(type)) return 'zip';
+        if (/^(image\/)/.test(type) || /\.(png|jpe?g|gif|webp|svg|bmp|ico|avif)$/.test(n)) return 'image';
+        if (/^text\//.test(type) || /\.(txt|md|markdown|json|csv|xml|log|ini|yaml|yml|toml|srt|vtt)$/.test(n)) return 'text';
+        if (/^application\/pdf/.test(type) || /\.pdf$/.test(n)) return 'pdf';
+        return 'file';
+      };
+      const btnText = (kind) => kind === 'video' ? '▶ 播放' : kind === 'audio' ? '♪ 播放' : kind === 'zip' ? '📦 查看' : kind === 'image' ? '🖼 查看' : kind === 'text' ? '📝 查看' : kind === 'pdf' ? '📄 查看' : '⬇ 下载';
 
       const listEl = $('list'), emptyEl = $('empty');
       const compEl = $('comp'), delEl = $('del');
@@ -162,7 +185,7 @@ import JSZip from 'jszip';
                 '<div class="finfo">' + fmtSize(f.size) + ' · ' + fmtT(f.uploaded) + '</div>' +
               '</div>' +
               '<button class="fopen" data-key="' + esc(f.key) + '" data-name="' + esc(f.name) + '" data-type="' + esc(f.type) + '">' +
-              (kindOf(f.name, f.type) === 'video' ? '▶ 播放' : kindOf(f.name, f.type) === 'audio' ? '♪ 播放' : kindOf(f.name, f.type) === 'zip' ? '📦 查看' : '⬇ 下载') +
+              btnText(kindOf(f.name, f.type)) +
               '</button>' +
               '<button class="fdel" data-key="' + esc(f.key) + '" data-name="' + esc(f.name) + '">删除</button>' +
             '</div>'
@@ -180,10 +203,11 @@ import JSZip from 'jszip';
       }
 
       function open(el) { el.hidden = false; document.body.style.overflow = 'hidden'; }
-      function close(el) { el.hidden = true; if (compEl.hidden && delEl.hidden && playerEl.hidden && zipEl.hidden) document.body.style.overflow = ''; }
+      function close(el) { el.hidden = true; if (compEl.hidden && delEl.hidden && playerEl.hidden && zipEl.hidden && $('view').hidden) document.body.style.overflow = ''; }
 
       // 打开文件：视频/音频 → 播放器；zip → 查看内容；其他 → 下载
       const playerEl = $('player'), zipEl = $('zipview');
+      const viewEl = $('view');
       function openFile(key, name, type) {
         const kind = kindOf(name, type);
         if (kind === 'video' || kind === 'audio') {
@@ -203,6 +227,8 @@ import JSZip from 'jszip';
           open(playerEl);
         } else if (kind === 'zip') {
           openZip(key, name);
+        } else if (kind === 'image' || kind === 'text' || kind === 'pdf') {
+          openView(key, name, kind);
         } else {
           const a = document.createElement('a');
           a.href = '/api/r2?key=' + encodeURIComponent(key);
@@ -210,6 +236,38 @@ import JSZip from 'jszip';
           a.target = '_blank';
           a.rel = 'noopener';
           document.body.appendChild(a); a.click(); a.remove();
+        }
+      }
+
+      // 图片 / 文本 / PDF 预览
+      function openView(key, name, kind) {
+        $('vtitle').textContent = (kind === 'image' ? '🖼 ' : kind === 'text' ? '📝 ' : '📄 ') + name;
+        const box = $('vbox');
+        box.innerHTML = '<p class="muted">正在加载…</p>';
+        open($('view'));
+        const url = '/api/r2?key=' + encodeURIComponent(key);
+        if (kind === 'image') {
+          const img = document.createElement('img');
+          img.className = 'vbox-img';
+          img.alt = name;
+          img.onerror = () => { box.innerHTML = '<p class="muted">图片加载失败</p>'; };
+          img.onload = () => { box.innerHTML = ''; box.appendChild(img); };
+          img.src = url;
+        } else if (kind === 'pdf') {
+          const ifr = document.createElement('iframe');
+          ifr.className = 'vbox-pre';
+          ifr.src = url;
+          box.innerHTML = ''; box.appendChild(ifr);
+        } else {
+          fetch(url, { cache: 'no-store' }).then((r) => {
+            if (!r.ok) throw new Error('读取失败 ' + r.status);
+            return r.text();
+          }).then((t) => {
+            const pre = document.createElement('pre');
+            pre.className = 'vbox-txt';
+            pre.textContent = t.slice(0, 200000);
+            box.innerHTML = ''; box.appendChild(pre);
+          }).catch((e) => { box.innerHTML = '<p class="muted">文本加载失败：' + esc(e.message || e) + '</p>'; });
         }
       }
 
@@ -369,6 +427,7 @@ import JSZip from 'jszip';
         else if (!delEl.hidden) close(delEl);
         else if (!playerEl.hidden) { stopPlayer(); close(playerEl); }
         else if (!zipEl.hidden) close(zipEl);
+        else if (!viewEl.hidden) close(viewEl);
       });
       function stopPlayer() {
         const box = $('pbox');
