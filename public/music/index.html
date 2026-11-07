@@ -220,6 +220,30 @@
   .fs-play:hover{background:linear-gradient(165deg,rgba(255,255,255,.42),rgba(255,255,255,.16))}
   .fs-vol{display:flex;align-items:center;gap:10px;margin-top:20px;color:rgba(255,255,255,.55)}
   .fs-vol input{flex:1}
+
+  .fs-ly{width:clamp(260px,34vw,470px);max-height:min(62vh,560px);display:none;flex-direction:column;color:#fff;
+    padding:14px 16px 12px;border-radius:24px;
+    background:linear-gradient(165deg,rgba(255,255,255,.10),rgba(255,255,255,.035));
+    border:1px solid rgba(255,255,255,.15);box-shadow:0 26px 70px rgba(0,0,0,.42),var(--glass-hi);
+    backdrop-filter:blur(26px) saturate(180%);-webkit-backdrop-filter:blur(26px) saturate(180%)}
+  .fs-ly.on{display:flex}
+  .ly-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:10px;
+    border-bottom:1px solid rgba(255,255,255,.12);flex:none}
+  .ly-head b{font-size:13px;font-weight:600;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ly-off{display:flex;align-items:center;gap:6px;font-size:11px;color:rgba(255,255,255,.5);white-space:nowrap;flex:none}
+  .ly-off input{width:88px}
+  .ly-off i{font-style:normal;min-width:44px;text-align:right;font-variant-numeric:tabular-nums}
+  .ly-box{flex:1;overflow-y:auto;padding:8px 4px 8px 2px;scrollbar-width:thin;
+    mask-image:linear-gradient(transparent,#000 7%,#000 93%,transparent);
+    -webkit-mask-image:linear-gradient(transparent,#000 7%,#000 93%,transparent)}
+  .ly-box::-webkit-scrollbar{width:6px}
+  .ly-box::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16);border-radius:3px}
+  .ly-line{padding:9px 11px;border-radius:12px;cursor:pointer;opacity:.52;transition:background .15s,opacity .25s}
+  .ly-line:hover{background:rgba(255,255,255,.08);opacity:.85}
+  .ly-line.active{opacity:1;background:linear-gradient(165deg,rgba(127,209,176,.24),rgba(127,209,176,.08))}
+  .ly-ja{font-size:16.5px;line-height:1.55;font-weight:600;letter-spacing:.01em}
+  .ly-zh{font-size:12.5px;line-height:1.5;color:rgba(255,255,255,.6);margin-top:3px}
+  .ly-line.active .ly-ja{color:#a8ecd0;text-shadow:0 0 26px rgba(127,209,176,.4)}
   .fs-queue{position:relative;z-index:2;display:flex;gap:10px;overflow-x:auto;padding:12px clamp(18px,4vw,56px) 20px;
     scrollbar-width:none}
   .fs-queue::-webkit-scrollbar{display:none}
@@ -240,6 +264,7 @@
     .fs-art{width:min(58vw,240px)}
     .fs-info{width:100%;max-width:360px;text-align:center;padding:16px}
     .fs-prog,.fs-vol{margin-top:16px}
+    .fs-ly{width:100%;max-width:430px;max-height:34vh}
   }
 
 </style>
@@ -337,7 +362,13 @@
         <svg viewBox="0 0 24 24" width="15" height="15"><path d="M4 9.5v5h3.5L12 18V6L7.5 9.5H4z" fill="currentColor"/><path d="M15 8.5a5 5 0 0 1 0 7M17.6 6a8.5 8.5 0 0 1 0 12" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
       </div>
     </div>
-    <div class="fs-ly" id="fsLy"></div>
+    <section class="fs-ly" id="lyricsCard">
+      <div class="ly-head">
+        <b id="lyTitle">歌词</b>
+        <label class="ly-off">偏移 <input type="range" id="lyOffset" min="-2000" max="2000" step="50" value="0" /><i id="lyOffVal">0ms</i></label>
+      </div>
+      <div class="ly-box" id="lyricsBox"></div>
+    </section>
   </div>
   <div class="fs-queue" id="fsQueue"></div>
 </div>
@@ -1059,8 +1090,8 @@
   });
   async function loadLyrics(s) {
     lyrics = null; lyIdx = -1;
-    $('lyricsCard').classList.remove('on');
-    $('fsLy').innerHTML = '';
+    const card = $('lyricsCard'); if (card) card.classList.remove('on');
+    const fsBox = $('fsLy'); if (fsBox) fsBox.innerHTML = '';
     if (!s || !s.lyrics) return;
     try {
       const r = await fetch(s.lyrics, { cache: 'no-store' });
@@ -1087,8 +1118,10 @@
         if (line && au.duration) au.currentTime = Math.max(0, (+line.dataset.t || 0) - lyOffset());
       };
     };
-    mk($('lyricsBox'));
-    mk($('fsLy'));
+    for (const id of ['lyricsBox', 'fsLy']) {
+      const box = $(id);
+      if (box) mk(box);
+    }
   }
   function syncLyrics(t) {
     if (!lyrics || !lyrics.length) return;
@@ -1098,6 +1131,7 @@
     if (ni === lyIdx) return;
     lyIdx = ni;
     for (const box of [$('lyricsBox'), $('fsLy')]) {
+      if (!box) continue;
       const prev = box.querySelector('.ly-line.active');
       if (prev) prev.classList.remove('active');
       const cur = box.querySelector('.ly-line[data-i="' + ni + '"]');
