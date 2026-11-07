@@ -799,9 +799,15 @@
   }
 
   function addSong(s) {
-    if (queue.some((x) => String(x.setId) === String(s.setId))) {
-      setStatus('《' + s.title + '》已经在列表里了');
-      const i = queue.findIndex((x) => String(x.setId) === String(s.setId));
+    const dup = queue.find((x) => String(x.setId) === String(s.setId));
+    if (dup) {
+      // 合并新字段（歌词/封面/直链），修复旧版存的条目
+      let changed = false;
+      for (const k of ['r2', 'lyrics', 'cover', 'artist']) {
+        if (s[k] && dup[k] !== s[k]) { dup[k] = s[k]; changed = true; }
+      }
+      if (changed) { persist(); setStatus('《' + s.title + '》已更新（有歌词/封面了）'); }
+      else setStatus('《' + s.title + '》已经在列表里了');
       renderQueue();
       return;
     }
@@ -1004,6 +1010,17 @@
 
   // ---------- 启动 ----------
   queue = Array.isArray(load(LS_QUEUE, [])) ? load(LS_QUEUE, []) : [];
+  // 迁移：把旧存的精选条目和 songs.js 对齐（补歌词/封面/直链字段）
+  try {
+    const feat = {};
+    for (const g of (window.MFHRY_SONGS || [])) for (const h of (g.items || [])) if (h.r2) feat['r2:' + h.label] = h;
+    let migrated = false;
+    for (const q of queue) {
+      const h = feat[q.setId];
+      if (h) for (const k of ['r2', 'lyrics', 'cover', 'artist']) if (h[k] && q[k] !== h[k]) { q[k] = h[k]; migrated = true; }
+    }
+    if (migrated) persist();
+  } catch (e) {}
   const vol = load('mfhry_music_vol', 0.85);
   au.volume = typeof vol === 'string' ? +vol : vol;
   $('vol').value = au.volume;
