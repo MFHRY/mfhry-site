@@ -10,7 +10,7 @@ const json = (data: any, status = 200) =>
 
 function validKey(key: string) {
   return key.length > 5 && key.length < 300 &&
-    (key.startsWith('wall/') || key.startsWith('videos/') || key.startsWith('music/')) &&
+    (key.startsWith('wall/') || key.startsWith('videos/') || key.startsWith('music/') || key.startsWith('files/')) &&
     !key.includes('..') && !key.includes('\\');
 }
 

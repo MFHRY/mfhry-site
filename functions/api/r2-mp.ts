@@ -51,7 +51,7 @@ const isAdmin = (env: any, req: Request) =>
 
 async function ownerOk(env: any, request: Request, key: string): Promise<boolean> {
   if (key.includes('..') || key.includes('\\')) return false;
-  if (isAdmin(env, request)) return key.startsWith('videos/') || key.startsWith('music/');
+  if (isAdmin(env, request)) return key.startsWith('videos/') || key.startsWith('music/') || key.startsWith('files/');
   const hash = await hashIp(env, ipOf(request));
   return key.startsWith(prefixFor(hash));
 }
@@ -76,7 +76,7 @@ export const onRequestPost = async (ctx: any) => {
     let key: string;
     if (admin) {
       const customKey = String(body.key || '').trim();
-      if (customKey && (customKey.startsWith('music/') || customKey.startsWith('videos/')) && !customKey.includes('..') && !customKey.includes('\\') && customKey.length < 300) {
+      if (customKey && (customKey.startsWith('music/') || customKey.startsWith('videos/') || customKey.startsWith('files/')) && !customKey.includes('..') && !customKey.includes('\\') && customKey.length < 300) {
         key = customKey;
       } else {
         key = 'videos/' + crypto.randomUUID() + extFor(String(body.name || ''), mime);

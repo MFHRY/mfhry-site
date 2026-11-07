@@ -1,0 +1,265 @@
+---
+import Base from '../layouts/Base.astro';
+---
+<Base title="文件">
+  <div class="vhead">
+    <h1>文件</h1>
+    <div class="vacts">
+      <button id="upbtn" class="send" type="button">＋ 上传</button>
+    </div>
+  </div>
+  <p class="muted">站内文件库。上传、删除需要口令；列表公开，点文件名即可下载 / 复制分享链接。</p>
+
+  <div id="list" class="flist"></div>
+  <p class="muted" id="empty" hidden>还没有文件。</p>
+
+  <!-- 上传 -->
+  <div id="comp" class="vmodal" hidden>
+    <div class="vbox">
+      <button class="vx" data-close type="button">×</button>
+      <h2>上传文件</h2>
+      <div class="crow">
+        <label class="pick"><input id="f" type="file" hidden />选择文件</label>
+        <button id="frm" class="pick" type="button" hidden>清除</button>
+        <span class="muted" id="fhint">上传到 R2（≤1GB，分片上传）</span>
+      </div>
+      <progress id="prog" max="100" value="0" hidden></progress>
+      <input id="fkey" class="key" type="text" maxlength="200" placeholder="存储名（可选，留空自动生成；建议带扩展名，如 demo.zip）" />
+      <input id="pkey" class="key" type="password" placeholder="管理口令" autocomplete="current-password" />
+      <p class="vmsg" id="msg"></p>
+      <div class="crow">
+        <button id="dok" class="send" type="button">上传</button>
+        <button id="dcancel" class="pick" type="button">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 删除口令 -->
+  <div id="del" class="vmodal" hidden>
+    <div class="vbox small">
+      <button class="vx" data-close type="button">×</button>
+      <h2>删除文件</h2>
+      <p class="muted" id="dname"></p>
+      <input id="dkey" class="key" type="password" placeholder="输入口令" autocomplete="current-password" />
+      <p class="vmsg" id="dmsg"></p>
+      <div class="crow">
+        <button id="dokdel" class="send" type="button">确认删除</button>
+        <button id="dcancel2" class="pick" type="button">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <style is:global>
+    .flist { display: flex; flex-direction: column; gap: 10px; margin: 14px 0; }
+    .fitem {
+      display: flex; align-items: center; gap: 12px; padding: 10px 14px;
+      background: var(--card, #fff); border: 1px solid var(--border, #e2e6ea);
+      border-radius: 14px;
+    }
+    .fitem .fico { font-size: 22px; flex: none; }
+    .fitem .fmeta { flex: 1; min-width: 0; }
+    .fitem .fname { font-weight: 600; color: var(--fg, #222); word-break: break-all; }
+    .fitem .fname a { text-decoration: none; color: inherit; }
+    .fitem .fname a:hover { text-decoration: underline; }
+    .fitem .finfo { font-size: 12px; color: var(--muted, #888); margin-top: 2px; }
+    .fitem .fdel {
+      flex: none; border: 1px solid var(--border, #e2e6ea); background: transparent;
+      color: var(--muted, #888); border-radius: 10px; padding: 6px 10px; cursor: pointer; font-size: 12px;
+    }
+    .fitem .fdel:hover { color: #e05a5a; border-color: #e05a5a; }
+  </style>
+
+  <script is:inline>
+    (() => {
+      const $ = (id) => document.getElementById(id);
+      const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+      const fmtSize = (n) => {
+        if (!n && n !== 0) return '';
+        if (n < 1024) return n + ' B';
+        if (n < 1048576) return (n / 1024).toFixed(1) + ' KB';
+        if (n < 1073741824) return (n / 1048576).toFixed(1) + ' MB';
+        return (n / 1073741824).toFixed(2) + ' GB';
+      };
+      const fmtT = (t) => {
+        if (!t) return '';
+        const d = new Date(t);
+        if (isNaN(d.getTime())) return '';
+        return d.toLocaleString('sv-SE', { timeZone: 'Asia/Shanghai' }).slice(0, 16);
+      };
+      const iconOf = (name, type) => {
+        const n = String(name || '').toLowerCase();
+        if (/\.(zip|rar|7z|tar|gz)$/.test(n)) return '🗜️';
+        if (/\.(mp3|wav|flac|ogg|m4a|aac)$/.test(n)) return '🎵';
+        if (/\.(mp4|webm|mov|mkv)$/.test(n)) return '🎬';
+        if (/\.(png|jpe?g|gif|webp|svg|ico)$/.test(n)) return '🖼️';
+        if (/\.pdf$/.test(n)) return '📄';
+        if (/\.(txt|md|json|csv|xml)$/.test(n)) return '📝';
+        if (/\.(exe|msi|apk|dmg)$/.test(n)) return '⚙️';
+        if (/^text\//.test(type)) return '📝';
+        return '📦';
+      };
+
+      const listEl = $('list'), emptyEl = $('empty');
+      const compEl = $('comp'), delEl = $('del');
+      const fileEl = $('f'), fkeyEl = $('fkey'), pkeyEl = $('pkey'), msgEl = $('msg');
+      const progEl = $('prog'), fhintEl = $('fhint');
+      const dnameEl = $('dname'), dkeyEl = $('dkey'), dmsgEl = $('dmsg');
+      let busy = false, chosen = null, delKey = '';
+
+      const MP_PART = 8 * 1024 * 1024;
+      const KEY_LS = 'mfhry_files_key';
+
+      async function load() {
+        try {
+          const r = await fetch('/api/files', { cache: 'no-store' });
+          const d = await r.json().catch(() => ({}));
+          const items = Array.isArray(d.items) ? d.items : [];
+          listEl.innerHTML = items.map((f) =>
+            '<div class="fitem">' +
+              '<span class="fico">' + iconOf(f.name, f.type) + '</span>' +
+              '<div class="fmeta">' +
+                '<div class="fname"><a href="' + esc(f.url) + '" target="_blank" rel="noopener">' + esc(f.name) + '</a></div>' +
+                '<div class="finfo">' + fmtSize(f.size) + ' · ' + fmtT(f.uploaded) + '</div>' +
+              '</div>' +
+              '<button class="fdel" data-key="' + esc(f.key) + '" data-name="' + esc(f.name) + '">删除</button>' +
+            '</div>'
+          ).join('');
+          emptyEl.hidden = items.length > 0;
+          listEl.querySelectorAll('.fdel').forEach((b) => {
+            b.onclick = () => openDel(b.dataset.key, b.dataset.name);
+          });
+        } catch (e) {
+          listEl.innerHTML = '<p class="muted">列表加载失败：' + esc(e.message) + '</p>';
+        }
+      }
+
+      function open(el) { el.hidden = false; document.body.style.overflow = 'hidden'; }
+      function close(el) { el.hidden = true; if (compEl.hidden && delEl.hidden) document.body.style.overflow = ''; }
+
+      // 上传
+      $('upbtn').onclick = () => {
+        chosen = null; fileEl.value = ''; fkeyEl.value = ''; pkeyEl.value = '';
+        try { pkeyEl.value = sessionStorage.getItem(KEY_LS) || ''; } catch (e) {}
+        progEl.hidden = true; progEl.value = 0; msgEl.textContent = ''; fhintEl.textContent = '上传到 R2（≤1GB，分片上传）';
+        open(compEl);
+      };
+      fileEl.onchange = () => {
+        chosen = fileEl.files && fileEl.files[0] ? fileEl.files[0] : null;
+        $('frm').hidden = !chosen;
+        fhintEl.textContent = chosen ? chosen.name + ' · ' + fmtSize(chosen.size) : '上传到 R2（≤1GB，分片上传）';
+      };
+      $('frm').onclick = () => { fileEl.value = ''; chosen = null; $('frm').hidden = true; fhintEl.textContent = '上传到 R2（≤1GB，分片上传）'; };
+
+      async function doUpload() {
+        if (busy) return;
+        if (!chosen) { msgEl.textContent = '先选一个文件'; return; }
+        const k = pkeyEl.value.trim();
+        if (!k) { msgEl.textContent = '先填管理口令'; return; }
+        const custom = fkeyEl.value.trim();
+        const name = custom || (chosen.name || 'file');
+        busy = true; msgEl.textContent = '上传到 R2… 0%'; progEl.hidden = false; progEl.value = 0;
+        try {
+          const cre = await fetch('/api/r2-mp?action=create', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', 'x-admin-key': k },
+            body: JSON.stringify({ name, mime: chosen.type || 'application/octet-stream', size: chosen.size, key: 'files/' + name }),
+          });
+          const cd = await cre.json().catch(() => ({}));
+          if (!cre.ok || !cd.uploadId) throw new Error(cd.error || '创建上传失败');
+          const key = cd.key, uploadId = cd.uploadId;
+          const total = chosen.size, parts = [];
+          let loaded = 0, idx = 0;
+          for (let off = 0; off < total; off += MP_PART) {
+            const blob = chosen.slice(off, Math.min(off + MP_PART, total));
+            let lastErr = null;
+            for (let attempt = 0; attempt < 3; attempt++) {
+              try {
+                const r = await fetch('/api/r2-mp?action=part&key=' + encodeURIComponent(key) +
+                  '&uploadId=' + encodeURIComponent(uploadId) + '&partNumber=' + (idx + 1), {
+                  method: 'PUT', headers: { 'x-admin-key': k }, body: blob,
+                });
+                const d = await r.json().catch(() => ({}));
+                if (!r.ok) throw new Error(d.error || '分片失败');
+                parts.push({ partNumber: d.partNumber, etag: d.etag });
+                loaded += blob.size; idx++;
+                const pct = Math.min(99, Math.round((loaded / total) * 100));
+                progEl.value = pct;
+                msgEl.textContent = '上传到 R2… ' + pct + '%（' + Math.ceil(loaded / 1048576) + ' / ' + Math.ceil(total / 1048576) + 'MB）';
+                break;
+              } catch (e) {
+                lastErr = e;
+                if (attempt < 2) { await fetch('/api/r2-mp?action=abort&key=' + encodeURIComponent(key) + '&uploadId=' + encodeURIComponent(uploadId), { method: 'DELETE', headers: { 'x-admin-key': k } }); }
+              }
+            }
+            if (lastErr) throw lastErr;
+          }
+          const cm = await fetch('/api/r2-mp?action=complete&key=' + encodeURIComponent(key) +
+            '&uploadId=' + encodeURIComponent(uploadId), {
+            method: 'POST', headers: { 'content-type': 'application/json', 'x-admin-key': k },
+            body: JSON.stringify({ parts, size: total }),
+          });
+          const cdd = await cm.json().catch(() => ({}));
+          if (!cm.ok) throw new Error(cdd.error || '合并失败');
+          progEl.value = 100;
+          msgEl.textContent = '上传成功 ✅';
+          try { sessionStorage.setItem(KEY_LS, k); } catch (e) {}
+          setTimeout(() => { close(compEl); load(); }, 900);
+        } catch (e) {
+          msgEl.textContent = '上传失败：' + (e.message || e);
+        } finally {
+          busy = false;
+        }
+      }
+      $('dok').onclick = doUpload;
+      pkeyEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') doUpload(); });
+
+      // 删除
+      function openDel(key, name) {
+        delKey = key; dnameEl.textContent = name; dkeyEl.value = ''; dmsgEl.textContent = '';
+        try { dkeyEl.value = sessionStorage.getItem(KEY_LS) || ''; } catch (e) {}
+        open(delEl); setTimeout(() => dkeyEl.focus(), 80);
+      }
+      async function doDelete() {
+        const k = dkeyEl.value.trim();
+        if (!k) { dmsgEl.textContent = '先输入口令'; return; }
+        if (busy) return;
+        busy = true;
+        try {
+          const r = await fetch('/api/r2-mp?action=delete&key=' + encodeURIComponent(delKey), {
+            method: 'DELETE', headers: { 'x-admin-key': k },
+          });
+          const d = await r.json().catch(() => ({}));
+          if (!r.ok) { dmsgEl.textContent = d.error || '删除失败'; return; }
+          dmsgEl.textContent = '已删除 ✅';
+          try { sessionStorage.setItem(KEY_LS, k); } catch (e) {}
+          setTimeout(() => { close(delEl); load(); }, 600);
+        } catch (e) {
+          dmsgEl.textContent = '删除失败：' + (e.message || e);
+        } finally {
+          busy = false;
+        }
+      }
+      $('dokdel').onclick = doDelete;
+      dkeyEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') doDelete(); });
+
+      $('dcancel').onclick = () => close(compEl);
+      $('dcancel2').onclick = () => close(delEl);
+      document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape') return;
+        if (busy) { msgEl.textContent = '正在上传，等完成再关闭'; return; }
+        if (!compEl.hidden) close(compEl);
+        else if (!delEl.hidden) close(delEl);
+      });
+      document.addEventListener('click', (e) => {
+        const x = e.target && e.target.closest && e.target.closest('.vmodal .vx');
+        if (x) {
+          const m = x.closest('.vmodal');
+          if (busy && m === compEl) { msgEl.textContent = '正在上传，等完成再关闭'; return; }
+          close(m);
+        }
+      });
+
+      load();
+    })();
+  </script>
+</Base>
