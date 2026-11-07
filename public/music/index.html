@@ -868,7 +868,7 @@
         b.textContent = h.label;
         b.onclick = () => {
           if (h.r2) {
-            addSong({ setId: 'r2:' + h.label, title: h.label, artist: h.artist || '', r2: h.r2, lyrics: h.lyrics || '' });
+            addSong({ setId: 'r2:' + h.label, title: h.label, artist: h.artist || '', r2: h.r2, lyrics: h.lyrics || '', cover: h.cover || '' });
           } else { $('q').value = h.label; search(h.q); }
         };
         row.appendChild(b);
