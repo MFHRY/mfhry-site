@@ -67,7 +67,7 @@ export const onRequestPost = async (ctx: any) => {
     const body: any = await request.json().catch(() => ({}));
     const mime = String(body.mime || 'video/mp4').split(';')[0].toLowerCase();
     const admin0 = isAdmin(env, request);
-    if (!mime.startsWith('video/') && !mime.startsWith('audio/') && !(admin0 && mime === 'image/jpeg')) return json({ error: '只能上传视频或音频' }, 415);
+    if (!mime.startsWith('video/') && !mime.startsWith('audio/') && !admin0) return json({ error: '只能上传视频或音频' }, 415);
     const size = Number(body.size || 0);
     const admin = admin0;
     const MAX = admin ? ADMIN_MAX : ANON_MAX;
