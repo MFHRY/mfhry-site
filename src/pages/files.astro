@@ -1,6 +1,5 @@
 ---
 import Base from '../layouts/Base.astro';
-import JSZip from 'jszip';
 ---
 <Base title="文件">
   <div class="vhead">
@@ -121,7 +120,8 @@ import JSZip from 'jszip';
 
   </style>
 
-  <script is:inline>
+  <script>
+    import JSZip from 'jszip';
     (() => {
       const $ = (id) => document.getElementById(id);
       const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
