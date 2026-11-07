@@ -1,5 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
+import JSZip from 'jszip';
 ---
 <Base title="文件">
   <div class="vhead">
@@ -48,6 +49,23 @@ import Base from '../layouts/Base.astro';
       </div>
     </div>
   </div>
+  <!-- 在线播放（音频/视频） -->
+  <div id="player" class="vmodal" hidden>
+    <div class="vbox">
+      <button class="vx" data-close type="button">×</button>
+      <h2 id="ptitle">播放</h2>
+      <div id="pbox"></div>
+    </div>
+  </div>
+
+  <!-- 压缩包内容查看 -->
+  <div id="zipview" class="vmodal" hidden>
+    <div class="vbox wide">
+      <button class="vx" data-close type="button">×</button>
+      <h2 id="ztitle">压缩包内容</h2>
+      <div id="zlist" class="zlist"></div>
+    </div>
+  </div>
 
   <style is:global>
     .flist { display: flex; flex-direction: column; gap: 10px; margin: 14px 0; }
@@ -62,11 +80,33 @@ import Base from '../layouts/Base.astro';
     .fitem .fname a { text-decoration: none; color: inherit; }
     .fitem .fname a:hover { text-decoration: underline; }
     .fitem .finfo { font-size: 12px; color: var(--muted, #888); margin-top: 2px; }
+    .fitem .fopen {
+      flex: none; border: 1px solid var(--border, #e2e6ea); background: transparent;
+      color: var(--fg, #333); border-radius: 10px; padding: 6px 10px; cursor: pointer; font-size: 12px;
+    }
+    .fitem .fopen:hover { color: #4a9; border-color: #4a9; }
     .fitem .fdel {
       flex: none; border: 1px solid var(--border, #e2e6ea); background: transparent;
       color: var(--muted, #888); border-radius: 10px; padding: 6px 10px; cursor: pointer; font-size: 12px;
     }
     .fitem .fdel:hover { color: #e05a5a; border-color: #e05a5a; }
+
+    .zlist { max-height: 60vh; overflow: auto; display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+    .zitem {
+      display: flex; align-items: center; gap: 10px; padding: 8px 12px;
+      background: var(--card, #fff); border: 1px solid var(--border, #e2e6ea); border-radius: 10px;
+    }
+    .zitem .zname { flex: 1; min-width: 0; word-break: break-all; color: var(--fg, #222); }
+    .zitem .zsize { flex: none; font-size: 12px; color: var(--muted, #888); }
+    .zitem .zdl {
+      flex: none; border: 1px solid var(--border, #e2e6ea); background: transparent; color: var(--muted, #888);
+      border-radius: 8px; padding: 5px 10px; cursor: pointer; font-size: 12px;
+    }
+    .zitem .zdl:hover { color: #4a9; border-color: #4a9; }
+    .pbox-a, .pbox-v { width: 100%; }
+    .pbox-v video { width: 100%; max-height: 62vh; border-radius: 12px; background: #000; }
+    .pbox-a audio { width: 100%; }
+
   </style>
 
   <script is:inline>
@@ -121,6 +161,9 @@ import Base from '../layouts/Base.astro';
                 '<div class="fname"><a href="' + esc(f.url) + '" target="_blank" rel="noopener">' + esc(f.name) + '</a></div>' +
                 '<div class="finfo">' + fmtSize(f.size) + ' · ' + fmtT(f.uploaded) + '</div>' +
               '</div>' +
+              '<button class="fopen" data-key="' + esc(f.key) + '" data-name="' + esc(f.name) + '" data-type="' + esc(f.type) + '">' +
+              (kindOf(f.name, f.type) === 'video' ? '▶ 播放' : kindOf(f.name, f.type) === 'audio' ? '♪ 播放' : kindOf(f.name, f.type) === 'zip' ? '📦 查看' : '⬇ 下载') +
+              '</button>' +
               '<button class="fdel" data-key="' + esc(f.key) + '" data-name="' + esc(f.name) + '">删除</button>' +
             '</div>'
           ).join('');
@@ -128,13 +171,88 @@ import Base from '../layouts/Base.astro';
           listEl.querySelectorAll('.fdel').forEach((b) => {
             b.onclick = () => openDel(b.dataset.key, b.dataset.name);
           });
+          listEl.querySelectorAll('.fopen').forEach((b) => {
+            b.onclick = () => openFile(b.dataset.key, b.dataset.name, b.dataset.type);
+          });
         } catch (e) {
           listEl.innerHTML = '<p class="muted">列表加载失败：' + esc(e.message) + '</p>';
         }
       }
 
       function open(el) { el.hidden = false; document.body.style.overflow = 'hidden'; }
-      function close(el) { el.hidden = true; if (compEl.hidden && delEl.hidden) document.body.style.overflow = ''; }
+      function close(el) { el.hidden = true; if (compEl.hidden && delEl.hidden && playerEl.hidden && zipEl.hidden) document.body.style.overflow = ''; }
+
+      // 打开文件：视频/音频 → 播放器；zip → 查看内容；其他 → 下载
+      const playerEl = $('player'), zipEl = $('zipview');
+      function openFile(key, name, type) {
+        const kind = kindOf(name, type);
+        if (kind === 'video' || kind === 'audio') {
+          $('ptitle').textContent = (kind === 'video' ? '▶ 播放 ' : '♪ 播放 ') + name;
+          const box = $('pbox');
+          box.innerHTML = '';
+          const url = '/api/r2?key=' + encodeURIComponent(key);
+          if (kind === 'video') {
+            const v = document.createElement('video');
+            v.className = 'pbox-v'; v.controls = true; v.playsInline = true; v.preload = 'metadata'; v.src = url;
+            box.appendChild(v);
+          } else {
+            const a = document.createElement('audio');
+            a.className = 'pbox-a'; a.controls = true; a.preload = 'metadata'; a.src = url;
+            box.appendChild(a);
+          }
+          open(playerEl);
+        } else if (kind === 'zip') {
+          openZip(key, name);
+        } else {
+          const a = document.createElement('a');
+          a.href = '/api/r2?key=' + encodeURIComponent(key);
+          a.download = name;
+          a.target = '_blank';
+          a.rel = 'noopener';
+          document.body.appendChild(a); a.click(); a.remove();
+        }
+      }
+
+      // zip 查看：JSZip 解出目录，列表可下载单个条目
+      async function openZip(key, name) {
+        $('ztitle').textContent = '📦 ' + name;
+        const list = $('zlist');
+        list.innerHTML = '<p class="muted">正在读取压缩包…</p>';
+        open(zipEl);
+        try {
+          const res = await fetch('/api/r2?key=' + encodeURIComponent(key), { cache: 'no-store' });
+          if (!res.ok) throw new Error('读取失败 ' + res.status);
+          const buf = await res.arrayBuffer();
+          const zip = await JSZip.loadAsync(buf);
+          const files = Object.keys(zip.files).filter((n) => !zip.files[n].dir);
+          if (!files.length) { list.innerHTML = '<p class="muted">（空压缩包）</p>'; return; }
+          list.innerHTML = files.map((n) => {
+            const f = zip.files[n];
+            const nm = n.split('/').pop() || n;
+            return '<div class="zitem">' +
+              '<span class="zname" title="' + esc(n) + '">' + esc(n) + '</span>' +
+              '<span class="zsize">' + fmtSize(f._data && f._data.uncompressedSize) + '</span>' +
+              '<button class="zdl" data-path="' + esc(n) + '">下载</button>' +
+            '</div>';
+          }).join('');
+          list.querySelectorAll('.zdl').forEach((b) => {
+            b.onclick = async () => {
+              b.textContent = '…';
+              try {
+                const blob = await zip.files[b.dataset.path].async('blob');
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = b.dataset.path.split('/').pop() || 'file';
+                document.body.appendChild(a); a.click(); a.remove();
+                setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+              } catch (e) { alert('解压失败：' + (e.message || e)); }
+              b.textContent = '下载';
+            };
+          });
+        } catch (e) {
+          list.innerHTML = '<p class="muted">打不开这个压缩包（' + esc(e.message || e) + '）。只支持 zip 格式。</p>';
+        }
+      }
 
       // 上传
       $('upbtn').onclick = () => {
@@ -249,6 +367,18 @@ import Base from '../layouts/Base.astro';
         if (busy) { msgEl.textContent = '正在上传，等完成再关闭'; return; }
         if (!compEl.hidden) close(compEl);
         else if (!delEl.hidden) close(delEl);
+        else if (!playerEl.hidden) { stopPlayer(); close(playerEl); }
+        else if (!zipEl.hidden) close(zipEl);
+      });
+      function stopPlayer() {
+        const box = $('pbox');
+        const m = box.querySelector('video,audio');
+        if (m) { try { m.pause(); } catch (e) {} m.src = ''; }
+        box.innerHTML = '';
+      }
+      // 播放器弹窗关闭时停掉媒体
+      $('player').addEventListener('click', (e) => {
+        if (e.target && e.target.closest && e.target.closest('.vmodal .vx')) { stopPlayer(); }
       });
       document.addEventListener('click', (e) => {
         const x = e.target && e.target.closest && e.target.closest('.vmodal .vx');

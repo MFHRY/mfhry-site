@@ -16,7 +16,8 @@
     "deploy": "wrangler pages deploy dist --project-name=mfhry-site --branch main"
   },
   "dependencies": {
-    "astro": "^5.0.0"
+    "astro": "^5.0.0",
+    "jszip": "^3.10.2"
   },
   "devDependencies": {
     "pg": "^8.13.0",
