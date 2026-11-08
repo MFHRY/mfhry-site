@@ -208,9 +208,9 @@
   .fs-ctrl .mini{opacity:.62;font-size:18px;width:30px;height:30px}
   .fs-ctrl .mini:hover{opacity:1}
   .fs-ctrl .mini.on{opacity:1;color:#fa2d48}
-  .fs-play{width:74px;height:74px;border-radius:50%;color:#000;background:#fff;
+  .fs-ctrl .fs-play{width:74px;height:74px;border-radius:50%;color:#000!important;background:#fff!important;
     border:0!important;box-shadow:0 10px 30px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.6)}
-  .fs-play:hover{background:#f4f4f4}
+  .fs-ctrl .fs-play:hover{background:#f4f4f4!important;color:#000!important}
   .fs-vol{display:flex;align-items:center;gap:12px;margin-top:28px;color:rgba(255,255,255,.55)}
   .fs-vol input{flex:1;-webkit-appearance:none;appearance:none;height:3px;border-radius:3px;background:rgba(255,255,255,.22)}
   .fs-vol input::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:10px;border-radius:50%;background:#fff;opacity:0;transition:opacity .2s}
@@ -953,8 +953,8 @@
 
   // ---------- 全屏播放（仿 macOS 音乐 App） ----------
   const fsEl = $('fs');
-  const PLAY_SVG = '<svg viewBox="0 0 24 24" width="22" height="22"><path d="M8 5.5v13a1 1 0 0 0 1.53.85l10-6.5a1 1 0 0 0 0-1.7l-10-6.5A1 1 0 0 0 8 5.5z" fill="currentColor"/></svg>';
-  const PAUSE_SVG = '<svg viewBox="0 0 24 24" width="22" height="22"><rect x="7" y="5" width="3.4" height="14" rx="1.4" fill="currentColor"/><rect x="13.6" y="5" width="3.4" height="14" rx="1.4" fill="currentColor"/></svg>';
+  const PLAY_SVG = '<svg viewBox="0 0 24 24" width="28" height="28"><path d="M8 5.5v13a1 1 0 0 0 1.53.85l10-6.5a1 1 0 0 0 0-1.7l-10-6.5A1 1 0 0 0 8 5.5z" fill="currentColor"/></svg>';
+  const PAUSE_SVG = '<svg viewBox="0 0 24 24" width="28" height="28"><rect x="6.8" y="5" width="3.6" height="14" rx="1.5" fill="currentColor"/><rect x="13.6" y="5" width="3.6" height="14" rx="1.5" fill="currentColor"/></svg>';
 
   function syncFS() {
     const s = queue[idx] || {};
