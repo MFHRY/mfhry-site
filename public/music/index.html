@@ -843,7 +843,7 @@
     if (dup) {
       // 合并新字段（歌词/封面/直链），修复旧版存的条目
       let changed = false;
-      for (const k of ['r2', 'lyrics', 'cover', 'artist']) {
+      for (const k of ['r2', 'lyrics', 'cover', 'artist', 'mv']) {
         if (s[k] && dup[k] !== s[k]) { dup[k] = s[k]; changed = true; }
       }
       if (changed) { persist(); setStatus('《' + s.title + '》已更新（有歌词/封面了）'); }
@@ -1146,7 +1146,7 @@
     let migrated = false;
     for (const q of queue) {
       const h = feat[q.setId];
-      if (h) for (const k of ['r2', 'lyrics', 'cover', 'artist']) if (h[k] && q[k] !== h[k]) { q[k] = h[k]; migrated = true; }
+      if (h) for (const k of ['r2', 'lyrics', 'cover', 'artist', 'mv']) if (h[k] && q[k] !== h[k]) { q[k] = h[k]; migrated = true; }
     }
     if (migrated) persist();
   } catch (e) {}

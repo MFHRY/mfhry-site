@@ -25,9 +25,6 @@
 </style>
 </head>
 <body>
-<a href="/games/" title="返回小游戏列表" style="position:fixed;left:10px;bottom:10px;z-index:99999;display:flex;align-items:center;justify-content:center;min-width:34px;height:34px;padding:0 10px;border-radius:999px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.22);color:#ffe8b0;text-decoration:none;font:14px/1 -apple-system,PingFang SC,sans-serif;opacity:.75">← 返回</a>
-<a href="#" id="goldminerRestart" title="清除进度并重新开始第 1 关" style="position:fixed;right:10px;bottom:10px;z-index:99999;display:flex;align-items:center;justify-content:center;min-width:34px;height:34px;padding:0 10px;border-radius:999px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.22);color:#ffe8b0;text-decoration:none;font:14px/1 -apple-system,PingFang SC,sans-serif;opacity:.75">⟲ 重开第 1 关</a>
-
 <canvas id="game" width="800" height="600"></canvas>
 <script src="/games/score.js"></script>
 <script>
@@ -499,16 +496,12 @@
   canvas.addEventListener('mousedown', function (e) { e.preventDefault(); shoot(); });
   canvas.addEventListener('touchstart', function (e) { e.preventDefault(); shoot(); }, { passive: false });
 
-  /* ==================== HUD 重开第 1 关 ==================== */
-  const restartBtn = document.getElementById('goldminerRestart');
-  if (restartBtn) {
-    restartBtn.addEventListener('click', function (e) {
-      e.preventDefault();
-      initAudio();
-      clearProgress();
-      resetLevel(1);
-    });
-  }
+  /* kit.js HUD ⟲ 重开 = 清进度回第 1 关（原自定义按钮，由 HUD 全权接管） */
+  window.mfRestart = function () {
+    initAudio();
+    clearProgress();
+    resetLevel(1);
+  };
 
   /* ==================== 粒子 ==================== */
   function spawnParticles(x, y, color, count, speed) {
