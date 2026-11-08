@@ -1135,7 +1135,13 @@
       const prev = box.querySelector('.ly-line.active');
       if (prev) prev.classList.remove('active');
       const cur = box.querySelector('.ly-line[data-i="' + ni + '"]');
-      if (cur) { cur.classList.add('active'); cur.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+      if (cur) {
+        cur.classList.add('active');
+        // 只滚动歌词容器本身，避免 scrollIntoView 连带滚动页面导致卡片下方露出淡色玻璃底
+        const br = box.getBoundingClientRect(), cr = cur.getBoundingClientRect();
+        const target = box.scrollTop + (cr.top - br.top) - (br.height - cr.height) / 2;
+        box.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
+      }
     }
   }
 
