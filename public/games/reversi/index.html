@@ -70,6 +70,9 @@
   let wins = +(localStorage.getItem('mfhry_reversi_win') || 0);
   $win.textContent = wins;
 
+  const STATE_KEY = 'mfhry_reversi_state';
+  const STATE_VERSION = 1;
+
   let grid = [], turn = B, busy = false, last = -1;
   const sq = [];
 
@@ -85,6 +88,7 @@
   const opp = (c) => (c === B ? W : B);
 
   function fresh() {
+    clearState();
     grid = new Array(N * N).fill(0);
     const a = (N / 2 - 1) * N + (N / 2 - 1);
     grid[a] = W; grid[a + 1] = B; grid[a + N] = B; grid[a + N + 1] = W;
@@ -92,6 +96,45 @@
     banner.classList.remove('on');
     msg.textContent = '你先手（黑棋）';
     draw();
+  }
+
+  function saveState() {
+    try {
+      localStorage.setItem(STATE_KEY, JSON.stringify({ v: STATE_VERSION, grid, turn, last }));
+    } catch (e) { /* 忽略，不影响对局 */ }
+  }
+
+  function clearState() {
+    try { localStorage.removeItem(STATE_KEY); } catch (e) { /* 忽略 */ }
+  }
+
+  function loadState() {
+    let s = null;
+    try {
+      const raw = localStorage.getItem(STATE_KEY);
+      if (!raw) return false;
+      s = JSON.parse(raw);
+    } catch (e) { return false; }
+    // 结构 / 版本 / 取值校验，任一不符静默回退新局
+    if (!s || s.v !== STATE_VERSION || !Array.isArray(s.grid) || s.grid.length !== N * N) return false;
+    if (s.turn !== B && s.turn !== W) return false;
+    if (typeof s.last !== 'number' || !Number.isInteger(s.last)) return false;
+    for (const v of s.grid) { if (v !== 0 && v !== B && v !== W) return false; }
+    grid = s.grid.slice();
+    turn = s.turn;
+    last = s.last;
+    busy = false;
+    banner.classList.remove('on');
+    draw();
+    if (turn === W || !moves(grid, B).length) {
+      // 轮到电脑（刷新时正好是电脑回合，或玩家没棋可下需让电脑继续）
+      busy = true;
+      msg.textContent = '电脑思考中…';
+      setTimeout(aiMove, 260);
+    } else {
+      msg.textContent = '轮到你了';
+    }
+    return true;
   }
 
   function flips(g, i, color) {
@@ -166,6 +209,7 @@
       busy = true;
       msg.textContent = '电脑思考中…';
       setTimeout(aiMove, 260);
+      saveState();
     }
   }
 
@@ -177,6 +221,7 @@
       turn = B; busy = false;
       msg.textContent = '电脑没棋可下，轮到你了';
       draw();
+      saveState();
       return;
     }
     // 简单启发：角 > 边 > 翻得多，再带点随机
@@ -196,6 +241,7 @@
     busy = false;
     draw();
     if (!finishIfDone()) {
+      saveState();
       const my = moves(grid, B);
       msg.textContent = my.length ? '轮到你了' : '你没棋可下';
       if (!my.length) {
@@ -214,6 +260,7 @@
   function finish() {
     const c = counts();
     busy = true;
+    clearState();
     const win = c.b > c.w, drawGame = c.b === c.w;
     if (win) {
       wins++;
@@ -228,7 +275,7 @@
 
   document.getElementById('reset').addEventListener('click', fresh);
   document.getElementById('again').addEventListener('click', fresh);
-  fresh();
+  if (!loadState()) fresh();
 })();
 </script>
 <script src="/games/kit.js"></script>

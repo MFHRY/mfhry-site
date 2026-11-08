@@ -1020,6 +1020,7 @@
     checkTpSl();
     checkLiquidation();
     render();
+    scheduleSave();
   }
 
   const RANGE_LABELS = { '1min': '1 分钟', '10min': '10 分钟', '1day': '1 日', '5d': '5 天', '1m': '1 月', '1y': '1 年' };
@@ -1105,6 +1106,7 @@
     $('chartSync').textContent = '正在读取共享数据…';
     $('chartDataStatus').textContent = '连接服务器数据库';
     loadCandles(state.activePair, range);
+    saveState();
   }
 
   // ============ 保证金与盈亏计算 ============
@@ -1229,6 +1231,7 @@
         2000
       );
     }
+    saveState();
   }
 
   // ============ 交易 ============
@@ -1277,6 +1280,7 @@
 
     showToast(msg, side === 'long' ? 'win' : 'lose', 1400);
     render();
+    saveState();
   }
 
   function closePosition(id) {
@@ -1294,6 +1298,7 @@
       1500
     );
     render();
+    saveState();
     checkLiquidation();
     submitScore();
   }
@@ -1325,6 +1330,7 @@
 
     state.liquidating = false;
     render();
+    saveState();
 
     if (state.balance < 100 && state.positions.length === 0) {
       setTimeout(() => {
@@ -1345,6 +1351,7 @@
     state.nextId = 1;
     state.lastTickAt = Date.now();
     render();
+    saveState();
   }
 
   // ============ 充值逻辑 ============
@@ -1371,6 +1378,7 @@
     rechargedTotal += capped;
     closeRecharge();
     render();
+    saveState();
     showToast('充值成功 +' + fmtUsd(capped) + '\n当前余额 ' + fmtUsd(state.balance), 'win', 2000);
   }
 
@@ -1674,6 +1682,7 @@
     state.lastTickAt = Date.now();
 
     render();
+    saveState();
     showToast('已切换至「' + curMode().name + '」模式\n' + curMode().hint, 'liquidated', 1800);
   }
 
@@ -1698,6 +1707,7 @@
     });
     loadCandles(pair, chartRange);
     render();
+    saveState();
   });
 
   $('rangeSwitch').addEventListener('click', e => {
@@ -1712,6 +1722,7 @@
       btn.classList.add('active');
       state.leverage = Number(btn.dataset.lev);
       render();
+      saveState();
     });
   });
 
@@ -1788,11 +1799,95 @@
 
   window.addEventListener('resize', resizeCanvas);
 
+  // ============ 本地持久化 ============
+  // 只持久化结构性字段（余额/持仓/编号/杠杆/模式/设置），不持久化实时模拟价；
+  // 刷新后价格从初始值重新模拟，持仓按保存的 entryPrice 继续计算盈亏。
+  const STORAGE_KEY = 'mfhry_fx_state';
+  const STORAGE_VERSION = 1;
+
+  function saveState() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        v: STORAGE_VERSION,
+        balance: state.balance,
+        positions: state.positions,
+        nextId: state.nextId,
+        leverage: state.leverage,
+        mode: state.mode,
+        activePair: state.activePair,
+        chartRange: chartRange,
+        rechargedTotal: rechargedTotal,
+      }));
+    } catch (e) { /* localStorage 不可用 / 配额超限：静默忽略 */ }
+  }
+
+  function loadState() {
+    let raw = null;
+    try { raw = localStorage.getItem(STORAGE_KEY); } catch (e) { return; }
+    if (!raw) return;
+    let data = null;
+    try { data = JSON.parse(raw); } catch (e) { return; }
+    if (!data || data.v !== STORAGE_VERSION) return;
+
+    if (typeof data.balance === 'number' && isFinite(data.balance) && data.balance >= 0) state.balance = data.balance;
+    if (typeof data.nextId === 'number' && isFinite(data.nextId) && data.nextId >= 1) state.nextId = data.nextId;
+    if (typeof data.leverage === 'number' && isFinite(data.leverage) && data.leverage > 0) state.leverage = data.leverage;
+    if (typeof data.mode === 'string' && MODES[data.mode]) state.mode = data.mode;
+    if (typeof data.activePair === 'string' && PAIRS[data.activePair]) state.activePair = data.activePair;
+    if (typeof data.chartRange === 'string' && RANGE_LABELS[data.chartRange]) chartRange = data.chartRange;
+    if (typeof data.rechargedTotal === 'number' && isFinite(data.rechargedTotal) && data.rechargedTotal >= 0) rechargedTotal = data.rechargedTotal;
+
+    if (Array.isArray(data.positions)) {
+      const valid = [];
+      for (const p of data.positions) {
+        if (!p || !PAIRS[p.pair] || (p.side !== 'long' && p.side !== 'short')) continue;
+        if (typeof p.id !== 'number' || typeof p.lots !== 'number' || typeof p.entryPrice !== 'number') continue;
+        if (!isFinite(p.id) || !isFinite(p.lots) || !isFinite(p.entryPrice)) continue;
+        valid.push({
+          id: p.id,
+          pair: p.pair,
+          side: p.side,
+          lots: p.lots,
+          entryPrice: p.entryPrice,
+          margin: (typeof p.margin === 'number' && isFinite(p.margin) && p.margin >= 0) ? p.margin : 0,
+          lev: (typeof p.lev === 'number' && isFinite(p.lev) && p.lev > 0) ? p.lev : state.leverage,
+          tpPrice: (p.tpPrice == null || !isFinite(p.tpPrice)) ? null : p.tpPrice,
+          slPrice: (p.slPrice == null || !isFinite(p.slPrice)) ? null : p.slPrice,
+        });
+      }
+      state.positions = valid;
+    }
+
+    state.liquidating = false;
+  }
+
+  // 价格波动高频触发：防抖 500ms 定期保存，避免每跳写盘（结构性字段无变化时写入为幂等）。
+  let saveDebounceTimer = null;
+  function scheduleSave() {
+    if (saveDebounceTimer) clearTimeout(saveDebounceTimer);
+    saveDebounceTimer = setTimeout(saveState, 500);
+  }
+
   // ============ 启动 ============
+  loadState();
   state.lastTickAt = Date.now();
   resizeCanvas();
+
+  // 应用恢复的设置：货币对 / 图表周期 / 模式 / 杠杆高亮
+  pairTabsEl.querySelectorAll('.pair-tab').forEach(b => {
+    b.classList.toggle('active', b.dataset.pair === state.activePair);
+  });
+  paintRange(state.activePair, chartRange);
+  modeRowEl.querySelectorAll('.mode-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.mode === state.mode);
+  });
+  modeHintEl.textContent = curMode().hint;
+  document.querySelectorAll('.lev-btn').forEach(b => {
+    b.classList.toggle('active', Number(b.dataset.lev) === state.leverage);
+  });
+
   render();
-  loadCandles();
+  loadCandles(state.activePair, chartRange);
   chartRefreshTimer = setInterval(() => loadCandles(state.activePair, chartRange, true), 30000);
   tickProgressLoop();
   startTickTimer();

@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>泡泡龙</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{width:100%;height:100%;overflow:hidden}
+  body{background:#0b0e11;color:#e6edf0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;display:flex;flex-direction:column;user-select:none}
+  header{flex:0 0 auto;padding:12px 16px 8px;text-align:center}
+  h1{font-size:20px;font-weight:700;color:#7fd1b0;letter-spacing:2px}
+  .tip{font-size:11px;color:#7a858e;margin-top:4px}
+  #wrap{flex:1 1 auto;min-height:0;position:relative}
+  canvas{display:block;width:100%;height:100%;touch-action:none;cursor:crosshair}
+</style>
+</head>
+<body>
+<header>
+  <h1>泡泡龙</h1>
+  <div class="tip">底部发射器瞄准并发射彩色泡泡，同色相连 ≥3 个即可消除，悬空泡泡会掉落加分</div>
+</header>
+<div id="wrap"><canvas id="game"></canvas></div>
+<script>
+(function(){
+  "use strict";
+  var LW=480, LH=780, R=15;
+  var DIAM=2*R, DY=Math.sqrt(3)*R;
+  var COLS=Math.floor((LW-R)/DIAM);
+  var TOP=72, LAUNCH_Y=LH-92, SHOOTER_Y=LH-54;
+  var SPEED=850;
+  var COLORS=['#ef476f','#ffd166','#06d6a0','#118ab2','#9b5de5','#ff8f00'];
+
+  var canvas=document.getElementById('game');
+  var ctx=canvas.getContext('2d');
+  var dpr=1, scale=1, offX=0, offY=0;
+
+  var grid=[];
+  var curColor=0, nextColor=0;
+  var score=0, state='play', recorded=false;
+  var aim={x:LW/2,y:0};
+  var shot=null;
+  var falling=[];
+  var lastT=0;
+
+  function sfx(n){ try{ if(window.mfKit&&window.mfKit.sfx) window.mfKit.sfx(n); }catch(e){} }
+  function rnd(){ return Math.floor(Math.random()*COLORS.length); }
+
+  function cellPos(r,c){ return {x:c*DIAM+(r%2?2*R:R), y:TOP+r*DY+R}; }
+  function inGrid(r,c){ return r>=0 && c>=0 && c<COLS; }
+  function getC(r,c){ return inGrid(r,c)?(grid[r]?grid[r][c]:null):null; }
+  function setC(r,c,v){ if(!inGrid(r,c))return; while(grid.length<=r) grid.push(new Array(COLS).fill(null)); grid[r][c]=v; }
+  function neighbors(r,c){
+    var res=[];
+    function push(a,b){ if(inGrid(a,b)) res.push([a,b]); }
+    push(r,c-1); push(r,c+1);
+    if(r%2===0){ push(r-1,c-1); push(r-1,c); push(r+1,c-1); push(r+1,c); }
+    else { push(r-1,c); push(r-1,c+1); push(r+1,c); push(r+1,c+1); }
+    return res;
+  }
+  function countBubbles(){ var n=0,i,j; for(i=0;i<grid.length;i++) for(j=0;j<COLS;j++) if(grid[i][j]!==null) n++; return n; }
+
+  function build(){
+    var r,c,p;
+    while(grid.length<5) grid.push(new Array(COLS).fill(null));
+    for(r=0;r<5;r++) for(c=0;c<COLS;c++){ p=cellPos(r,c); if(p.x>=R && p.x<=LW-R) grid[r][c]=rnd(); }
+  }
+  function reset(){
+    grid=[]; score=0; state='play'; recorded=false; falling=[]; shot=null;
+    curColor=rnd(); nextColor=rnd();
+    build();
+  }
+
+  function findGroup(r,c){
+    var color=grid[r][c], seen={}, stack=[[r,c]], out=[], key;
+    seen[r+','+c]=1;
+    while(stack.length){
+      var cell=stack.pop(), a=cell[0], b=cell[1], nb=neighbors(a,b), i;
+      for(i=0;i<nb.length;i++){
+        var x=nb[i][0], y=nb[i][1]; key=x+','+y;
+        if(!seen[key] && grid[x] && grid[x][y]===color){ seen[key]=1; stack.push([x,y]); }
+      }
+    }
+    for(key in seen) out.push(key.split(',').map(Number));
+    return out;
+  }
+  function removeCells(cells){ var i; for(i=0;i<cells.length;i++) if(grid[cells[i][0]]) grid[cells[i][0]][cells[i][1]]=null; }
+
+  function findFloating(){
+    var reach={}, stack=[], i, c, key;
+    if(grid[0]) for(c=0;c<COLS;c++) if(grid[0][c]!==null){ key='0,'+c; reach[key]=1; stack.push([0,c]); }
+    while(stack.length){
+      var cell=stack.pop(), a=cell[0], b=cell[1], nb=neighbors(a,b), j;
+      for(j=0;j<nb.length;j++){
+        var x=nb[j][0], y=nb[j][1]; key=x+','+y;
+        if(!reach[key] && grid[x] && grid[x][y]!==null){ reach[key]=1; stack.push([x,y]); }
+      }
+    }
+    var floating=[];
+    for(i=0;i<grid.length;i++) for(c=0;c<COLS;c++) if(grid[i][c]!==null){ key=i+','+c; if(!reach[key]) floating.push([i,c]); }
+    return floating;
+  }
+  function spawnFalling(cells){
+    var i;
+    for(i=0;i<cells.length;i++){
+      var r=cells[i][0], c=cells[i][1], p=cellPos(r,c);
+      falling.push({x:p.x,y:p.y,vx:(Math.random()-0.5)*180,vy:-40-Math.random()*80,color:grid[r][c],alpha:1});
+      grid[r][c]=null;
+    }
+  }
+
+  function resolve(pr,pc){
+    var group=findGroup(pr,pc), gained=0, i, j, r, c, p;
+    if(group.length>=3){ removeCells(group); gained+=group.length*10; sfx('pop'); }
+    var float=findFloating();
+    if(float.length){ spawnFalling(float); gained+=float.length*5; sfx('jump'); }
+    score+=gained;
+    if(gained>0) sfx('score');
+    for(r=0;r<grid.length;r++) for(c=0;c<COLS;c++) if(grid[r][c]!==null){ p=cellPos(r,c); if(p.y+R>LAUNCH_Y) return 'lost'; }
+    if(countBubbles()===0) return 'won';
+    return 'play';
+  }
+
+  function shoot(){
+    if(state!=='play') return;
+    var dx=aim.x-LW/2, dy=aim.y-SHOOTER_Y, len=Math.hypot(dx,dy)||1;
+    dx/=len; dy/=len;
+    if(dy>0){ dy=-Math.abs(dy); len=Math.hypot(dx,dy); dx/=len; dy/=len; }
+    shot={x:LW/2,y:SHOOTER_Y,vx:dx*SPEED,vy:dy*SPEED,color:curColor};
+    sfx('hit');
+    curColor=nextColor; nextColor=rnd();
+  }
+
+  function snapShot(){
+    var best=null, bd=Infinity, mr=grid.length+2, r, c, p, d;
+    for(r=0;r<mr;r++) for(c=0;c<COLS;c++){
+      if(getC(r,c)!==null) continue;
+      p=cellPos(r,c);
+      if(p.x<R||p.x>LW-R) continue;
+      d=(shot.x-p.x)*(shot.x-p.x)+(shot.y-p.y)*(shot.y-p.y);
+      if(d<bd){ bd=d; best=[r,c]; }
+    }
+    if(!best){ best=[grid.length, Math.round((shot.x-R)/DIAM)]; if(best[1]<0)best[1]=0; if(best[1]>=COLS)best[1]=COLS-1; }
+    setC(best[0],best[1],shot.color);
+    var res=resolve(best[0],best[1]);
+    shot=null;
+    if(res!=='play') endGame(res);
+  }
+
+  function updateShot(dt){
+    if(!shot) return;
+    shot.x+=shot.vx*dt; shot.y+=shot.vy*dt;
+    if(shot.x<R){ shot.x=R; shot.vx=Math.abs(shot.vx); }
+    if(shot.x>LW-R){ shot.x=LW-R; shot.vx=-Math.abs(shot.vx); }
+    if(shot.y<TOP+R){ snapShot(); return; }
+    var colDist=DIAM*0.88, i, j, p, ddx, ddy;
+    for(i=0;i<grid.length;i++) for(j=0;j<COLS;j++) if(grid[i][j]!==null){
+      p=cellPos(i,j); ddx=shot.x-p.x; ddy=shot.y-p.y;
+      if(ddx*ddx+ddy*ddy < colDist*colDist){ snapShot(); return; }
+    }
+  }
+
+  function updateFalling(dt){
+    var i;
+    for(i=0;i<falling.length;i++){
+      var f=falling[i];
+      f.vy+=900*dt; f.x+=f.vx*dt; f.y+=f.vy*dt;
+      if(f.x<R){ f.x=R; f.vx=Math.abs(f.vx)*0.6; }
+      if(f.x>LW-R){ f.x=LW-R; f.vx=-Math.abs(f.vx)*0.6; }
+      if(f.y>LH-40) f.alpha-=dt*2;
+    }
+    falling=falling.filter(function(f){ return f.alpha>0; });
+  }
+
+  function endGame(res){
+    state = (res==='won') ? 'won' : 'lost';
+    if(res==='won') sfx('win'); else sfx('fail');
+    if(!recorded){
+      recorded=true;
+      try{ if(window.mfhryScore) window.mfhryScore('bubble', score); }catch(e){}
+      try{
+        if(window.mfKit && window.mfKit.getBest && window.mfKit.setBest){
+          var b=window.mfKit.getBest('bubble')||0;
+          if(score>b) window.mfKit.setBest('bubble',score);
+        }
+      }catch(e){}
+    }
+  }
+
+  function toLogical(cx,cy){
+    var rect=canvas.getBoundingClientRect();
+    return {x:(cx-rect.left-offX)/scale, y:(cy-rect.top-offY)/scale};
+  }
+
+  function resize(){
+    var cw=canvas.clientWidth||LW, ch=canvas.clientHeight||LH;
+    dpr=window.devicePixelRatio||1;
+    canvas.width=Math.max(1,Math.round(cw*dpr));
+    canvas.height=Math.max(1,Math.round(ch*dpr));
+    scale=Math.min(cw/LW, ch/LH);
+    offX=(cw-LW*scale)/2; offY=(ch-LH*scale)/2;
+  }
+
+  function drawBubble(x,y,color,alpha){
+    ctx.save(); ctx.globalAlpha=alpha;
+    ctx.beginPath(); ctx.arc(x,y,R-1,0,Math.PI*2);
+    ctx.fillStyle=color; ctx.fill();
+    ctx.lineWidth=1; ctx.strokeStyle='rgba(0,0,0,0.28)'; ctx.stroke();
+    ctx.beginPath(); ctx.arc(x-R*0.3,y-R*0.35,R*0.34,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,255,255,0.35)'; ctx.fill();
+    ctx.restore();
+  }
+
+  function drawBackground(){
+    ctx.strokeStyle='rgba(127,209,176,0.18)'; ctx.lineWidth=1;
+    ctx.setLineDash([6,6]);
+    ctx.beginPath(); ctx.moveTo(0,LAUNCH_Y); ctx.lineTo(LW,LAUNCH_Y); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  function drawGrid(){
+    var i,j,p;
+    for(i=0;i<grid.length;i++) for(j=0;j<COLS;j++) if(grid[i][j]!==null){ p=cellPos(i,j); drawBubble(p.x,p.y,COLORS[grid[i][j]],1); }
+  }
+
+  function drawFalling(){
+    var i;
+    for(i=0;i<falling.length;i++){ var f=falling[i]; drawBubble(f.x,f.y,COLORS[f.color],Math.max(0,f.alpha)); }
+  }
+
+  function drawAim(){
+    if(state!=='play') return;
+    var dx=aim.x-LW/2, dy=aim.y-SHOOTER_Y, len=Math.hypot(dx,dy)||1;
+    dx/=len; dy/=len;
+    if(dy>0){ dy=-Math.abs(dy); len=Math.hypot(dx,dy); dx/=len; dy/=len; }
+    var x=LW/2, y=SHOOTER_Y, vx=dx, vy=dy, step=4, maxSteps=Math.ceil(LH/step)+10, i, j, hit=false, p, ddx, ddy, colDist=DIAM*0.85;
+    ctx.save();
+    ctx.strokeStyle=COLORS[curColor]; ctx.globalAlpha=0.7; ctx.lineWidth=2; ctx.setLineDash([4,6]);
+    ctx.beginPath(); ctx.moveTo(x,y);
+    for(i=0;i<maxSteps;i++){
+      x+=vx*step; y+=vy*step;
+      if(x<R){ x=R; vx=Math.abs(vx); }
+      if(x>LW-R){ x=LW-R; vx=-Math.abs(vx); }
+      ctx.lineTo(x,y);
+      if(y<=TOP){ break; }
+      hit=false;
+      for(j=0;j<grid.length && !hit;j++) for(var k=0;k<COLS;k++) if(grid[j] && grid[j][k]!==null){
+        p=cellPos(j,k); ddx=x-p.x; ddy=y-p.y;
+        if(ddx*ddx+ddy*ddy<colDist*colDist){ hit=true; break; }
+      }
+      if(hit) break;
+    }
+    ctx.stroke(); ctx.setLineDash([]); ctx.restore();
+  }
+
+  function drawShooter(){
+    var cx=LW/2, cy=SHOOTER_Y;
+    ctx.fillStyle='#1b2126';
+    ctx.beginPath(); ctx.arc(cx,cy+7,R+7,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle='rgba(127,209,176,0.5)'; ctx.lineWidth=2; ctx.stroke();
+    drawBubble(cx,cy,COLORS[curColor],1);
+    drawBubble(cx+R*2.3,cy+12,COLORS[nextColor],0.9);
+  }
+
+  function drawHUD(){
+    ctx.textBaseline='top';
+    ctx.textAlign='left'; ctx.fillStyle='#7fd1b0'; ctx.font='bold 20px system-ui,sans-serif';
+    ctx.fillText('得分 '+score, 12, 14);
+    ctx.textAlign='right'; ctx.fillStyle='#9aa4ad'; ctx.font='14px system-ui,sans-serif';
+    ctx.fillText('剩余 '+countBubbles(), LW-12, 18);
+  }
+
+  function drawOverlay(){
+    ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fillRect(0,0,LW,LH);
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillStyle = (state==='won') ? '#7fd1b0' : '#ef476f';
+    ctx.font='bold 40px system-ui,sans-serif';
+    ctx.fillText(state==='won'?'通关！':'失败', LW/2, LH/2-30);
+    ctx.fillStyle='#e6edf0'; ctx.font='20px system-ui,sans-serif';
+    ctx.fillText('得分 '+score, LW/2, LH/2+16);
+    ctx.fillStyle='#9aa4ad'; ctx.font='14px system-ui,sans-serif';
+    ctx.fillText('按 R 或点击右上角重开', LW/2, LH/2+48);
+  }
+
+  function render(){
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.fillStyle='#0b0e11';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.translate(offX,offY); ctx.scale(scale,scale);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0,0,LW,LH); ctx.clip();
+    drawBackground();
+    drawGrid();
+    drawFalling();
+    drawAim();
+    drawShooter();
+    drawHUD();
+    if(state!=='play') drawOverlay();
+    ctx.restore();
+  }
+
+  function frame(t){
+    var dt=(t-lastT)/1000||0.016; if(dt>0.033) dt=0.033; lastT=t;
+    if(state==='play' && shot) updateShot(dt);
+    updateFalling(dt);
+    render();
+    requestAnimationFrame(frame);
+  }
+
+  canvas.addEventListener('pointermove', function(e){ var p=toLogical(e.clientX,e.clientY); aim.x=p.x; aim.y=p.y; });
+  canvas.addEventListener('pointerdown', function(e){ var p=toLogical(e.clientX,e.clientY); aim.x=p.x; aim.y=p.y; if(e.pointerType!=='touch') shoot(); });
+  canvas.addEventListener('pointerup', function(e){ if(e.pointerType==='touch'){ var p=toLogical(e.clientX,e.clientY); aim.x=p.x; aim.y=p.y; shoot(); } });
+  canvas.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+
+  window.mfRestart = function(){ reset(); };
+
+  resize();
+  window.addEventListener('resize', resize);
+  reset();
+  requestAnimationFrame(frame);
+})();
+</script>
+<script src="/games/kit.js"></script>
+</body>
+</html>

@@ -187,6 +187,21 @@
     box-shadow:0 34px 80px rgba(0,0,0,.60),inset 0 1px 0 rgba(255,255,255,.18);
     transition:transform .5s cubic-bezier(.2,.8,.2,1),box-shadow .5s}
   .fs-art.playing{transform:scale(1.012);box-shadow:0 46px 100px rgba(0,0,0,.66),inset 0 1px 0 rgba(255,255,255,.24)}
+  .fs-mv{width:min(78vw,760px);max-height:62vh;aspect-ratio:16/9;object-fit:contain;border-radius:14px;
+    background:#000;border:1px solid rgba(255,255,255,.10);box-shadow:0 34px 80px rgba(0,0,0,.6);display:none}
+  .fs-mv.on{display:block}
+  .fs-art.mvhide,.fs-ly.mvhide{display:none}
+  .fs-mvbar{position:absolute;top:16px;right:16px;z-index:3;display:none;flex-wrap:wrap;gap:6px;max-width:64%;justify-content:flex-end}
+  .fs-mvbar.on{display:flex}
+  .fs-mvbar button{padding:5px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.28);
+    background:rgba(0,0,0,.42);color:#fff;font:600 12px/1 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif;cursor:pointer}
+  .fs-mvbar button:hover{background:rgba(255,255,255,.16)}
+  .fs-mvbar button.on{background:rgba(127,209,176,.9);color:#08201a;border-color:transparent}
+  .fs-mvbtn{margin-top:14px;display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:999px;
+    border:1px solid rgba(127,209,176,.5);background:rgba(127,209,176,.10);color:#9fe8cd;
+    font:600 13px/1 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif;cursor:pointer}
+  .fs-mvbtn:hover{background:rgba(127,209,176,.2)}
+  .fs-mvbtn.on{background:rgba(127,209,176,.9);color:#08201a}
   .fs-info{width:clamp(260px,40vw,460px);color:#fff;min-width:0}
   .fs-title{font-size:clamp(24px,2.8vw,34px);font-weight:700;letter-spacing:-.022em;line-height:1.18;
     overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
@@ -332,9 +347,12 @@
   </div>
   <div class="fs-body">
     <img class="fs-art" id="fsArt" alt="封面" />
+    <video class="fs-mv" id="mv" controls playsinline preload="metadata"></video>
+    <div class="fs-mvbar" id="mvBar"></div>
     <div class="fs-info">
       <div class="fs-title" id="fsTitle">未在播放</div>
       <div class="fs-artist" id="fsArtist"></div>
+      <button class="fs-mvbtn" id="fsMv" hidden>▶ 播放 MV</button>
       <div class="fs-prog">
         <input type="range" id="fsSeek" min="0" max="1000" value="0" />
         <div class="fs-times"><span id="fsCur">0:00</span><span id="fsDur">0:00</span></div>
@@ -364,7 +382,7 @@
 </div>
 
 <audio id="au" preload="auto"></audio>
-<script src="/songs.js?v=4"></script>
+<script src="/songs.js?v=5"></script>
 <script>
 (() => {
   'use strict';
@@ -956,19 +974,106 @@
   const PLAY_SVG = '<svg viewBox="0 0 24 24" width="28" height="28"><path d="M8 5.5v13a1 1 0 0 0 1.53.85l10-6.5a1 1 0 0 0 0-1.7l-10-6.5A1 1 0 0 0 8 5.5z" fill="currentColor"/></svg>';
   const PAUSE_SVG = '<svg viewBox="0 0 24 24" width="28" height="28"><rect x="6.8" y="5" width="3.6" height="14" rx="1.5" fill="currentColor"/><rect x="13.6" y="5" width="3.6" height="14" rx="1.5" fill="currentColor"/></svg>';
 
+  // ---------- MV 播放（可切换分辨率 / 版本） ----------
+  let mvMode = false, mvVers = 0, mvRes = 0;
+  const mv = $('mv'), mvBar = $('mvBar'), mvBtn = $('fsMv');
+
+  function buildMvBar() {
+    const s = queue[idx] || {};
+    if (!mvMode || !s.mv || !s.mv.length) { mvBar.classList.remove('on'); mvBar.innerHTML = ''; return; }
+    mvBar.classList.add('on');
+    mvBar.innerHTML = '';
+    s.mv.forEach((v, i) => {
+      const b = document.createElement('button');
+      b.textContent = v.title || 'MV';
+      b.className = i === mvVers ? 'on' : '';
+      b.onclick = () => { mvVers = i; mvRes = 0; loadMv(); buildMvBar(); if (!mv.paused) mv.play().catch(() => {}); syncFS(); };
+      mvBar.appendChild(b);
+    });
+    const v = s.mv[mvVers];
+    if (v && v.res && v.res.length > 1) {
+      v.res.forEach((r, j) => {
+        const b = document.createElement('button');
+        b.textContent = r.label;
+        b.className = j === mvRes ? 'on' : '';
+        b.onclick = () => {
+          const keep = mv.currentTime || 0;
+          mvRes = j; mv.src = r.url;
+          if (keep) mv.currentTime = keep;
+          buildMvBar();
+          if (!mv.paused) mv.play().catch(() => {});
+          syncFS();
+        };
+        mvBar.appendChild(b);
+      });
+    }
+  }
+
+  function loadMv() {
+    const v = (queue[idx] || {}).mv;
+    if (!v || !v[mvVers] || !v[mvVers].res[mvRes]) return;
+    mv.src = v[mvVers].res[mvRes].url;
+  }
+
+  function enterMv() {
+    const s = queue[idx] || {};
+    if (!s.mv || !s.mv.length) return;
+    if (mvVers >= s.mv.length) mvVers = 0;
+    if (mvRes >= (s.mv[mvVers].res || []).length) mvRes = 0;
+    mvMode = true;
+    mvBtn.textContent = '✕ 退出 MV';
+    const keep = au.currentTime || 0;
+    loadMv();
+    if (keep) { try { mv.currentTime = keep; } catch (e) {} }
+    fsArt.classList.add('mvhide');
+    $('lyricsCard').classList.add('mvhide');
+    mv.classList.add('on');
+    buildMvBar();
+    if (!au.paused) { au.pause(); mv.play().catch(() => {}); }
+    syncFS();
+  }
+
+  function exitMv() {
+    if (!mvMode) return;
+    const wasPlaying = !!mv.src && !mv.paused;
+    const pos = mv.currentTime || 0;
+    mvMode = false;
+    mvBtn.textContent = '▶ 播放 MV';
+    mv.classList.remove('on');
+    mvBar.classList.remove('on');
+    fsArt.classList.remove('mvhide');
+    $('lyricsCard').classList.remove('mvhide');
+    mv.pause();
+    if (wasPlaying) {
+      if (pos && au.duration && pos < au.duration) { try { au.currentTime = pos; } catch (e) {} }
+      au.play().catch(() => {});
+    }
+    syncFS();
+  }
+
+  mvBtn.onclick = () => (mvMode ? exitMv() : enterMv());
+  mv.addEventListener('timeupdate', syncFS);
+  mv.addEventListener('play', syncFS);
+  mv.addEventListener('pause', syncFS);
+  mv.addEventListener('ended', () => step(1));
+
   function syncFS() {
     const s = queue[idx] || {};
-    const playing = !!au.src && !au.paused;
+    const playing = mvMode ? !!mv.src && !mv.paused : !!au.src && !au.paused;
     $('fsTitle').textContent = s.title || '未在播放';
     $('fsArtist').textContent = s.artist || '';
     $('fsToggle').innerHTML = playing ? PAUSE_SVG : PLAY_SVG;
-    $('fsCur').textContent = mmss(au.currentTime);
-    $('fsDur').textContent = mmss(au.duration);
-    if (au.duration) { const fp = Math.round((au.currentTime / au.duration) * 1000); $('fsSeek').value = String(fp); $('fsSeek').style.setProperty('--p', (fp/10)+'%'); }
+    const t = mvMode ? mv : au;
+    $('fsCur').textContent = mmss(t.currentTime);
+    $('fsDur').textContent = mmss(t.duration);
+    if (t.duration) { const fp = Math.round((t.currentTime / t.duration) * 1000); $('fsSeek').value = String(fp); $('fsSeek').style.setProperty('--p', (fp/10)+'%'); }
     $('fsVol').value = String(au.volume);
     $('fsShuffle').classList.toggle('on', loopMode === 2);
     $('fsLoop').classList.toggle('on', loopMode !== 0);
-    fsArt.classList.toggle('playing', playing);
+    fsArt.classList.toggle('playing', !mvMode && playing);
+    const hasMv = !!(s.mv && s.mv.length);
+    $('fsMv').hidden = mvMode ? false : !hasMv;
+    if (mvMode && !hasMv) exitMv();
   }
 
   function renderFsQueue() {
@@ -1013,16 +1118,18 @@
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
     else (fsEl.requestFullscreen ? fsEl.requestFullscreen() : Promise.reject()).catch(() => {});
   };
-  $('fsToggle').onclick = () => $('toggle').click();
+  $('fsToggle').onclick = () => { if (mvMode) { mv.paused ? mv.play().catch(() => {}) : mv.pause(); } else $('toggle').click(); };
   $('fsPrev').onclick = () => step(-1);
   $('fsNext').onclick = () => step(1);
   $('fsLoop').onclick = () => $('loop').click();
   $('fsShuffle').onclick = () => { loopMode = loopMode === 2 ? 0 : 2; $('loop').textContent = LOOP_TXT[loopMode]; syncFS(); };
   $('fsSeek').addEventListener('input', () => {
-    if (au.duration) au.currentTime = (+$('fsSeek').value / 1000) * au.duration;
+    const t = mvMode ? mv : au;
+    if (t.duration) t.currentTime = (+$('fsSeek').value / 1000) * t.duration;
   });
   $('fsVol').addEventListener('input', () => {
     au.volume = +$('fsVol').value;
+    mv.volume = au.volume;
     $('vol').value = String(au.volume);
     try { localStorage.setItem('mfhry_music_vol', $('vol').value); } catch (e) {}
   });

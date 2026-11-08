@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>飞机大战</title>
+<style>
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: #0b0e11;
+    color: #e8f0ec;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  h1 {
+    margin: 12px 0 2px;
+    text-align: center;
+    font-size: 20px;
+    font-weight: 700;
+    color: #7fd1b0;
+    letter-spacing: 4px;
+  }
+  .hint {
+    margin: 0 0 8px;
+    text-align: center;
+    font-size: 12px;
+    color: #6b7d75;
+  }
+  #stage {
+    flex: 1;
+    min-height: 0;
+    position: relative;
+    touch-action: none;
+  }
+  #game {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: #0b0e11;
+    cursor: crosshair;
+  }
+  #overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: rgba(11, 14, 17, 0.78);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+  #overlay.show { opacity: 1; pointer-events: auto; }
+  #ovTitle { font-size: 28px; font-weight: 700; color: #ffffff; letter-spacing: 2px; }
+  #ovScore { font-size: 22px; font-weight: 700; color: #7fd1b0; }
+  #ovBest { font-size: 14px; color: #9fb8ad; }
+  #ovNew { font-size: 14px; color: #ffd766; display: none; }
+  #btnRestart {
+    margin-top: 10px;
+    padding: 10px 28px;
+    font-size: 16px;
+    font-weight: 700;
+    border: none;
+    border-radius: 10px;
+    background: #7fd1b0;
+    color: #0b0e11;
+    cursor: pointer;
+    letter-spacing: 2px;
+  }
+  #btnRestart:active { transform: scale(0.96); }
+</style>
+</head>
+<body>
+<h1>飞机大战</h1>
+<p class="hint">←→ / A D 移动 · 空格 / 点击射击 · 手机左右拖动移动，轻点射击</p>
+<div id="stage">
+  <canvas id="game"></canvas>
+  <div id="overlay">
+    <div id="ovTitle">游戏结束</div>
+    <div id="ovScore">得分 0</div>
+    <div id="ovBest">最佳 0</div>
+    <div id="ovNew">🎉 新纪录！</div>
+    <button id="btnRestart">再来一局</button>
+  </div>
+</div>
+
+<script src="/games/kit.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  /* ---------------- 工具 ---------------- */
+  function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
+  function rand(a, b) { return a + Math.random() * (b - a); }
+  function kit() {
+    return (typeof window !== 'undefined' && window.mfKit) ? window.mfKit : {};
+  }
+  function play(name) {
+    try {
+      var k = kit();
+      if (k && typeof k.sfx === 'function') k.sfx(name);
+    } catch (e) { /* 音效失败不影响游戏 */ }
+  }
+
+  /* ---------------- DOM ---------------- */
+  var stage = document.getElementById('stage');
+  var canvas = document.getElementById('game');
+  var ctx = canvas.getContext('2d');
+  var overlay = document.getElementById('overlay');
+  var ovScore = document.getElementById('ovScore');
+  var ovBest = document.getElementById('ovBest');
+  var ovNew = document.getElementById('ovNew');
+  var btnRestart = document.getElementById('btnRestart');
+
+  /* ---------------- 尺寸（DPR 高清适配） ---------------- */
+  var W = 0, H = 0, DPR = 1;
+  function resize() {
+    var r = stage.getBoundingClientRect();
+    W = Math.max(1, r.width);
+    H = Math.max(1, r.height);
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.round(W * DPR);
+    canvas.height = Math.round(H * DPR);
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    if (player) player.y = H - 90;
+    initBg();
+  }
+  window.addEventListener('resize', resize);
+
+  /* ---------------- 游戏状态 ---------------- */
+  var player = null;
+  var bullets = [], enemies = [], stars = [], parts = [], bg = [];
+  var score = 0, elapsed = 0;
+  var running = false, over = false;
+  var lastT = 0, shootT = 0, enemyT = 0, starT = 0, raf = null;
+
+  function initBg() {
+    bg = [];
+    var n = Math.max(30, Math.round(W / 16));
+    for (var i = 0; i < n; i++) {
+      bg.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        s: rand(0.6, 2.2),
+        v: rand(12, 42),
+        a: rand(0.12, 0.55)
+      });
+    }
+  }
+
+  function difficulty() { return 1 + Math.min(elapsed / 55, 3.2); }
+
+  /* ---------------- 生成 ---------------- */
+  function spawnEnemy() {
+    var spd = difficulty();
+    if (Math.random() < 0.45) {
+      var r = rand(13, 24);
+      enemies.push({
+        type: 'meteor',
+        x: rand(r + 8, W - r - 8),
+        y: -r * 2,
+        r: r,
+        vy: rand(120, 210) * spd,
+        rot: rand(0, 6.28),
+        vr: rand(-2, 2)
+      });
+    } else {
+      var w = rand(34, 50), h = rand(26, 36);
+      enemies.push({
+        type: 'enemy',
+        x: rand(w / 2 + 6, W - w / 2 - 6),
+        y: -h,
+        w: w,
+        h: h,
+        vy: rand(90, 170) * spd,
+        rot: rand(-0.35, 0.35)
+      });
+    }
+  }
+
+  function spawnStar() {
+    stars.push({ x: rand(16, W - 16), y: -16, r: rand(9, 13), vy: rand(70, 110) });
+  }
+
+  function addParts(x, y, color, n) {
+    for (var i = 0; i < n; i++) {
+      var a = rand(0, 6.28), sp = rand(40, 220);
+      parts.push({
+        x: x, y: y,
+        vx: Math.cos(a) * sp,
+        vy: Math.sin(a) * sp,
+        life: rand(0.25, 0.6),
+        max: 0.6,
+        r: rand(1.5, 4),
+        color: color
+      });
+    }
+  }
+
+  /* ---------------- 射击 ---------------- */
+  function shoot() {
+    if (!running) return;
+    bullets.push({ x: player.x, y: player.y - player.h / 2 - 6, vy: -600, w: 4, h: 14 });
+    play('pop');
+  }
+
+  /* ---------------- 碰撞 ---------------- */
+  function hitEnemy(e, b) {
+    if (e.type === 'meteor') {
+      var qx = clamp(e.x, b.x - b.w / 2, b.x + b.w / 2);
+      var qy = clamp(e.y, b.y - b.h / 2, b.y + b.h / 2);
+      var dx = e.x - qx, dy = e.y - qy;
+      return dx * dx + dy * dy <= e.r * e.r;
+    }
+    return Math.abs(e.x - b.x) < (e.w + b.w) / 2 && Math.abs(e.y - b.y) < (e.h + b.h) / 2;
+  }
+
+  function hitPlayer(e) {
+    var pw = player.w * 0.6, ph = player.h * 0.6;
+    if (e.type === 'meteor') {
+      var qx = clamp(e.x, player.x - pw / 2, player.x + pw / 2);
+      var qy = clamp(e.y, player.y - ph / 2, player.y + ph / 2);
+      var dx = e.x - qx, dy = e.y - qy;
+      return dx * dx + dy * dy <= e.r * e.r;
+    }
+    return Math.abs(e.x - player.x) < (e.w + pw) / 2 && Math.abs(e.y - player.y) < (e.h + ph) / 2;
+  }
+
+  /* ---------------- 游戏结束 ---------------- */
+  function gameOver() {
+    if (over) return;
+    over = true;
+    running = false;
+    play('fail');
+    var k = kit();
+    var b = 0;
+    try { b = (typeof k.getBest === 'function') ? (k.getBest('dodger') || 0) : 0; } catch (e) { b = 0; }
+    var isNew = score > 0 && score > b;
+    var nb = Math.max(b, score);
+    try { if (isNew && typeof k.setBest === 'function') k.setBest('dodger', score); } catch (e) {}
+    try { if (score > 0 && typeof window.mfhryScore === 'function') window.mfhryScore('dodger', score); } catch (e) {}
+    ovScore.textContent = '得分 ' + score;
+    ovBest.textContent = '最佳 ' + nb;
+    ovNew.style.display = isNew ? 'block' : 'none';
+    overlay.classList.add('show');
+  }
+
+  /* ---------------- 重开 ---------------- */
+  function restart() {
+    player = { x: W / 2, y: H - 90, w: 46, h: 42, speed: 340 };
+    bullets = []; enemies = []; stars = []; parts = [];
+    score = 0; elapsed = 0; over = false; running = true;
+    shootT = 0; enemyT = 0.5; starT = 1.5;
+    overlay.classList.remove('show');
+    if (!raf) {
+      lastT = performance.now();
+      raf = requestAnimationFrame(loop);
+    }
+  }
+  window.mfRestart = restart;
+
+  /* ---------------- 键盘 ---------------- */
+  var keys = { left: false, right: false };
+  window.addEventListener('keydown', function (e) {
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') { keys.left = true; e.preventDefault(); }
+    else if (e.code === 'ArrowRight' || e.code === 'KeyD') { keys.right = true; e.preventDefault(); }
+    else if (e.code === 'Space') { if (!over) shoot(); e.preventDefault(); }
+  });
+  window.addEventListener('keyup', function (e) {
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
+    else if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
+  });
+
+  /* ---------------- 鼠标（桌面点击射击） ---------------- */
+  canvas.addEventListener('mousedown', function () { shoot(); });
+
+  /* ---------------- 触屏（拖动移动 / 轻点射击） ---------------- */
+  var tId = null, tStartX = 0, tStartPx = 0, tStartT = 0, tMoved = 0;
+  stage.addEventListener('touchstart', function (e) {
+    if (over) return;
+    var t = e.changedTouches[0];
+    tId = t.identifier; tStartX = t.clientX; tStartPx = player.x;
+    tStartT = performance.now(); tMoved = 0;
+    e.preventDefault();
+  }, { passive: false });
+  stage.addEventListener('touchmove', function (e) {
+    if (over) return;
+    for (var i = 0; i < e.changedTouches.length; i++) {
+      var t = e.changedTouches[i];
+      if (t.identifier === tId) {
+        var dx = t.clientX - tStartX;
+        tMoved = Math.max(tMoved, Math.abs(dx));
+        player.x = clamp(tStartPx + dx, player.w / 2 + 4, W - player.w / 2 - 4);
+      }
+    }
+    e.preventDefault();
+  }, { passive: false });
+  stage.addEventListener('touchend', function (e) {
+    if (over) return;
+    for (var i = 0; i < e.changedTouches.length; i++) {
+      var t = e.changedTouches[i];
+      if (t.identifier === tId) {
+        var dt = performance.now() - tStartT;
+        if (tMoved < 8 && dt < 260) shoot();
+        tId = null;
+      }
+    }
+    e.preventDefault();
+  }, { passive: false });
+
+  /* ---------------- 更新 ---------------- */
+  function update(dt) {
+    elapsed += dt;
+
+    // 玩家移动（键盘）
+    var dir = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+    if (dir !== 0) player.x += dir * player.speed * dt;
+    player.x = clamp(player.x, player.w / 2 + 4, W - player.w / 2 - 4);
+
+    // 自动射击
+    shootT -= dt;
+    if (shootT <= 0) {
+      shoot();
+      shootT = Math.max(0.22, 0.5 - elapsed * 0.003);
+    }
+
+    // 子弹
+    for (var i = bullets.length - 1; i >= 0; i--) {
+      var b = bullets[i];
+      b.y += b.vy * dt;
+      if (b.y < -30) bullets.splice(i, 1);
+    }
+
+    // 生成敌机
+    enemyT -= dt;
+    if (enemyT <= 0) {
+      spawnEnemy();
+      var base = Math.max(0.32, 0.85 - elapsed * 0.007);
+      enemyT = base * rand(0.7, 1.3);
+    }
+
+    // 敌机/流星
+    for (i = enemies.length - 1; i >= 0; i--) {
+      var e = enemies[i];
+      e.y += e.vy * dt;
+      if (e.rot !== undefined) e.rot += (e.vr || 0) * dt;
+      if (e.y > H + 40) { enemies.splice(i, 1); continue; }
+      for (var j = bullets.length - 1; j >= 0; j--) {
+        if (hitEnemy(e, bullets[j])) {
+          bullets.splice(j, 1);
+          enemies.splice(i, 1);
+          score += 10;
+          play('boom');
+          addParts(e.x, e.y, '#ff8a5c', 10);
+          break;
+        }
+      }
+    }
+
+    // 玩家被撞 → 结束
+    for (i = 0; i < enemies.length; i++) {
+      if (hitPlayer(enemies[i])) {
+        addParts(player.x, player.y, '#7fd1b0', 22);
+        gameOver();
+        break;
+      }
+    }
+    if (over) return;
+
+    // 星星
+    starT -= dt;
+    if (starT <= 0) { spawnStar(); starT = rand(3, 5); }
+    for (i = stars.length - 1; i >= 0; i--) {
+      var s = stars[i];
+      s.y += s.vy * dt;
+      if (s.y > H + 20) { stars.splice(i, 1); continue; }
+      if (Math.abs(s.x - player.x) < player.w / 2 + s.r &&
+          Math.abs(s.y - player.y) < player.h / 2 + s.r) {
+        stars.splice(i, 1);
+        score += 5;
+        play('score');
+        addParts(s.x, s.y, '#ffd766', 8);
+      }
+    }
+
+    // 粒子
+    for (i = parts.length - 1; i >= 0; i--) {
+      var p = parts[i];
+      p.life -= dt;
+      if (p.life <= 0) { parts.splice(i, 1); continue; }
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      p.vx *= 0.98; p.vy *= 0.98;
+    }
+  }
+
+  /* ---------------- 绘制 ---------------- */
+  function drawPlayer() {
+    var x = player.x, y = player.y, w = player.w, h = player.h;
+    ctx.save();
+    ctx.translate(x, y);
+    // 光晕
+    var g = ctx.createRadialGradient(0, 0, 4, 0, 0, h * 0.9);
+    g.addColorStop(0, 'rgba(127,209,176,0.25)');
+    g.addColorStop(1, 'rgba(127,209,176,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(0, 0, h * 0.9, 0, 6.283); ctx.fill();
+    // 机体（朝上的三角）
+    ctx.fillStyle = '#7fd1b0';
+    ctx.beginPath();
+    ctx.moveTo(0, -h / 2);
+    ctx.lineTo(w / 2, h / 2);
+    ctx.lineTo(0, h / 2 - 7);
+    ctx.lineTo(-w / 2, h / 2);
+    ctx.closePath();
+    ctx.fill();
+    // 机翼高光
+    ctx.fillStyle = '#a8ecd2';
+    ctx.beginPath();
+    ctx.moveTo(0, -h / 2 + 6);
+    ctx.lineTo(w / 2 - 4, h / 2);
+    ctx.lineTo(0, h / 2 - 10);
+    ctx.closePath();
+    ctx.fill();
+    // 座舱
+    ctx.fillStyle = '#0b0e11';
+    ctx.beginPath();
+    ctx.ellipse(0, -3, 4.5, 9, 0, 0, 6.283);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawEnemy(e) {
+    ctx.save();
+    ctx.translate(e.x, e.y);
+    ctx.rotate(e.rot);
+    if (e.type === 'meteor') {
+      var g = ctx.createRadialGradient(0, 0, 2, 0, 0, e.r * 1.5);
+      g.addColorStop(0, 'rgba(255,120,90,0.5)');
+      g.addColorStop(1, 'rgba(255,120,90,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(0, 0, e.r * 1.5, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#c0563f';
+      ctx.beginPath(); ctx.arc(0, 0, e.r, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#8f3a2a';
+      ctx.beginPath(); ctx.arc(e.r * 0.2, -e.r * 0.15, e.r * 0.5, 0, 6.283); ctx.fill();
+      ctx.fillStyle = 'rgba(60,25,18,0.8)';
+      ctx.beginPath(); ctx.arc(-e.r * 0.3, e.r * 0.2, e.r * 0.2, 0, 6.283); ctx.fill();
+      ctx.beginPath(); ctx.arc(e.r * 0.25, e.r * 0.35, e.r * 0.15, 0, 6.283); ctx.fill();
+    } else {
+      // 敌机（朝下的三角）
+      ctx.fillStyle = '#e0554e';
+      ctx.beginPath();
+      ctx.moveTo(0, e.h / 2);
+      ctx.lineTo(e.w / 2, -e.h / 2);
+      ctx.lineTo(0, -e.h / 2 + 6);
+      ctx.lineTo(-e.w / 2, -e.h / 2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#0b0e11';
+      ctx.beginPath();
+      ctx.ellipse(0, 2, 4, 7, 0, 0, 6.283);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawBullet(b) {
+    var g = ctx.createLinearGradient(b.x, b.y - b.h / 2, b.x, b.y + b.h / 2);
+    g.addColorStop(0, '#a5ffd9');
+    g.addColorStop(1, 'rgba(127,209,176,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(b.x - b.w / 2, b.y - b.h / 2, b.w, b.h);
+  }
+
+  function drawStar(x, y, r) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.fillStyle = '#ffd766';
+    ctx.shadowColor = 'rgba(255,215,102,0.8)';
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    for (var i = 0; i < 5; i++) {
+      var a = -Math.PI / 2 + i * 2 * Math.PI / 5;
+      var a2 = a + Math.PI / 5;
+      ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+      ctx.lineTo(Math.cos(a2) * r * 0.45, Math.sin(a2) * r * 0.45);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.restore();
+  }
+
+  function draw() {
+    // 背景
+    ctx.fillStyle = '#0b0e11';
+    ctx.fillRect(0, 0, W, H);
+    for (var i = 0; i < bg.length; i++) {
+      var s = bg[i];
+      ctx.globalAlpha = s.a;
+      ctx.fillStyle = '#9fb8ad';
+      ctx.fillRect(s.x, s.y, s.s, s.s);
+    }
+    ctx.globalAlpha = 1;
+
+    // 实体
+    for (i = 0; i < stars.length; i++) drawStar(stars[i].x, stars[i].y, stars[i].r);
+    for (i = 0; i < enemies.length; i++) drawEnemy(enemies[i]);
+    for (i = 0; i < bullets.length; i++) drawBullet(bullets[i]);
+    if (player && !over) drawPlayer();
+
+    // 粒子
+    for (i = 0; i < parts.length; i++) {
+      var p = parts[i];
+      ctx.globalAlpha = Math.max(0, p.life / p.max);
+      ctx.fillStyle = p.color;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.283); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    // 得分
+    if (player || over) {
+      ctx.fillStyle = '#7fd1b0';
+      ctx.font = '700 22px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.shadowColor = 'rgba(127,209,176,0.5)';
+      ctx.shadowBlur = 8;
+      ctx.fillText(String(score), W / 2, 12);
+      ctx.shadowBlur = 0;
+    }
+  }
+
+  /* ---------------- 主循环 ---------------- */
+  function loop() {
+    raf = requestAnimationFrame(loop);
+    var now = performance.now();
+    var dt = (now - lastT) / 1000;
+    if (dt > 0.05) dt = 0.05;
+    if (dt < 0) dt = 0;
+    lastT = now;
+
+    // 背景始终飘动
+    for (var i = 0; i < bg.length; i++) {
+      var s = bg[i];
+      s.y += s.v * dt;
+      if (s.y > H) { s.y = 0; s.x = Math.random() * W; }
+    }
+
+    if (running && player) update(dt);
+    draw();
+  }
+
+  /* ---------------- 启动 ---------------- */
+  btnRestart.addEventListener('click', restart);
+  resize();
+  restart();
+})();
+</script>
+</body>
+</html>

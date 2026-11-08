@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>推箱子</title>
+<style>
+  :root{
+    --bg:#0b0e11; --accent:#7fd1b0; --panel:#14181d; --text:#e8f0ec;
+    --muted:#8a9a92; --wall:#232a32; --floor:#12161c; --box:#2f3b34;
+    --boxBorder:#7fd1b0; --gold:#ffd98a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
+    min-height:100vh; display:flex; flex-direction:column; align-items:center;
+    padding:14px 12px 12px; overflow:hidden; user-select:none;
+  }
+  h1{color:var(--accent); font-size:22px; letter-spacing:6px; text-indent:6px; margin:2px 0 6px; font-weight:700;}
+  .hint{font-size:12px; color:var(--muted); margin-bottom:12px; text-align:center; line-height:1.5;}
+  .status{display:flex; align-items:center; gap:8px; font-size:13px; color:#cfe0d8; margin-bottom:12px; flex-wrap:wrap; justify-content:center;}
+  .status .pill{background:var(--panel); padding:5px 12px; border-radius:8px; white-space:nowrap;}
+  .navbtn{background:var(--panel); color:var(--accent); border:1px solid #222a31; border-radius:8px; padding:5px 10px; font-size:13px; cursor:pointer; line-height:1;}
+  .navbtn:active{transform:scale(.94);}
+  #boardWrap{flex:1; width:100%; display:flex; justify-content:center; align-items:center;}
+  #board{display:grid; touch-action:none;}
+  .cell{width:var(--cell); height:var(--cell); position:relative;}
+  .cell.wall{background:var(--wall); border-radius:4px; box-shadow:inset 0 0 0 1px rgba(0,0,0,.4);}
+  .cell.floor{background:var(--floor);}
+  .cell.target::after{content:""; position:absolute; inset:30%; background:rgba(127,209,176,.28); border-radius:50%;}
+  .cell.box{background:var(--box); border:2px solid var(--boxBorder); border-radius:6px; box-shadow:0 2px 0 rgba(0,0,0,.35);}
+  .cell.box::before{content:""; position:absolute; inset:26%; background:rgba(255,255,255,.10); border-radius:3px;}
+  .cell.box.target{border-color:var(--gold);}
+  .cell.box.target::after{content:""; position:absolute; inset:30%; background:var(--gold); border-radius:50%; opacity:.75;}
+  .cell.player::before{content:""; position:absolute; inset:14%; background:var(--accent); border-radius:50%; box-shadow:0 0 8px rgba(127,209,176,.6);}
+  .cell.player.target::after{content:""; position:absolute; inset:34%; background:var(--bg); border-radius:50%; opacity:.8;}
+  .overlay{position:fixed; inset:0; background:rgba(5,8,10,.72); display:flex; align-items:center; justify-content:center; z-index:10; backdrop-filter:blur(3px);}
+  .overlay.hidden{display:none;}
+  .overlay-box{background:#12171c; border:1px solid #26303a; border-radius:16px; padding:26px 30px; text-align:center; max-width:86%;}
+  .overlay-box h2{color:var(--accent); font-size:20px; margin-bottom:10px;}
+  .overlay-box p{color:var(--muted); font-size:14px; margin-bottom:18px;}
+  .overlay-box button{background:var(--accent); color:#08211a; font-size:15px; font-weight:700; border:none; border-radius:10px; padding:10px 22px; cursor:pointer;}
+  .overlay-box button:active{transform:scale(.96);}
+</style>
+</head>
+<body>
+<h1>推箱子</h1>
+<p class="hint">方向键 / WASD / 触屏滑动移动 · 把所有箱子推到目标点 · R 键重开本关</p>
+<div class="status">
+  <button class="navbtn" id="prevBtn" aria-label="上一关">◀</button>
+  <span class="pill" id="levelLabel">第 1 / 8 关</span>
+  <button class="navbtn" id="nextBtn" aria-label="下一关">▶</button>
+  <span class="pill" id="stepsLabel">步数 0</span>
+  <span class="pill" id="scoreLabel">已过关 0</span>
+  <span class="pill" id="bestLabel">最佳 0</span>
+</div>
+<div id="boardWrap">
+  <div id="board"></div>
+</div>
+<div id="overlay" class="overlay hidden">
+  <div class="overlay-box">
+    <h2 id="overlayTitle"></h2>
+    <p id="overlayText"></p>
+    <button id="overlayBtn"></button>
+  </div>
+</div>
+<script src="/games/kit.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  // ---- 关卡定义：'#'墙 ' '空地 '.'目标 '@'人 '$'箱 '*'箱在目标 '+'人在目标 ----
+  const LEVELS = [
+    [
+      "#####",
+      "#@$.#",
+      "#####"
+    ],
+    [
+      "#######",
+      "#     #",
+      "# @$. #",
+      "# $ . #",
+      "#     #",
+      "#######"
+    ],
+    [
+      "########",
+      "#      #",
+      "#  @$  #",
+      "#  $ . #",
+      "#  .   #",
+      "#      #",
+      "########"
+    ],
+    [
+      "#########",
+      "#   #   #",
+      "# @ #$  #",
+      "# $ # . #",
+      "#  .    #",
+      "#       #",
+      "#########"
+    ],
+    [
+      "#########",
+      "#       #",
+      "# @$ $  #",
+      "#  $ .  #",
+      "#  . .  #",
+      "#       #",
+      "#########"
+    ],
+    [
+      "#########",
+      "#       #",
+      "#  $  . #",
+      "# @ $ . #",
+      "#  $ .  #",
+      "#       #",
+      "#########"
+    ],
+    [
+      "#########",
+      "#       #",
+      "# @$ $  #",
+      "#  $ .  #",
+      "#  . .  #",
+      "#  $ .  #",
+      "#       #",
+      "#########"
+    ],
+    [
+      "#########",
+      "#       #",
+      "#  @$   #",
+      "#  $$ . #",
+      "#  .    #",
+      "#  .    #",
+      "#       #",
+      "#########"
+    ]
+  ];
+
+  // ---- DOM ----
+  const boardEl = document.getElementById('board');
+  const wrapEl = document.getElementById('boardWrap');
+  const levelLabel = document.getElementById('levelLabel');
+  const stepsLabel = document.getElementById('stepsLabel');
+  const scoreLabel = document.getElementById('scoreLabel');
+  const bestLabel = document.getElementById('bestLabel');
+  const overlay = document.getElementById('overlay');
+  const overlayTitle = document.getElementById('overlayTitle');
+  const overlayText = document.getElementById('overlayText');
+  const overlayBtn = document.getElementById('overlayBtn');
+
+  // ---- kit 音效 ----
+  const kit = window.mfKit || null;
+  function sfx(n) {
+    if (kit && typeof kit.sfx === 'function') { try { kit.sfx(n); } catch (e) {} }
+  }
+
+  // ---- 状态 ----
+  let level = 0;          // 当前关卡下标（0 起）
+  let levelsPassed = 0;   // 已通过关卡数（成绩）
+  let steps = 0;          // 当前关步数
+  let board = [];         // 基础格：'#'墙 ' '空地 '.'目标
+  let boxes = [];         // 箱子位置 [{r,c}]
+  let player = { r: 0, c: 0 };
+  let rows = 0, cols = 0;
+  let won = false;
+
+  function hasBox(r, c) { return boxes.some(function (b) { return b.r === r && b.c === c; }); }
+  function isTarget(r, c) { return board[r][c] === '.'; }
+
+  function refreshBest() {
+    let b = 0;
+    if (kit && typeof kit.getBest === 'function') { try { b = kit.getBest('sokoban') || 0; } catch (e) {} }
+    bestLabel.textContent = '最佳 ' + b;
+  }
+
+  // ---- 持久化：刷新恢复进度 ----
+  const SAVE_KEY = 'mfhry_sokoban_state';
+  const SAVE_VERSION = 1;
+
+  function saveState() {
+    try {
+      localStorage.setItem(SAVE_KEY, JSON.stringify({
+        version: SAVE_VERSION,
+        level: level,
+        levelsPassed: levelsPassed,
+        steps: steps,
+        board: board,
+        boxes: boxes,
+        player: player
+      }));
+    } catch (e) { /* localStorage 不可用时静默忽略 */ }
+  }
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(SAVE_KEY);
+      if (!raw) return false;
+      const d = JSON.parse(raw);
+      if (!d || d.version !== SAVE_VERSION) return false;
+      if (typeof d.level !== 'number' || d.level < 0 || d.level >= LEVELS.length) return false;
+      if (typeof d.levelsPassed !== 'number' || d.levelsPassed < 0) return false;
+      if (typeof d.steps !== 'number' || d.steps < 0) return false;
+      if (!Array.isArray(d.board) || !Array.isArray(d.board[0])) return false;
+      const br = d.board.length, bc = d.board[0].length;
+      if (br === 0 || bc === 0) return false;
+      for (let i = 0; i < br; i++) {
+        if (!Array.isArray(d.board[i]) || d.board[i].length !== bc) return false;
+        for (let j = 0; j < bc; j++) {
+          const v = d.board[i][j];
+          if (v !== '#' && v !== ' ' && v !== '.') return false;
+        }
+      }
+      if (!Array.isArray(d.boxes) || !Array.isArray(d.player)) return false;
+      function inB(p) {
+        return p && typeof p.r === 'number' && typeof p.c === 'number' &&
+          p.r >= 0 && p.r < br && p.c >= 0 && p.c < bc;
+      }
+      if (!inB(d.player)) return false;
+      if (d.board[d.player.r][d.player.c] === '#') return false;
+      for (let i = 0; i < d.boxes.length; i++) {
+        if (!inB(d.boxes[i])) return false;
+        if (d.board[d.boxes[i].r][d.boxes[i].c] === '#') return false;
+      }
+      // 校验通过，恢复现场
+      level = d.level;
+      levelsPassed = d.levelsPassed;
+      steps = d.steps;
+      board = d.board;
+      boxes = d.boxes.map(function (b) { return { r: b.r, c: b.c }; });
+      player = { r: d.player.r, c: d.player.c };
+      rows = br; cols = bc;
+      won = boxes.every(function (b) { return isTarget(b.r, b.c); });
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // ---- 加载关卡 ----
+  function parseLevel(idx) {
+    const rowsArr = LEVELS[idx];
+    const h = rowsArr.length;
+    const w = Math.max.apply(null, rowsArr.map(function (r) { return r.length; }));
+    board = [];
+    boxes = [];
+    player = { r: 0, c: 0 };
+    for (let r = 0; r < h; r++) {
+      const row = rowsArr[r];
+      const br = [];
+      for (let c = 0; c < w; c++) {
+        const ch = c < row.length ? row[c] : ' ';
+        if (ch === '#') { br.push('#'); }
+        else if (ch === '.' || ch === '*') { br.push('.'); }
+        else { br.push(' '); }
+        if (ch === '$' || ch === '*') { boxes.push({ r: r, c: c }); }
+        if (ch === '@' || ch === '+') { player = { r: r, c: c }; }
+      }
+      board.push(br);
+    }
+    rows = h; cols = w;
+    steps = 0;
+    won = false;
+  }
+
+  function loadLevel(idx) {
+    level = Math.max(0, Math.min(LEVELS.length - 1, idx));
+    parseLevel(level);
+    levelLabel.textContent = '第 ' + (level + 1) + ' / ' + LEVELS.length + ' 关';
+    stepsLabel.textContent = '步数 0';
+    hideOverlay();
+    render();
+    saveState();
+  }
+
+  // ---- 渲染 ----
+  function cellSize() {
+    const availW = Math.max(120, wrapEl.clientWidth - 12);
+    const availH = Math.max(160, window.innerHeight - 190);
+    let s = Math.floor(Math.min(availW / cols, availH / rows, 56));
+    s = Math.max(18, Math.min(s, 56));
+    return s;
+  }
+
+  function render() {
+    const cell = cellSize();
+    boardEl.style.setProperty('--cell', cell + 'px');
+    boardEl.style.gridTemplateColumns = 'repeat(' + cols + ', ' + cell + 'px)';
+    boardEl.style.gridAutoRows = cell + 'px';
+    boardEl.innerHTML = '';
+    const frag = document.createDocumentFragment();
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const d = document.createElement('div');
+        let cls = 'cell';
+        const base = board[r][c];
+        cls += (base === '#') ? ' wall' : ' floor';
+        if (base === '.') cls += ' target';
+        if (hasBox(r, c)) cls += ' box';
+        if (player.r === r && player.c === c) cls += ' player';
+        d.className = cls;
+        frag.appendChild(d);
+      }
+    }
+    boardEl.appendChild(frag);
+  }
+
+  // ---- 移动 ----
+  function move(dr, dc) {
+    if (won) return;
+    const nr = player.r + dr, nc = player.c + dc;
+    if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) return;
+    const cell = board[nr][nc];
+    if (cell === '#') { sfx('hit'); return; }
+    if (hasBox(nr, nc)) {
+      const br = nr + dr, bc = nc + dc;
+      if (br < 0 || br >= rows || bc < 0 || bc >= cols) { sfx('hit'); return; }
+      if (board[br][bc] === '#' || hasBox(br, bc)) { sfx('hit'); return; }
+      const bi = boxes.findIndex(function (b) { return b.r === nr && b.c === nc; });
+      boxes[bi] = { r: br, c: bc };
+      player = { r: nr, c: nc };
+      sfx('pop');
+    } else {
+      player = { r: nr, c: nc };
+    }
+    steps++;
+    stepsLabel.textContent = '步数 ' + steps;
+    render();
+    checkWin();
+    saveState();
+  }
+
+  // ---- 胜利判定 ----
+  function showWinOverlay() {
+    if (level < LEVELS.length - 1) {
+      overlayTitle.textContent = '🎉 第 ' + (level + 1) + ' 关完成';
+      overlayText.textContent = '已通过 ' + levelsPassed + ' 关 · 本关步数 ' + steps;
+      overlayBtn.textContent = '下一关 →';
+      overlayBtn.onclick = function () { loadLevel(level + 1); };
+    } else {
+      overlayTitle.textContent = '🏆 全部通关！';
+      overlayText.textContent = '共通过 ' + levelsPassed + ' 关 · 最后一关步数 ' + steps;
+      overlayBtn.textContent = '再玩一遍';
+      overlayBtn.onclick = function () { loadLevel(0); };
+    }
+    overlay.classList.remove('hidden');
+  }
+
+  function checkWin() {
+    if (!boxes.every(function (b) { return isTarget(b.r, b.c); })) return;
+    won = true;
+    levelsPassed++;
+    scoreLabel.textContent = '已过关 ' + levelsPassed;
+    if (window.mfhryScore) { try { window.mfhryScore('sokoban', levelsPassed); } catch (e) {} }
+    refreshBest();
+    sfx('win');
+    showWinOverlay();
+  }
+
+  function hideOverlay() { overlay.classList.add('hidden'); }
+
+  // ---- 控制：键盘 ----
+  const keyMap = {
+    ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1],
+    w: [-1, 0], s: [1, 0], a: [0, -1], d: [0, 1],
+    W: [-1, 0], S: [1, 0], A: [0, -1], D: [0, 1]
+  };
+  document.addEventListener('keydown', function (e) {
+    if (keyMap[e.key]) {
+      e.preventDefault();
+      move(keyMap[e.key][0], keyMap[e.key][1]);
+    } else if ((e.key === 'r' || e.key === 'R') && !kit) {
+      window.mfRestart && window.mfRestart();
+    }
+  });
+
+  // ---- 控制：触屏滑动 ----
+  let tStart = null;
+  boardEl.addEventListener('touchstart', function (e) {
+    tStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }, { passive: true });
+  boardEl.addEventListener('touchend', function (e) {
+    if (!tStart) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - tStart.x, dy = t.clientY - tStart.y;
+    tStart = null;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;
+    if (Math.abs(dx) > Math.abs(dy)) move(0, dx > 0 ? 1 : -1);
+    else move(dy > 0 ? 1 : -1, 0);
+  }, { passive: true });
+
+  // ---- 上下关切换 ----
+  document.getElementById('prevBtn').addEventListener('click', function () {
+    sfx('jump'); loadLevel(level - 1);
+  });
+  document.getElementById('nextBtn').addEventListener('click', function () {
+    sfx('jump'); loadLevel(level + 1);
+  });
+
+  // ---- 窗口变化重排 ----
+  window.addEventListener('resize', render);
+  window.addEventListener('orientationchange', function () { setTimeout(render, 200); });
+
+  // ---- 自定义重开（HUD 与 R 键调用）----
+  window.mfRestart = function () { loadLevel(level); };
+
+  // ---- 启动：有存档则恢复进度，否则从第 1 关开始 ----
+  refreshBest();
+  if (!loadState()) {
+    loadLevel(0);
+  } else {
+    levelLabel.textContent = '第 ' + (level + 1) + ' / ' + LEVELS.length + ' 关';
+    stepsLabel.textContent = '步数 ' + steps;
+    scoreLabel.textContent = '已过关 ' + levelsPassed;
+    hideOverlay();
+    render();
+    if (won) showWinOverlay();
+  }
+})();
+</script>
+</body>
+</html>

@@ -62,6 +62,77 @@
   $win.textContent = winCount;
   $lose.textContent = loseCount;
 
+  // ---------- 对局持久化 ----------
+  const SAVE_KEY = 'mfhry_gomoku_state';
+
+  function saveState() {
+    try {
+      localStorage.setItem(SAVE_KEY, JSON.stringify({ board, turn, over, history, mode }));
+    } catch (e) { /* 存储失败静默 */ }
+  }
+
+  function clearSaved() {
+    try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* 忽略 */ }
+  }
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(SAVE_KEY);
+      if (!raw) return false;
+      const s = JSON.parse(raw);
+      // 校验结构，版本不符/损坏则回退新局
+      if (!s || !Array.isArray(s.board) || s.board.length !== N) return false;
+      for (let i = 0; i < N; i++) {
+        if (!Array.isArray(s.board[i]) || s.board[i].length !== N) return false;
+        for (let j = 0; j < N; j++) {
+          const v = s.board[i][j];
+          if (v !== EMPTY && v !== BLACK && v !== WHITE) return false;
+        }
+      }
+      if (s.turn !== BLACK && s.turn !== WHITE) return false;
+      if (typeof s.over !== 'boolean') return false;
+      if (s.mode !== 'ai' && s.mode !== 'two') return false;
+      if (!Array.isArray(s.history)) return false;
+      for (const h of s.history) {
+        if (!h || typeof h.x !== 'number' || typeof h.y !== 'number' ||
+            (h.who !== BLACK && h.who !== WHITE)) return false;
+      }
+
+      board = s.board;
+      turn = s.turn;
+      over = s.over;
+      history = s.history;
+      mode = s.mode;
+      thinking = false;
+      document.getElementById('modeAi').classList.toggle('on', mode === 'ai');
+      document.getElementById('modeTwo').classList.toggle('on', mode === 'two');
+
+      const last = history[history.length - 1];
+      if (over) {
+        if (mode === 'ai') {
+          $msg.innerHTML = (last && last.who === BLACK) ? '<b>你赢了</b> · 五子连珠' : '<b>电脑赢了</b> · 再来一局？';
+        } else {
+          const w = last ? last.who : BLACK;
+          $msg.innerHTML = (w === BLACK ? '<b>黑棋</b>' : '<b>白棋</b>') + ' 获胜';
+        }
+      } else if (mode === 'ai' && turn === WHITE) {
+        $msg.textContent = '电脑思考中…';
+      } else if (mode === 'ai') {
+        $msg.textContent = '你的回合';
+      } else {
+        $msg.textContent = turn === BLACK ? '黑棋回合' : '白棋回合';
+      }
+
+      if (over) clearSaved();
+      draw();
+      // 恢复时若轮到 AI，继续思考
+      if (!over && mode === 'ai' && turn === WHITE) aiMove();
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
   function fit() {
     const w = cv.parentElement.clientWidth;
     size = w;
@@ -78,6 +149,7 @@
   function reset() {
     board = Array.from({ length: N }, () => Array(N).fill(EMPTY));
     turn = BLACK; over = false; history = []; thinking = false;
+    clearSaved();
     $msg.textContent = mode === 'ai' ? '你执黑先行，点棋盘落子' : '黑棋先行';
     draw();
   }
@@ -109,6 +181,7 @@
 
   function endGame(winner) {
     over = true;
+    clearSaved();
     if (mode === 'ai') {
       if (winner === BLACK) {
         winCount++;
@@ -230,6 +303,7 @@
       else {
         turn = BLACK;
         $msg.textContent = '你的回合';
+        saveState();
       }
     }, 180);
   }
@@ -245,6 +319,7 @@
     if (place(x, y, turn)) { endGame(turn); return; }
     if (mode === 'ai') { turn = WHITE; aiMove(); }
     else { turn = turn === BLACK ? WHITE : BLACK; $msg.textContent = turn === BLACK ? '黑棋回合' : '白棋回合'; }
+    saveState();
   }
 
   cv.addEventListener('click', (e) => {
@@ -271,6 +346,7 @@
     turn = BLACK;
     $msg.textContent = mode === 'ai' ? '你的回合' : '黑棋回合';
     draw();
+    saveState();
   });
 
   const setMode = (m) => {
@@ -285,7 +361,7 @@
 
   window.addEventListener('resize', fit);
 
-  reset();
+  if (!loadState()) reset();
   fit();
 })();
 </script>

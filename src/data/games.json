@@ -190,5 +190,59 @@
     "emoji": "🚲",
     "href": "/games/pelican/",
     "status": "play"
+  },
+  {
+    "slug": "sokoban",
+    "title": "推箱子",
+    "desc": "经典推箱子：把箱子推到亮点上，方向键 / WASD / 滑动操作，多关卡递进。",
+    "tag": "益智",
+    "emoji": "🧱",
+    "href": "/games/sokoban/",
+    "status": "play"
+  },
+  {
+    "slug": "linklink",
+    "title": "连连看",
+    "desc": "点两张相同图案，路径不超过两个拐弯即可消除，全部消除通关。",
+    "tag": "休闲",
+    "emoji": "🔗",
+    "href": "/games/linklink/",
+    "status": "play"
+  },
+  {
+    "slug": "match3",
+    "title": "三消",
+    "desc": "交换相邻宝石，三颗同色连成一行 / 列消除，60 秒冲分。",
+    "tag": "益智",
+    "emoji": "💎",
+    "href": "/games/match3/",
+    "status": "play"
+  },
+  {
+    "slug": "sudoku",
+    "title": "数独",
+    "desc": "9×9 数独，简单到困难三档，填满不重复即通关，可提示。",
+    "tag": "益智",
+    "emoji": "🔢",
+    "href": "/games/sudoku/",
+    "status": "play"
+  },
+  {
+    "slug": "dodger",
+    "title": "飞机大战",
+    "desc": "左右躲避敌机流星，吃星得分，空格射击打敌机，越久越快。",
+    "tag": "街机",
+    "emoji": "✈️",
+    "href": "/games/dodger/",
+    "status": "play"
+  },
+  {
+    "slug": "bubble",
+    "title": "泡泡龙",
+    "desc": "瞄准射泡泡，三个同色消除，悬空泡泡会掉落，清空通关。",
+    "tag": "休闲",
+    "emoji": "🫧",
+    "href": "/games/bubble/",
+    "status": "play"
   }
 ]

@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <title>连连看</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      background: #0b0e11;
+      color: #e8ecf0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px 12px 110px;
+      min-height: 100%;
+      -webkit-tap-highlight-color: transparent;
+    }
+    h1 {
+      color: #7fd1b0;
+      font-size: 26px;
+      letter-spacing: 4px;
+      margin: 6px 0 4px;
+      font-weight: 700;
+    }
+    .hint {
+      color: #8a94a0;
+      font-size: 12px;
+      margin-bottom: 14px;
+      text-align: center;
+      line-height: 1.5;
+    }
+    .stats {
+      display: flex;
+      gap: 20px;
+      font-size: 14px;
+      color: #aab4be;
+      margin-bottom: 14px;
+    }
+    .stats b { color: #fff; font-weight: 600; }
+    .board {
+      display: grid;
+      gap: 6px;
+      width: 100%;
+      max-width: 420px;
+      touch-action: manipulation;
+    }
+    .tile {
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(18px, 5.5vw, 30px);
+      background: #161b20;
+      border: 2px solid transparent;
+      border-radius: 10px;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+      line-height: 1;
+      padding: 0;
+      transition: transform .08s, border-color .12s, background .12s, box-shadow .12s;
+    }
+    .tile:active { transform: scale(.93); }
+    .tile.sel {
+      border-color: #7fd1b0;
+      background: #1c2b26;
+      box-shadow: 0 0 12px rgba(127, 209, 176, .35);
+    }
+    .tile.gone { visibility: hidden; pointer-events: none; }
+    .btn {
+      margin-top: 16px;
+      padding: 9px 24px;
+      border: none;
+      border-radius: 20px;
+      background: #7fd1b0;
+      color: #0b0e11;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn:active { opacity: .85; }
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(6, 8, 10, .82);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+    }
+    .overlay.hidden { display: none; }
+    .card {
+      background: #151a1f;
+      border: 1px solid #232b33;
+      border-radius: 16px;
+      padding: 26px 30px;
+      text-align: center;
+      max-width: 320px;
+      width: 88%;
+    }
+    .card h2 { color: #7fd1b0; margin-bottom: 16px; font-size: 22px; }
+    .card p { font-size: 14px; color: #aab4be; margin: 6px 0; line-height: 1.6; }
+    .card p b { color: #fff; }
+    .card .score { font-size: 20px; margin: 10px 0 2px; }
+    .card .score b { font-size: 30px; color: #7fd1b0; }
+    .card .btn { margin-top: 14px; }
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 112px;
+      transform: translateX(-50%);
+      background: #1c242b;
+      color: #cdd6de;
+      padding: 8px 18px;
+      border-radius: 18px;
+      font-size: 13px;
+      opacity: 0;
+      transition: opacity .25s;
+      pointer-events: none;
+      z-index: 9;
+      white-space: nowrap;
+    }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+  <h1>连连看</h1>
+  <p class="hint">点击两个相同图案，路径可直连或拐弯不超过两次即可消除</p>
+
+  <div class="stats">
+    <span>得分 <b id="score">0</b></span>
+    <span>剩余 <b id="remain">24</b></span>
+    <span>用时 <b id="time">00:00</b></span>
+  </div>
+
+  <div id="board" class="board"></div>
+
+  <button id="shuffle" class="btn" type="button">重新洗牌</button>
+
+  <div id="toast" class="toast"></div>
+
+  <div id="win" class="overlay hidden">
+    <div class="card">
+      <h2>🎉 通关成功</h2>
+      <p>用时 <b id="winTime">00:00</b></p>
+      <p>消除得分 <b id="winBase">0</b> ＋ 时间奖励 <b id="winBonus">0</b></p>
+      <p class="score">总分 <b id="winScore">0</b></p>
+      <button id="again" class="btn" type="button">再来一局</button>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    'use strict';
+
+    var COLS = 8, ROWS = 6;
+    var EMOJIS = ['🍎', '🍇', '🍉', '🍓', '🍋', '🍑', '🥝', '🍒'];
+    var R = ROWS + 2, C = COLS + 2;   // 带边框的寻路网格
+    var TIME_LIMIT = 300;              // 时间奖励上限（秒）
+
+    var g = [];        // g[r][c]：图案序号 1..8，0 为空
+    var cells = [];    // cells[r-1][c-1] 对应 (r,c) 的按钮
+    var selected = null;
+    var score = 0, remaining = 24, startTime = 0, elapsed = 0;
+    var timer = null, over = false, toastTimer = null;
+
+    function $(id) { return document.getElementById(id); }
+
+    function shuffle(arr) {
+      for (var i = arr.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+      }
+      return arr;
+    }
+
+    function sfx(name) {
+      try { if (window.mfKit && window.mfKit.sfx) window.mfKit.sfx(name); } catch (e) {}
+    }
+
+    function fmt(sec) {
+      sec = Math.max(0, Math.floor(sec));
+      var m = Math.floor(sec / 60), s = sec % 60;
+      return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+    }
+
+    // 同一行/列上两点之间（不含端点）是否全为空
+    function isStraightClear(r1, c1, r2, c2) {
+      if (r1 === r2) {
+        var lo = Math.min(c1, c2), hi = Math.max(c1, c2);
+        for (var c = lo + 1; c < hi; c++) if (g[r1][c] !== 0) return false;
+        return true;
+      }
+      if (c1 === c2) {
+        var lo2 = Math.min(r1, r2), hi2 = Math.max(r1, r2);
+        for (var r = lo2 + 1; r < hi2; r++) if (g[r][c1] !== 0) return false;
+        return true;
+      }
+      return false;
+    }
+
+    // 经典连连看：允许 0 / 1 / 2 次拐弯
+    function canConnect(r1, c1, r2, c2) {
+      if (r1 === r2 && isStraightClear(r1, c1, r1, c2)) return true;
+      if (c1 === c2 && isStraightClear(r1, c1, r2, c1)) return true;
+
+      // 1 次拐弯：角点 (r1,c2) 或 (r2,c1)
+      if (g[r1][c2] === 0 && isStraightClear(r1, c1, r1, c2) && isStraightClear(r1, c2, r2, c2)) return true;
+      if (g[r2][c1] === 0 && isStraightClear(r2, c1, r2, c2) && isStraightClear(r1, c1, r2, c1)) return true;
+
+      // 2 次拐弯：经过中间行（含上下外边框）
+      for (var r = 0; r < R; r++) {
+        if (r === r1 || r === r2) continue;
+        if (g[r][c1] !== 0 || g[r][c2] !== 0) continue;
+        if (isStraightClear(r1, c1, r, c1) && isStraightClear(r, c1, r, c2) && isStraightClear(r, c2, r2, c2)) return true;
+      }
+      // 2 次拐弯：经过中间列（含左右外边框）
+      for (var c = 0; c < C; c++) {
+        if (c === c1 || c === c2) continue;
+        if (g[r1][c] !== 0 || g[r2][c] !== 0) continue;
+        if (isStraightClear(r1, c1, r1, c) && isStraightClear(r1, c, r2, c) && isStraightClear(r2, c, r2, c2)) return true;
+      }
+      return false;
+    }
+
+    function hasMove() {
+      var list = [];
+      for (var r = 1; r <= ROWS; r++)
+        for (var c = 1; c <= COLS; c++)
+          if (g[r][c] !== 0) list.push({ r: r, c: c, v: g[r][c] });
+      for (var i = 0; i < list.length; i++)
+        for (var j = i + 1; j < list.length; j++)
+          if (list[i].v === list[j].v && canConnect(list[i].r, list[i].c, list[j].r, list[j].c)) return true;
+      return false;
+    }
+
+    function clearSelect() {
+      if (selected) {
+        var b = cells[selected.r - 1][selected.c - 1];
+        if (b) b.classList.remove('sel');
+      }
+      selected = null;
+    }
+
+    function selectTile(r, c) {
+      clearSelect();
+      selected = { r: r, c: c, v: g[r][c] };
+      cells[r - 1][c - 1].classList.add('sel');
+      sfx('jump');
+    }
+
+    function buildBoard() {
+      var board = $('board');
+      board.innerHTML = '';
+      board.style.gridTemplateColumns = 'repeat(' + COLS + ', 1fr)';
+      cells = [];
+      for (var r = 1; r <= ROWS; r++) {
+        var row = [];
+        for (var c = 1; c <= COLS; c++) {
+          var btn = document.createElement('button');
+          btn.className = 'tile';
+          btn.setAttribute('type', 'button');
+          (function (rr, cc) {
+            btn.addEventListener('click', function () { onTile(rr, cc); });
+          })(r, c);
+          board.appendChild(btn);
+          row.push(btn);
+        }
+        cells.push(row);
+      }
+    }
+
+    function refresh() {
+      for (var r = 1; r <= ROWS; r++) {
+        for (var c = 1; c <= COLS; c++) {
+          var btn = cells[r - 1][c - 1];
+          var v = g[r][c];
+          if (v === 0) { btn.textContent = ''; btn.classList.add('gone'); }
+          else { btn.textContent = EMOJIS[v - 1]; btn.classList.remove('gone'); }
+        }
+      }
+      if (selected && g[selected.r][selected.c] === 0) clearSelect();
+    }
+
+    function updateStats() {
+      $('score').textContent = score;
+      $('remain').textContent = remaining;
+      $('time').textContent = fmt(elapsed);
+    }
+
+    function tick() {
+      elapsed = Math.floor((Date.now() - startTime) / 1000);
+      $('time').textContent = fmt(elapsed);
+    }
+
+    function toast(msg) {
+      var t = $('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { t.classList.remove('show'); }, 1600);
+    }
+
+    function onTile(r, c) {
+      if (over) return;
+      var v = g[r][c];
+      if (v === 0) return;
+
+      if (!selected) { selectTile(r, c); return; }
+
+      if (selected.r === r && selected.c === c) { clearSelect(); return; }
+
+      if (selected.v === v && canConnect(selected.r, selected.c, r, c)) {
+        g[selected.r][selected.c] = 0;
+        g[r][c] = 0;
+        score += 10;
+        remaining--;
+        clearSelect();
+        refresh();
+        updateStats();
+        sfx('pop');
+        if (remaining <= 0) { winGame(); return; }
+        if (!hasMove()) { toast('无可消对，已自动洗牌'); reshuffle(); }
+      } else {
+        clearSelect();
+        sfx('fail');
+      }
+    }
+
+    function reshuffle() {
+      var vals = [];
+      for (var r = 1; r <= ROWS; r++)
+        for (var c = 1; c <= COLS; c++)
+          if (g[r][c] !== 0) vals.push(g[r][c]);
+      if (vals.length === 0) return;
+      var attempts = 0;
+      do {
+        shuffle(vals);
+        var idx = 0;
+        for (var rr = 1; rr <= ROWS; rr++)
+          for (var cc = 1; cc <= COLS; cc++)
+            if (g[rr][cc] !== 0) g[rr][cc] = vals[idx++];
+        attempts++;
+      } while (!hasMove() && attempts < 100);
+      clearSelect();
+      refresh();
+      sfx('hit');
+    }
+
+    function winGame() {
+      over = true;
+      clearInterval(timer);
+      sfx('win');
+      var bonus = Math.max(0, TIME_LIMIT - elapsed);
+      var finalScore = score + bonus;
+      var best = 0;
+      try { best = window.mfKit.getBest('linklink') || 0; } catch (e) {}
+      if (finalScore > best) { try { window.mfKit.setBest('linklink', finalScore); } catch (e) {} }
+      try { window.mfhryScore('linklink', finalScore); } catch (e) {}
+      $('winBase').textContent = score;
+      $('winBonus').textContent = bonus;
+      $('winScore').textContent = finalScore;
+      $('winTime').textContent = fmt(elapsed);
+      $('win').classList.remove('hidden');
+    }
+
+    function init() {
+      over = false;
+      score = 0;
+      remaining = 24;
+      selected = null;
+      elapsed = 0;
+
+      var tiles = [];
+      for (var k = 0; k < EMOJIS.length; k++)
+        for (var n = 0; n < 6; n++) tiles.push(k + 1);   // 8 种 × 6 张 = 48
+      shuffle(tiles);
+
+      g = [];
+      for (var r = 0; r < R; r++) {
+        var row = [];
+        for (var c = 0; c < C; c++) row.push(0);
+        g.push(row);
+      }
+      var idx = 0;
+      for (var rr = 1; rr <= ROWS; rr++)
+        for (var cc = 1; cc <= COLS; cc++)
+          g[rr][cc] = tiles[idx++];
+
+      $('win').classList.add('hidden');
+      buildBoard();
+      refresh();
+      updateStats();
+
+      startTime = Date.now();
+      if (timer) clearInterval(timer);
+      timer = setInterval(tick, 1000);
+
+      if (!hasMove()) reshuffle();
+    }
+
+    $('shuffle').addEventListener('click', function () {
+      if (over) return;
+      reshuffle();
+      toast('已重新洗牌');
+    });
+    $('again').addEventListener('click', function () { init(); });
+    window.mfRestart = init;
+
+    init();
+  })();
+  </script>
+  <script src="/games/kit.js"></script>
+</body>
+</html>

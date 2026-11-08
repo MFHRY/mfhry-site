@@ -128,8 +128,8 @@
     const left = Math.max(0, TOTAL - (now - startAt));
     $time.textContent = Math.ceil(left / 1000);
     if (left <= 0) return over();
-    if (active >= 0 && now - upAt > upFor) down();
-    if (active < 0 && now >= nextAt) { moveUp(); nextAt = Infinity; }
+    if (active >= 0 && now - upAt > upFor) { down(); nextAt = now + Math.max(180, 420 - score * 2); }
+    if (active < 0 && now >= nextAt) { moveUp(); }
     requestAnimationFrame(loop);
   }
 

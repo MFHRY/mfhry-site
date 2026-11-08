@@ -26,6 +26,7 @@
 </head>
 <body>
 <a href="/games/" title="返回小游戏列表" style="position:fixed;left:10px;bottom:10px;z-index:99999;display:flex;align-items:center;justify-content:center;min-width:34px;height:34px;padding:0 10px;border-radius:999px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.22);color:#ffe8b0;text-decoration:none;font:14px/1 -apple-system,PingFang SC,sans-serif;opacity:.75">← 返回</a>
+<a href="#" id="goldminerRestart" title="清除进度并重新开始第 1 关" style="position:fixed;right:10px;bottom:10px;z-index:99999;display:flex;align-items:center;justify-content:center;min-width:34px;height:34px;padding:0 10px;border-radius:999px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.22);color:#ffe8b0;text-decoration:none;font:14px/1 -apple-system,PingFang SC,sans-serif;opacity:.75">⟲ 重开第 1 关</a>
 
 <canvas id="game" width="800" height="600"></canvas>
 <script src="/games/score.js"></script>
@@ -89,6 +90,37 @@
 
   let best = 0;
   try { best = +(localStorage.getItem('goldminer_best') || 0) || 0; } catch (e) { best = 0; }
+
+  /* ==================== 进度持久化 ==================== */
+  // key 'goldminer_progress' 保存 { level, score }；刷新后从保存的关卡继续。
+  const PROGRESS_KEY = 'goldminer_progress';
+  let saveTimer = 0;
+
+  function saveProgress(over) {
+    try {
+      localStorage.setItem(PROGRESS_KEY, JSON.stringify(over || { level: level, score: score }));
+    } catch (e) { /* 隐私模式 / 配额满等场景静默 */ }
+  }
+  function clearProgress() {
+    try { localStorage.removeItem(PROGRESS_KEY); } catch (e) {}
+  }
+  function readProgress() {
+    try {
+      const raw = localStorage.getItem(PROGRESS_KEY);
+      if (!raw) return null;
+      const d = JSON.parse(raw);
+      if (!d || typeof d.level !== 'number' || !isFinite(d.level) || d.level < 1) return null;
+      const lv = Math.max(1, Math.floor(d.level));
+      const sc = (typeof d.score === 'number' && isFinite(d.score)) ? Math.max(0, d.score) : 0;
+      return { level: lv, score: sc };
+    } catch (e) {
+      return null; // 解析失败回退第 1 关
+    }
+  }
+  function scheduleSave() {
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(function () { saveProgress(); }, 400);
+  }
 
   /* ==================== 音效 ==================== */
   let audioCtx = null;
@@ -437,7 +469,7 @@
   function shoot() {
     initAudio();
     if (paused) return;
-    if (gamePhase === 'gameover') { resetLevel(1); return; }
+    if (gamePhase === 'gameover') { clearProgress(); resetLevel(1); return; }
     if (gamePhase !== 'playing') return;
     if (finishing) return;
     if (state === 'swinging' && swingCooldown <= 0) {
@@ -453,7 +485,7 @@
     }
     if (e.code === 'KeyR') {
       initAudio();
-      if (gamePhase === 'gameover') resetLevel(1);
+      if (gamePhase === 'gameover') { clearProgress(); resetLevel(1); }
     }
     if (e.code === 'KeyP') {
       if (gamePhase === 'playing') { paused = !paused; initAudio(); }
@@ -466,6 +498,17 @@
 
   canvas.addEventListener('mousedown', function (e) { e.preventDefault(); shoot(); });
   canvas.addEventListener('touchstart', function (e) { e.preventDefault(); shoot(); }, { passive: false });
+
+  /* ==================== HUD 重开第 1 关 ==================== */
+  const restartBtn = document.getElementById('goldminerRestart');
+  if (restartBtn) {
+    restartBtn.addEventListener('click', function (e) {
+      e.preventDefault();
+      initAudio();
+      clearProgress();
+      resetLevel(1);
+    });
+  }
 
   /* ==================== 粒子 ==================== */
   function spawnParticles(x, y, color, count, speed) {
@@ -538,13 +581,16 @@
 
   /* ==================== 逻辑 ==================== */
   function collect(it) {
-    score += it.value;
+    // 防御：非法 value（NaN/Infinity/非数字/负数）不计分，避免污染 score 与 HUD 显示
+    const v = Number(it.value);
+    if (!Number.isFinite(v) || v < 0) return;
+    score += v;
     scorePulse = 1;
     const color = it.kind === 'rock'
       ? '#c8c8c8'
       : (it.kind === 'diamond' ? '#7ff0ff' : (it.kind === 'skull' ? '#ffe0e0' : '#ffd24a'));
 
-    floaters.push({ x: PIVOT.x, y: PIVOT.y - 46, text: '+' + it.value, color: color, life: 1 });
+    floaters.push({ x: PIVOT.x, y: PIVOT.y - 46, text: '+' + v, color: color, life: 1 });
     spawnParticles(PIVOT.x, PIVOT.y - 30, TYPES[it.type].spark, 12, 130);
     if (it.kind === 'diamond') {
       for (let i = 0; i < 6; i++) {
@@ -552,18 +598,21 @@
       }
     }
     beep(it.kind === 'diamond' ? 980 : (it.kind === 'rock' ? 220 : 680), 0.12, 'sine', 0.05);
+    scheduleSave(); // 加分后防抖保存进度
   }
 
   function endLevel() {
     if (score >= target) {
       gamePhase = 'levelclear';
       phaseTimer = 2.2;
+      saveProgress({ level: level + 1, score: 0 }); // 过关：保存下一关起点，刷新后从下一关继续
       beep(660, 0.14, 'sine', 0.055);
       setTimeout(function () { beep(880, 0.18, 'sine', 0.055); }, 140);
       setTimeout(function () { beep(1180, 0.24, 'sine', 0.055); }, 300);
     } else {
       gamePhase = 'gameover';
-      if (window.mfhryScore) mfhryScore('gold-miner', Math.round(score));
+      saveProgress({ level: level, score: 0 }); // 结束：保留已过关卡，刷新后从本关继续
+      if (window.mfhryScore) mfhryScore('gold-miner', Math.max(0, Math.round(score)));
       if (score > best) {
         best = score;
         try { localStorage.setItem('goldminer_best', String(best)); } catch (e) {}
@@ -1201,7 +1250,14 @@
 
   /* ==================== 启动 ==================== */
   buildBackground();
-  resetLevel(1);
+  const savedProg = readProgress();
+  if (savedProg) {
+    resetLevel(savedProg.level);            // 从保存的关卡继续（而非第 1 关）
+    score = savedProg.score;                // 恢复当前关卡的进度分数
+    displayScore = savedProg.score;
+  } else {
+    resetLevel(1);                          // 无合法进度：从第 1 关开始
+  }
   requestAnimationFrame(loop);
 
 })();
