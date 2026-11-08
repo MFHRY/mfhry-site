@@ -21,9 +21,9 @@ window.MFHRY_SONGS = [
       { label: 'メルト', q: 'melt supercell', r2: '/api/r2?key=music/melt.mp3', lyrics: '/music/melt-lyrics.json', artist: 'supercell / DECO*27', cover: '/api/r2?key=music/cover-melt.jpg' },
       { label: 'Bad Apple!! feat. nomico', q: 'bad apple nomico', r2: '/api/r2?key=music/badapple.mp3', lyrics: '/music/badapple-lyrics.json', artist: 'nomico / Masayoshi Minoshima', cover: '/api/r2?key=music/cover-badapple.jpg' },
       { label: 'うっせぇわ', q: 'ussee wa ado', r2: '/api/r2?key=music/ussee.mp3', lyrics: '/music/ussee-lyrics.json', artist: 'Ado', cover: '/api/r2?key=music/cover-ussee.jpg' },
-      { label: 'ダミーロマンス', q: 'dummy romance deco27', r2: '/api/r2?key=music/dummy.mp3', lyrics: '/music/dummy-lyrics.json', artist: 'DECO*27', cover: '/api/r2?key=music/cover-dummy.jpg' },
-      { label: '妄想感傷代償連盟', q: 'mousou kanshou daishou renmei', r2: '/api/r2?key=music/mousou.mp3', lyrics: '/music/mousou-lyrics.json', artist: 'DECO*27 (Hello ver.)', cover: '/api/r2?key=music/cover-mousou.jpg' },
-      { label: 'ハオ', q: 'hao deco27', r2: '/api/r2?key=music/hao.mp3', lyrics: '/music/hao-lyrics.json', artist: 'DECO*27 (Hello ver.)', cover: '/api/r2?key=music/cover-hao.jpg' },
+      { label: 'ダミーロマンス', q: 'dummy romance deco27', r2: '/api/r2?key=music/dummy.wav', lyrics: '/music/dummy-lyrics.json', artist: 'DECO*27', cover: '/api/r2?key=music/cover-dummy.jpg' },
+      { label: '妄想感傷代償連盟', q: 'mousou kanshou daishou renmei', r2: '/api/r2?key=music/mousou.wav', lyrics: '/music/mousou-lyrics.json', artist: 'DECO*27 (Hello ver.)', cover: '/api/r2?key=music/cover-mousou.jpg' },
+      { label: 'ハオ', q: 'hao deco27', r2: '/api/r2?key=music/hao.wav', lyrics: '/music/hao-lyrics.json', artist: 'DECO*27 (Hello ver.)', cover: '/api/r2?key=music/cover-hao.jpg' },
     ],
   },
   {
