@@ -272,6 +272,26 @@
     .fs-ly{width:100%;max-width:430px;max-height:34vh}
   }
 
+  /* 网易云评论面板（精选歌 chip 的 💬 按钮打开） */
+  .nc-btn{margin-left:6px;padding:1px 5px;border:0;border-radius:7px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.62);font-size:11px;cursor:pointer;line-height:1.3;vertical-align:middle}
+  .nc-btn:hover{background:rgba(255,255,255,.2);color:#fff}
+  .nc-panel{position:fixed;inset:0;z-index:40000;display:none;align-items:center;justify-content:center;background:rgba(3,6,9,.58);backdrop-filter:blur(3px)}
+  .nc-panel.on{display:flex}
+  .nc-card{width:min(92vw,540px);max-height:min(80vh,700px);display:flex;flex-direction:column;background:rgba(13,19,25,.95);border:1px solid rgba(255,255,255,.1);border-radius:18px;box-shadow:0 24px 64px rgba(0,0,0,.55);overflow:hidden}
+  .nc-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 16px;border-bottom:1px solid rgba(255,255,255,.08)}
+  .nc-head b{font-size:15px;font-weight:600}
+  .nc-x{width:29px;height:29px;border:0;border-radius:50%;background:rgba(255,255,255,.08);color:#fff;cursor:pointer;font-size:13px;flex:0 0 29px}
+  .nc-x:hover{background:rgba(255,255,255,.18)}
+  .nc-body{overflow-y:auto;padding:2px 16px 16px}
+  .nc-sec{margin:13px 0 4px;font-size:11.5px;letter-spacing:.09em;color:rgba(255,255,255,.4)}
+  .nc-item{display:flex;gap:10px;padding:10px 0;border-bottom:1px dashed rgba(255,255,255,.06)}
+  .nc-item:last-child{border-bottom:0}
+  .nc-item img{width:32px;height:32px;border-radius:50%;flex:0 0 32px;background:rgba(255,255,255,.1)}
+  .nc-meta{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;font-size:11.5px;color:rgba(255,255,255,.45)}
+  .nc-meta b{color:rgba(255,255,255,.86);font-weight:600}
+  .nc-txt{margin-top:5px;font-size:13px;line-height:1.65;color:rgba(255,255,255,.8);white-space:pre-wrap;word-break:break-word}
+  .nc-like{margin-top:4px;font-size:11px;color:rgba(255,255,255,.4)}
+  .nc-empty,.nc-load{padding:28px 0;text-align:center;font-size:13px;color:rgba(255,255,255,.45);line-height:1.9}
 </style>
 </head>
 <body>
@@ -334,6 +354,13 @@
   </section>
 </main>
 
+
+<div class="nc-panel" id="ncPanel">
+  <div class="nc-card">
+    <div class="nc-head"><b id="ncTitle">网易云评论</b><button class="nc-x" id="ncClose" title="关闭">✕</button></div>
+    <div class="nc-body" id="ncBody"><div class="nc-load">加载中…</div></div>
+  </div>
+</div>
 
 <div class="fs" id="fs">
   <img class="fs-bg" id="fsBg" alt="" />
@@ -898,6 +925,45 @@
     }
   }
 
+  // ---------- 网易云评论（精选 chip 💬） ----------
+  function ncTime(t) {
+    if (!t) return '';
+    const d = new Date(t * 1000), n = new Date();
+    const p = (x) => String(x).padStart(2, '0');
+    if (d.getFullYear() === n.getFullYear()) return p(d.getMonth() + 1) + '/' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+    return d.getFullYear() + '/' + p(d.getMonth() + 1) + '/' + p(d.getDate());
+  }
+  function ncItem(c) {
+    const av = c.avatar ? '<img src="' + esc(c.avatar) + '" referrerpolicy="no-referrer" loading="lazy" alt="">' : '<img alt="">';
+    return '<div class="nc-item">' + av +
+      '<div><div class="nc-meta"><b>' + esc(c.user) + '</b>' + (c.loc ? '<span>' + esc(c.loc) + '</span>' : '') +
+      '<span>' + ncTime(c.time) + '</span></div>' +
+      '<div class="nc-txt">' + esc(c.content) + '</div>' +
+      (c.liked ? '<div class="nc-like">♥ ' + c.liked + '</div>' : '') + '</div></div>';
+  }
+  async function openNcComments(h) {
+    if (!h || !h.nc) return;
+    const p = $('ncPanel'), body = $('ncBody');
+    $('ncTitle').textContent = h.label + ' · 网易云评论';
+    body.innerHTML = '<div class="nc-load">加载评论…</div>';
+    p.classList.add('on');
+    try {
+      const r = await fetch('/api/netease-comment?id=' + h.nc + '&limit=20&offset=0');
+      const d = await r.json();
+      if (!r.ok || d.error) throw new Error(d.error || 'err');
+      let html = '';
+      if (d.hot && d.hot.length) html += '<div class="nc-sec">热评</div>' + d.hot.map(ncItem).join('');
+      html += '<div class="nc-sec">最新评论 · ' + d.total + ' 条</div>' +
+        (d.comments && d.comments.length ? d.comments.map(ncItem).join('') : '<div class="nc-empty">暂无最新评论</div>');
+      body.innerHTML = html;
+      body.scrollTop = 0;
+    } catch (e) {
+      body.innerHTML = '<div class="nc-empty">评论加载失败：' + esc((e && e.message) || '网易云接口暂时不通') + '<br><small>稍后再点一次试试</small></div>';
+    }
+  }
+  $('ncClose').onclick = () => $('ncPanel').classList.remove('on');
+  $('ncPanel').addEventListener('click', (e) => { if (e.target.id === 'ncPanel') e.currentTarget.classList.remove('on'); });
+
   function renderHot() {
     const wrap = $('hot');
     wrap.innerHTML = '';
@@ -911,10 +977,18 @@
       for (const h of g.items) {
         const b = document.createElement('span');
         b.className = 'chip';
-        b.textContent = h.label;
+        const t = document.createElement('span');
+        t.textContent = h.label;
+        b.appendChild(t);
+        if (h.nc) {
+          const c = document.createElement('button');
+          c.className = 'nc-btn'; c.textContent = '💬'; c.title = '看网易云评论';
+          c.onclick = (e) => { e.stopPropagation(); openNcComments(h); };
+          b.appendChild(c);
+        }
         b.onclick = () => {
           if (h.r2) {
-            addSong({ setId: 'r2:' + h.label, title: h.label, artist: h.artist || '', r2: h.r2, lyrics: h.lyrics || '', cover: h.cover || '' });
+            addSong({ setId: 'r2:' + h.label, title: h.label, artist: h.artist || '', r2: h.r2, lyrics: h.lyrics || '', cover: h.cover || '', nc: h.nc || '' });
           } else { $('q').value = h.label; search(h.q); }
         };
         row.appendChild(b);
@@ -1146,7 +1220,7 @@
     let migrated = false;
     for (const q of queue) {
       const h = feat[q.setId];
-      if (h) for (const k of ['r2', 'lyrics', 'cover', 'artist', 'mv']) if (h[k] && q[k] !== h[k]) { q[k] = h[k]; migrated = true; }
+      if (h) for (const k of ['r2', 'lyrics', 'cover', 'artist', 'mv', 'nc']) if (h[k] && q[k] !== h[k]) { q[k] = h[k]; migrated = true; }
     }
     if (migrated) persist();
   } catch (e) {}
