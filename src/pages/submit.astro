@@ -1,0 +1,103 @@
+---
+import Base from '../layouts/Base.astro';
+---
+<Base title="投稿">
+  <h1>投稿</h1>
+  <p class="muted">投一篇短文 / 想法，直接公开（每 IP 每小时 3 条）。</p>
+
+  <div class="composer">
+    <input id="nick" class="key" type="text" maxlength="24" placeholder="昵称（可选，留空匿名）" />
+    <input id="title" class="key" type="text" maxlength="80" placeholder="标题（可选）" />
+    <textarea id="body" maxlength="2000" placeholder="内容…（最多 2000 字）"></textarea>
+    <div class="crow">
+      <input id="tag" class="key" type="text" maxlength="16" placeholder="标签（可选，如 想法 / 日记 / 安利）" />
+      <input id="link" class="key" type="url" maxlength="300" placeholder="链接（可选）" />
+      <button id="send" class="send">投稿</button>
+    </div>
+    <div id="status" class="muted"></div>
+  </div>
+
+  <div id="list"></div>
+  <p class="muted" id="empty" hidden>还没有投稿，来投第一篇。</p>
+
+  <style>
+    .composer{display:flex;flex-direction:column;gap:10px;margin:16px 0 22px;padding:16px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.09);border-radius:14px}
+    .key{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#fff;border-radius:10px;padding:10px 12px;font-size:14px;width:100%;box-sizing:border-box}
+    .key::placeholder{color:rgba(255,255,255,.35)}
+    .key:focus{outline:none;border-color:rgba(255,150,90,.5)}
+    textarea.key{min-height:110px;resize:vertical;line-height:1.6}
+    .crow{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .crow .key{flex:1;min-width:150px}
+    .send{padding:10px 22px;border:0;border-radius:10px;background:linear-gradient(135deg,#ff7a45,#ff5e3a);color:#fff;font-size:14px;cursor:pointer;white-space:nowrap}
+    .send:hover{filter:brightness(1.1)}
+    .send:disabled{opacity:.5;cursor:default}
+    .muted{color:rgba(255,255,255,.45);font-size:13px}
+    #status{min-height:18px;margin-top:2px}
+    .sub{padding:14px 16px;margin:10px 0;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px}
+    .sub-head{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+    .sub-head b{font-size:15px;color:#fff}
+    .tag{padding:1px 8px;border-radius:999px;background:rgba(255,255,255,.08);color:#ffb98a;font-size:11.5px}
+    .meta{color:rgba(255,255,255,.4);font-size:12px}
+    .sub-body{margin:9px 0;font-size:14px;line-height:1.7;color:rgba(255,255,255,.85);white-space:pre-wrap;word-break:break-word}
+    .sub-link{display:inline-block;font-size:12.5px;color:#7ab8ff;word-break:break-all;margin-bottom:8px}
+    .like{border:0;border-radius:999px;padding:4px 12px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.6);font-size:12px;cursor:pointer}
+    .like:hover{background:rgba(255,255,255,.16);color:#fff}
+  </style>
+
+  <script is:inline>
+    const $ = (id) => document.getElementById(id);
+    const nickEl = $('nick'), titleEl = $('title'), bodyEl = $('body'), tagEl = $('tag'), linkEl = $('link');
+    const sendEl = $('send'), statusEl = $('status'), listEl = $('list'), emptyEl = $('empty');
+    const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    function tm(t) {
+      if (!t) return '';
+      const d = new Date(String(t).replace(' ', 'T') + 'Z');
+      if (isNaN(d)) return '';
+      const p = (x) => String(x).padStart(2, '0');
+      const now = new Date();
+      return (d.getFullYear() === now.getFullYear() ? p(d.getMonth() + 1) + '/' + p(d.getDate()) : d.getFullYear() + '/' + p(d.getMonth() + 1) + '/' + p(d.getDate())) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+    }
+    function card(s) {
+      const geo = [s.country, s.region, s.city].filter(Boolean).join(' · ');
+      return '<div class="sub" data-id="' + s.id + '">' +
+        '<div class="sub-head"><b>' + esc(s.title || '(无标题)') + '</b>' +
+        (s.tag ? '<span class="tag">' + esc(s.tag) + '</span>' : '') +
+        '<span class="meta">' + esc(s.author) + (geo ? ' · ' + esc(geo) : '') + ' · ' + tm(s.created_at) + '</span></div>' +
+        '<div class="sub-body">' + esc(s.body) + '</div>' +
+        (s.link ? '<a class="sub-link" href="' + esc(s.link) + '" target="_blank" rel="noreferrer noopener">' + esc(s.link) + '</a>' : '') +
+        '<button class="like" data-id="' + s.id + '">♥ ' + (s.likes || 0) + '</button></div>';
+    }
+    async function load() {
+      try {
+        const r = await fetch('/api/submit?limit=50', { cache: 'no-store' });
+        const d = await r.json();
+        if (!d.ok) return;
+        listEl.innerHTML = (d.items || []).map(card).join('');
+        emptyEl.hidden = (d.items || []).length > 0;
+      } catch (e) {}
+    }
+    sendEl.onclick = async () => {
+      const body = bodyEl.value.trim();
+      if (!body) { statusEl.textContent = '内容不能为空'; return; }
+      statusEl.textContent = '投稿中…';
+      sendEl.disabled = true;
+      try {
+        const r = await fetch('/api/submit', { method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ title: titleEl.value, body, author: nickEl.value, tag: tagEl.value, link: linkEl.value }) });
+        const d = await r.json();
+        if (d.ok) { statusEl.textContent = '已发布 ✓'; bodyEl.value = ''; titleEl.value = ''; tagEl.value = ''; linkEl.value = ''; load(); }
+        else statusEl.textContent = d.error || '投稿失败';
+      } catch (e) { statusEl.textContent = '网络错误'; }
+      finally { sendEl.disabled = false; }
+    };
+    listEl.onclick = async (e) => {
+      const b = e.target.closest('.like');
+      if (!b) return;
+      const cur = Number(b.textContent.replace(/[^\d]/g, '')) || 0;
+      b.textContent = '…';
+      try { await fetch('/api/submit?action=like&id=' + b.dataset.id); b.textContent = '♥ ' + (cur + 1); }
+      catch (e) { b.textContent = '♥ ' + cur; }
+    };
+    load();
+  </script>
+</Base>

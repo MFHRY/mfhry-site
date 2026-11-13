@@ -23,7 +23,7 @@ export const onRequestGet = async ({ request }: { request: Request }) => {
     const r = await fetch(target, {
       headers: { 'User-Agent': UA, Referer: 'https://music.163.com/' },
       cf: { cacheTtl: 300, cacheEverything: true },
-    });
+    } as any);
     if (!r.ok) return json({ error: 'upstream ' + r.status }, 502);
     const d = (await r.json()) as any;
     if (d.code !== 200) return json({ error: 'netease ' + (d.code ?? 'err') }, 502);
