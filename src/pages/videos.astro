@@ -172,18 +172,27 @@ import Base from '../layouts/Base.astro';
         remote = data.videos || [];
       } catch (e) { remoteError = true; }
 
-      const all = remote;
+      // MV 合集：站内 R2 的 MV 视频（无需口令，点开即播）
+      const MVS = [
+        { id: 'mv-wedance', title: 'ワールズエンド・ダンスホール MV', url: '/api/r2?key=videos/wedance-1080.mp4', cover: '/api/r2?key=music/cover-dancehall.jpg', duration: 218, author: 'MV 合集', created_at: '' },
+        { id: 'mv-unhappy', title: 'アンハッピーリフレイン MV', url: '/api/r2?key=videos/unhappy-1080.mp4', cover: '/api/r2?key=music/cover-unhappy.jpg', duration: 229, author: 'MV 合集', created_at: '' },
+        { id: 'mv-hananoto', title: '花の塔 MV（NERX 4K）', url: '/api/r2?key=videos/hananoto-4k.mp4', cover: '/api/r2?key=music/cover-hananoto.jpg', duration: 279, author: 'MV 合集', created_at: '' },
+        { id: 'mv-overflow', title: 'Over Flow(er) MV', url: '/api/r2?key=videos/overflow-1080.mp4', cover: '/api/r2?key=music/cover-overflow.jpg', duration: 244, author: 'MV 合集', created_at: '' },
+        { id: 'mv-romio', title: 'ロミオとシンデレラ MV', url: '/api/r2?key=videos/romio-1080.mp4', cover: '/api/r2?key=music/cover-romio.jpg', duration: 194, author: 'MV 合集', created_at: '' },
+      ];
+
+      const all = MVS.concat(remote);
       VIDEOS = all;
       emptyEl.hidden = all.length > 0;
       gridEl.innerHTML = all.map((v) => {
-        const c = v.cover ? '/api/media/' + v.cover : '';
+        const c = v.cover ? (String(v.cover).startsWith('/api/') ? v.cover : '/api/media/' + v.cover) : '';
         const dd = dur(v.duration);
         const meta = [(v.author ? esc(v.author) : ''), fmt(v.created_at)].filter(Boolean).join(' · ');
         return '<article class="vid" data-id="' + esc(String(v.id)) + '">' +
           '<div class="vthumb' + (c ? '' : ' noimg') + '">' + (c ? '<img loading="lazy" src="' + c + '" alt="" />' : '') +
           '<span class="vplay">▶</span>' + (dd ? '<span class="vdur">' + dd + '</span>' : '') + '</div>' +
           '<div class="vmeta"><h3>' + esc(v.title) + '</h3><p>' + meta + '</p></div>' +
-          '<button class="vdel" data-del="' + esc(String(v.id)) + '" title="删除（需要口令）">×</button>' +
+          (!String(v.id).startsWith('mv-') ? '<button class="vdel" data-del="' + esc(String(v.id)) + '" title="删除（需要口令）">×</button>' : '') +
           '</article>';
       }).join('');
       if (!all.length) emptyEl.textContent = remoteError ? '站内视频加载失败。' : '还没有视频。';
