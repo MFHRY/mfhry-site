@@ -244,5 +244,14 @@
     "emoji": "🫧",
     "href": "/games/bubble/",
     "status": "play"
+  },
+  {
+    "slug": "huarong",
+    "title": "华容道",
+    "desc": "滑动滑块把曹操移到出口，经典三国华容道，步数越少越好。",
+    "tag": "益智",
+    "emoji": "🧩",
+    "href": "/games/huarong/",
+    "status": "play"
   }
 ]

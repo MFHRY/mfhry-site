@@ -38,24 +38,26 @@ const playable = games.filter((g) => g.status === 'play').length;
   <script>
     // 每个游戏把自己的最好成绩写在 localStorage 里，这里读出来贴在卡片上。
     // 键名是历史遗留的，不统一，所以用表映射；没玩过的就不显示。
+    // kit.js 新标准为 mfhry_best_<slug>（HUD 直接读它），旧游戏用 mfhry_<slug>_best，两者都兼容，新 key 优先。
     const BEST: Record<string, { keys: string[]; label: string; unit?: string }> = {
-      'gold-miner': { keys: ['goldminer_best'], label: '最高' },
-      '2048': { keys: ['mfhry_2048_best'], label: '最高' },
-      whack: { keys: ['mfhry_whack_best'], label: '最高' },
-      jump: { keys: ['mfhry_jump_best'], label: '最高' },
-      maze: { keys: ['mfhry_maze_best'], label: '最快', unit: '秒' },
-      rhythm: { keys: ['mfhry_rhythm_best'], label: '最高' },
-      reversi: { keys: ['mfhry_reversi_win'], label: '胜', unit: '场' },
-      snake: { keys: ['mfhry_snake_best'], label: '最高' },
-      breakout: { keys: ['mfhry_brick_best'], label: '最高' },
-      tetris: { keys: ['mfhry_tetris_best'], label: '最高' },
-      flappy: { keys: ['mfhry_flappy_best'], label: '最高' },
-      invaders: { keys: ['mfhry_invaders_best'], label: '最高' },
-      minesweeper: { keys: ['mfhry_mines_best'], label: '最快', unit: '秒' },
-      memory: { keys: ['mfhry_memory_best'], label: '最少', unit: '步' },
-      puzzle15: { keys: ['mfhry_puzzle_best'], label: '最少', unit: '步' },
-      gomoku: { keys: ['mfhry_gomoku_win'], label: '胜', unit: '场' },
-      pong: { keys: ['mfhry_pong_win'], label: '胜', unit: '场' },
+      'gold-miner': { keys: ['mfhry_best_gold-miner', 'goldminer_best'], label: '最高' },
+      '2048': { keys: ['mfhry_best_2048', 'mfhry_2048_best'], label: '最高' },
+      whack: { keys: ['mfhry_best_whack', 'mfhry_whack_best'], label: '最高' },
+      jump: { keys: ['mfhry_best_jump', 'mfhry_jump_best'], label: '最高' },
+      maze: { keys: ['mfhry_best_maze', 'mfhry_maze_best'], label: '最快', unit: '秒' },
+      rhythm: { keys: ['mfhry_best_rhythm', 'mfhry_rhythm_best'], label: '最高' },
+      reversi: { keys: ['mfhry_best_reversi', 'mfhry_reversi_win'], label: '胜', unit: '场' },
+      snake: { keys: ['mfhry_best_snake', 'mfhry_snake_best'], label: '最高' },
+      breakout: { keys: ['mfhry_best_breakout', 'mfhry_brick_best'], label: '最高' },
+      tetris: { keys: ['mfhry_best_tetris', 'mfhry_tetris_best'], label: '最高' },
+      flappy: { keys: ['mfhry_best_flappy', 'mfhry_flappy_best'], label: '最高' },
+      invaders: { keys: ['mfhry_best_invaders', 'mfhry_invaders_best'], label: '最高' },
+      minesweeper: { keys: ['mfhry_best_minesweeper', 'mfhry_mines_best'], label: '最高' },
+      memory: { keys: ['mfhry_best_memory', 'mfhry_memory_best'], label: '最少', unit: '步' },
+      puzzle15: { keys: ['mfhry_best_puzzle15', 'mfhry_puzzle_best'], label: '最少', unit: '步' },
+      gomoku: { keys: ['mfhry_best_gomoku', 'mfhry_gomoku_win'], label: '胜', unit: '场' },
+      pong: { keys: ['mfhry_best_pong', 'mfhry_pong_win'], label: '胜', unit: '场' },
+      huarong: { keys: ['mfhry_best_huarong'], label: '最佳' },
     };
 
     const read = (key: string) => {

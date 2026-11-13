@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>华容道</title>
+<style>
+  :root{
+    --bg:#0b0e11; --accent:#f0b45a; --panel:#14181d; --text:#e8f0ec; --muted:#8a9a92;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
+    min-height:100vh; display:flex; flex-direction:column; align-items:center;
+    padding:14px 12px 12px; overflow:hidden; user-select:none;
+  }
+  h1{color:var(--accent); font-size:22px; letter-spacing:6px; text-indent:6px; margin:2px 0 6px; font-weight:700;}
+  .hint{font-size:12px; color:var(--muted); margin-bottom:12px; text-align:center; line-height:1.5; max-width:92vw;}
+  .status{display:flex; align-items:center; gap:8px; font-size:13px; color:#cfe0d8; margin-bottom:12px; flex-wrap:wrap; justify-content:center;}
+  .status .pill{background:var(--panel); padding:5px 12px; border-radius:8px; white-space:nowrap;}
+  .navbtn{background:var(--panel); color:var(--accent); border:1px solid #222a31; border-radius:8px; padding:5px 10px; font-size:13px; cursor:pointer; line-height:1;}
+  .navbtn:active{transform:scale(.94);}
+  #boardWrap{flex:1; width:100%; display:flex; justify-content:center; align-items:center; min-height:0;}
+  #board{
+    position:relative; touch-action:none; border-radius:10px;
+    background:
+      repeating-linear-gradient(0deg,   rgba(255,255,255,.045) 0 1px, transparent 1px calc(var(--cell) - 1px)),
+      repeating-linear-gradient(90deg,  rgba(255,255,255,.045) 0 1px, transparent 1px calc(var(--cell) - 1px)),
+      var(--panel);
+    box-shadow:0 10px 30px rgba(0,0,0,.4), inset 0 0 0 1px rgba(255,255,255,.06);
+  }
+  #exitGate{
+    position:absolute; left:var(--cell); top:100%; width:calc(var(--cell)*2); height:12px;
+    background:var(--accent); border-radius:0 0 7px 7px; opacity:.9;
+    box-shadow:0 0 14px rgba(240,180,90,.7), 0 6px 14px rgba(0,0,0,.5);
+    display:flex; align-items:center; justify-content:center;
+    font-size:9px; color:#241a08; font-weight:700; letter-spacing:2px;
+  }
+  .piece{position:absolute; transition:left .13s ease, top .13s ease; touch-action:none; cursor:grab;}
+  .piece.dragging{transition:none; cursor:grabbing; z-index:5;}
+  .piece .tile{
+    position:absolute; inset:3px; border-radius:9px; display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-size:calc(var(--cell)*.36); letter-spacing:2px; text-indent:2px;
+    border:1px solid rgba(255,255,255,.16); color:#fff;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.28), 0 5px 12px rgba(0,0,0,.45);
+  }
+  .piece.cao .tile{background:linear-gradient(150deg,#e2574c,#a83228); font-size:calc(var(--cell)*.5);
+    border:2px solid var(--accent); box-shadow:inset 0 1px 0 rgba(255,255,255,.3), 0 0 16px rgba(240,180,90,.45), 0 6px 14px rgba(0,0,0,.5);}
+  .piece.guan .tile{background:linear-gradient(150deg,#4e9d6f,#2f6b49);}
+  .piece.zhang .tile{background:linear-gradient(150deg,#3d6ea5,#27496e);}
+  .piece.zhao .tile{background:linear-gradient(150deg,#3f97a0,#2a6a72);}
+  .piece.ma .tile{background:linear-gradient(150deg,#7a5ba6,#543b78);}
+  .piece.huang .tile{background:linear-gradient(150deg,#c07a3e,#8a5226);}
+  .piece.soldier .tile{background:linear-gradient(150deg,#5a6670,#3c464e); font-size:calc(var(--cell)*.34); letter-spacing:0;}
+  .piece.selected .tile{outline:2px solid #fff; outline-offset:1px;}
+  .overlay{position:fixed; inset:0; background:rgba(5,8,10,.72); display:flex; align-items:center; justify-content:center; z-index:10; backdrop-filter:blur(3px);}
+  .overlay.hidden{display:none;}
+  .overlay-box{background:#12171c; border:1px solid #26303a; border-radius:16px; padding:26px 30px; text-align:center; max-width:86%;}
+  .overlay-box h2{color:var(--accent); font-size:20px; margin-bottom:10px;}
+  .overlay-box p{color:var(--muted); font-size:14px; margin-bottom:18px;}
+  .overlay-box button{background:var(--accent); color:#241a08; font-size:15px; font-weight:700; border:none; border-radius:10px; padding:10px 22px; cursor:pointer;}
+  .overlay-box button:active{transform:scale(.96);}
+</style>
+</head>
+<body>
+<h1>华容道</h1>
+<p class="hint">拖动或点击棋子移动 · 方向键 / WASD 移动选中棋子 · 把曹操移到底部出口 · R 键重开</p>
+<div class="status">
+  <span class="pill" id="stepsPill">步数 0</span>
+  <span class="pill" id="bestPill">最佳 —</span>
+  <button class="navbtn" id="restartBtn" aria-label="重新开始">重新开始</button>
+</div>
+<div id="boardWrap">
+  <div id="board">
+    <div id="exitGate">出口</div>
+  </div>
+</div>
+<div id="overlay" class="overlay hidden">
+  <div class="overlay-box">
+    <h2 id="overlayTitle"></h2>
+    <p id="overlayText"></p>
+    <button id="overlayBtn">再玩一次</button>
+  </div>
+</div>
+<script src="/games/kit.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  // ---- 经典华容道「横刀立马」：曹操(2x2)从底部出口逃脱 ----
+  var COLS = 4, ROWS = 5;
+  var EXIT_C = 1;              // 出口占底部第 1~2 列
+
+  function initialPieces() {
+    return [
+      { id: 'cao',   name: '曹操', w: 2, h: 2, r: 0, c: 1, cls: 'cao' },
+      { id: 'guan',  name: '关羽', w: 2, h: 1, r: 2, c: 1, cls: 'guan' },
+      { id: 'zhang', name: '张飞', w: 1, h: 2, r: 0, c: 0, cls: 'zhang' },
+      { id: 'zhao',  name: '赵云', w: 1, h: 2, r: 0, c: 3, cls: 'zhao' },
+      { id: 'ma',    name: '马超', w: 1, h: 2, r: 2, c: 0, cls: 'ma' },
+      { id: 'huang', name: '黄忠', w: 1, h: 2, r: 2, c: 3, cls: 'huang' },
+      { id: 's1',    name: '兵',  w: 1, h: 1, r: 3, c: 1, cls: 'soldier' },
+      { id: 's2',    name: '兵',  w: 1, h: 1, r: 3, c: 2, cls: 'soldier' },
+      { id: 's3',    name: '兵',  w: 1, h: 1, r: 4, c: 0, cls: 'soldier' },
+      { id: 's4',    name: '兵',  w: 1, h: 1, r: 4, c: 3, cls: 'soldier' }
+    ];
+  }
+
+  // ---- DOM ----
+  var boardEl = document.getElementById('board');
+  var boardWrapEl = document.getElementById('boardWrap');
+  var stepsPill = document.getElementById('stepsPill');
+  var bestPill = document.getElementById('bestPill');
+  var restartBtn = document.getElementById('restartBtn');
+  var overlay = document.getElementById('overlay');
+  var overlayTitle = document.getElementById('overlayTitle');
+  var overlayText = document.getElementById('overlayText');
+  var overlayBtn = document.getElementById('overlayBtn');
+
+  // ---- kit 音效 ----
+  var kit = window.mfKit || null;
+  function sfx(n) {
+    if (kit && typeof kit.sfx === 'function') { try { kit.sfx(n); } catch (e) {} }
+  }
+  var lastSfxAt = 0;
+  function clickSfx() {
+    var now = Date.now();
+    if (now - lastSfxAt < 55) return;   // 拖动时防音效刷屏
+    lastSfxAt = now;
+    sfx('click');
+  }
+
+  // ---- 状态 ----
+  var pieces = [];
+  var selected = null;
+  var steps = 0;
+  var won = false;
+  var cell = 56;
+  var drag = null;
+
+  function caoPiece() {
+    for (var i = 0; i < pieces.length; i++) if (pieces[i].id === 'cao') return pieces[i];
+    return null;
+  }
+  function occupiedBy(r, c, self) {
+    for (var i = 0; i < pieces.length; i++) {
+      var p = pieces[i];
+      if (p === self) continue;
+      if (r >= p.r && r < p.r + p.h && c >= p.c && c < p.c + p.w) return true;
+    }
+    return false;
+  }
+  function canMove(p, dr, dc) {
+    var nr = p.r + dr, nc = p.c + dc;
+    if (nr < 0 || nc < 0 || nr + p.h > ROWS || nc + p.w > COLS) return false;
+    for (var r = nr; r < nr + p.h; r++) {
+      for (var c = nc; c < nc + p.w; c++) {
+        if (occupiedBy(r, c, p)) return false;
+      }
+    }
+    return true;
+  }
+
+  // ---- 渲染 ----
+  function cellSize() {
+    var availW = Math.max(140, boardWrapEl.clientWidth - 8);
+    var availH = Math.max(180, window.innerHeight - 205);
+    var s = Math.floor(Math.min(availW / COLS, availH / ROWS, 66));
+    return Math.max(34, Math.min(s, 66));
+  }
+  function placePiece(p) {
+    p.el.style.left = (p.c * cell) + 'px';
+    p.el.style.top = (p.r * cell) + 'px';
+    p.el.style.width = (p.w * cell) + 'px';
+    p.el.style.height = (p.h * cell) + 'px';
+  }
+  function render() {
+    cell = cellSize();
+    boardEl.style.setProperty('--cell', cell + 'px');
+    boardEl.style.width = (COLS * cell) + 'px';
+    boardEl.style.height = (ROWS * cell) + 'px';
+    for (var i = 0; i < pieces.length; i++) placePiece(pieces[i]);
+  }
+  function select(p) {
+    if (selected && selected.el) selected.el.classList.remove('selected');
+    selected = p || null;
+    if (selected && selected.el) selected.el.classList.add('selected');
+  }
+
+  function refreshBest() {
+    var b = 0;
+    if (kit && typeof kit.getBest === 'function') { try { b = kit.getBest('huarong') || 0; } catch (e) {} }
+    bestPill.textContent = '最佳 ' + (b || '—');
+  }
+
+  // ---- 移动 ----
+  function tryMove(p, dr, dc) {
+    if (won || !p) return false;
+    if (!canMove(p, dr, dc)) return false;
+    p.r += dr; p.c += dc;
+    placePiece(p);
+    steps++;
+    stepsPill.textContent = '步数 ' + steps;
+    clickSfx();
+    checkWin();
+    return true;
+  }
+
+  function resetGame() {
+    pieces = initialPieces();
+    steps = 0;
+    won = false;
+    stepsPill.textContent = '步数 0';
+    select(null);
+    buildPieces();
+    render();
+    hideOverlay();
+  }
+
+  function buildPieces() {
+    boardEl.querySelectorAll('.piece').forEach(function (n) { n.remove(); });
+    for (var i = 0; i < pieces.length; i++) {
+      (function (p) {
+        var el = document.createElement('div');
+        el.className = 'piece ' + p.cls;
+        el.dataset.pid = p.id;
+        var tile = document.createElement('div');
+        tile.className = 'tile';
+        tile.textContent = p.name;
+        el.appendChild(tile);
+        boardEl.appendChild(el);
+        p.el = el;
+      })(pieces[i]);
+    }
+  }
+
+  // ---- 胜利 ----
+  function showWinOverlay() {
+    var score = Math.max(1000 - steps * 10, 1);
+    overlayTitle.textContent = '🎉 曹操出关！';
+    overlayText.textContent = '用时 ' + steps + ' 步 · 得分 ' + score;
+    overlay.classList.remove('hidden');
+  }
+  function checkWin() {
+    if (won) return;
+    var cao = caoPiece();
+    if (!cao) return;
+    if (cao.r === ROWS - cao.h && cao.c === EXIT_C) {
+      won = true;
+      var score = Math.max(1000 - steps * 10, 1);
+      // 新纪录时 kit 的 mfhryScore 包装会自动放 win 音效，避免双重音效
+      var prevBest = (kit && typeof kit.getBest === 'function') ? (kit.getBest('huarong') || 0) : 0;
+      if (score <= prevBest) sfx('win');
+      if (window.mfhryScore) { try { window.mfhryScore('huarong', score); } catch (e) {} }
+      refreshBest();
+      setTimeout(showWinOverlay, 350);
+    }
+  }
+  function hideOverlay() { overlay.classList.add('hidden'); }
+
+  // ---- 输入：点击 / 拖动（Pointer Events 覆盖鼠标 + 触屏）----
+  boardEl.addEventListener('pointerdown', function (e) {
+    if (won) return;
+    var el = e.target.closest ? e.target.closest('.piece') : null;
+    if (!el) { select(null); return; }
+    var p = null;
+    for (var i = 0; i < pieces.length; i++) if (pieces[i].el === el) { p = pieces[i]; break; }
+    if (!p) return;
+    select(p);
+    drag = { piece: p, startX: e.clientX, startY: e.clientY, axis: null, offset: 0, moved: false };
+    p.el.classList.add('dragging');
+    try { p.el.setPointerCapture(e.pointerId); } catch (err) {}
+    e.preventDefault();
+  });
+  boardEl.addEventListener('pointermove', function (e) {
+    if (!drag) return;
+    var p = drag.piece;
+    var dx = (e.clientX - drag.startX) / cell;
+    var dy = (e.clientY - drag.startY) / cell;
+    if (!drag.axis) {
+      if (Math.abs(dx) < 0.45 && Math.abs(dy) < 0.45) return;
+      drag.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+      drag.startX = e.clientX; drag.startY = e.clientY; drag.offset = 0;
+    }
+    var target = Math.round(drag.axis === 'x' ? (e.clientX - drag.startX) / cell : (e.clientY - drag.startY) / cell);
+    while (drag.offset !== target) {
+      var dir = target > drag.offset ? 1 : -1;
+      var ok = drag.axis === 'x' ? tryMove(p, 0, dir) : tryMove(p, dir, 0);
+      if (!ok) { drag.startX = e.clientX; drag.startY = e.clientY; drag.offset = 0; break; }
+      drag.offset += dir; drag.moved = true;
+    }
+  });
+  function endDrag() {
+    if (!drag) return;
+    var p = drag.piece;
+    p.el.classList.remove('dragging');
+    drag = null;
+  }
+  boardEl.addEventListener('pointerup', endDrag);
+  boardEl.addEventListener('pointercancel', endDrag);
+
+  // ---- 输入：键盘移动选中棋子 ----
+  var keyMap = {
+    ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1],
+    w: [-1, 0], s: [1, 0], a: [0, -1], d: [0, 1],
+    W: [-1, 0], S: [1, 0], A: [0, -1], D: [0, 1]
+  };
+  document.addEventListener('keydown', function (e) {
+    if (keyMap[e.key]) {
+      e.preventDefault();
+      if (selected) tryMove(selected, keyMap[e.key][0], keyMap[e.key][1]);
+    }
+  });
+
+  // ---- 重新开始（按钮 + kit R 键都会走到这里）----
+  // 按钮点击音效已由 kit 的全局 pointerdown 处理器负责，这里不再重复放
+  restartBtn.addEventListener('click', function () { resetGame(); });
+  overlayBtn.addEventListener('click', function () { resetGame(); });
+  window.mfRestart = resetGame;
+
+  // ---- 窗口变化重排 ----
+  window.addEventListener('resize', render);
+  window.addEventListener('orientationchange', function () { setTimeout(render, 200); });
+
+  // ---- 启动 ----
+  refreshBest();
+  resetGame();
+})();
+</script>
+</body>
+</html>
