@@ -944,7 +944,7 @@
   async function openNcComments(h) {
     if (!h || !h.nc) return;
     const p = $('ncPanel'), body = $('ncBody');
-    $('ncTitle').textContent = h.label + ' · 网易云评论';
+    $('ncTitle').textContent = (h.zh || h.label) + ' · 网易云评论';
     body.innerHTML = '<div class="nc-load">加载评论…</div>';
     p.classList.add('on');
     try {
@@ -978,7 +978,7 @@
         const b = document.createElement('span');
         b.className = 'chip';
         const t = document.createElement('span');
-        t.textContent = h.label;
+        t.textContent = h.zh || h.label;
         b.appendChild(t);
         if (h.nc) {
           const c = document.createElement('button');
@@ -988,7 +988,7 @@
         }
         b.onclick = () => {
           if (h.r2) {
-            addSong({ setId: 'r2:' + h.label, title: h.label, artist: h.artist || '', r2: h.r2, lyrics: h.lyrics || '', cover: h.cover || '', nc: h.nc || '' });
+            addSong({ setId: 'r2:' + h.label, title: h.zh || h.label, artist: h.artist || '', r2: h.r2, lyrics: h.lyrics || '', cover: h.cover || '', nc: h.nc || '' });
           } else { $('q').value = h.label; search(h.q); }
         };
         row.appendChild(b);
