@@ -87,10 +87,14 @@ async function waitReady(cdp, timeoutMs = 45000) {
   while (Date.now() - started < timeoutMs) {
     try {
       const res = await cdp.send('Runtime.evaluate', {
-        expression: 'document.querySelectorAll(\'[data-testid^="card-signature-"]\').length',
+        // 签名卡已渲染 + 统计明细已拿到数据，两者都满足才算就绪
+        expression:
+          '(function(){var c=document.querySelectorAll(\'[data-testid^="card-signature-"]\').length;' +
+          'var el=document.querySelector(\'[data-testid="stat-supporters"]\');' +
+          'var st=el&&/[0-9]/.test(el.textContent||"");return (c>20?1:0)+(st?1:0)})()',
         returnByValue: true,
       });
-      if ((res.result?.value || 0) > 20) return;
+      if ((res.result?.value || 0) === 2) return;
     } catch {}
     await sleep(700);
   }
