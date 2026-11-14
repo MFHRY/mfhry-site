@@ -50,6 +50,9 @@ jobs:
           DATABASE_URL: ${{ secrets.AIVEN_PG_URL }}
           PG_CA: ${{ secrets.AIVEN_PG_CA }}
 
+      - name: Mirror Stand with Jensen signers
+        run: node scripts/pull-jensen.mjs
+
       - name: Build
         run: pnpm build
 
