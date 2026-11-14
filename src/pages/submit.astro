@@ -47,12 +47,29 @@ import Base from '../layouts/Base.astro';
     .act.on{color:#ff9a6a}
     /* X 推文卡片 */
     .tw{margin:10px 0;border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:12px 14px;background:rgba(0,0,0,.22)}
-    .tw-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-    .tw-h b{font-size:14px;color:#fff}
-    .tw-h span{font-size:12px;color:rgba(255,255,255,.42)}
+    .tw-h{display:flex;align-items:flex-start;gap:10px;flex-wrap:nowrap}
+    .tw-av{width:38px;height:38px;border-radius:50%;flex:0 0 38px;object-fit:cover;background:rgba(255,255,255,.1)}
+    .tw-av-0{display:flex;align-items:center;justify-content:center;font-size:16px;color:#fff;font-weight:600}
+    .tw-id{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap;min-width:0}
+    .tw-id b{font-size:14px;color:#fff;display:inline-flex;align-items:center;gap:4px}
+    .tw-id b::after{content:"✓";display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:#1d9bf0;color:#fff;font-size:9px;font-weight:700}
+    .tw-handle{font-size:12.5px;color:rgba(255,255,255,.45)}
+    .tw-date{font-size:12px;color:rgba(255,255,255,.34)}
+    .tw-replyto{font-size:12px;color:rgba(255,255,255,.4);margin:5px 0 0 48px}
+    .tw-tr{display:flex;align-items:center;gap:8px;margin:8px 0 2px;font-size:12px}
+    .tw-tr-label{color:rgba(255,255,255,.42)}
+    .tw-tr-btn{border:0;border-radius:7px;padding:2px 9px;background:rgba(29,155,240,.16);color:#5bb4f0;font-size:11.5px;cursor:pointer}
+    .tw-tr-btn:hover{background:rgba(29,155,240,.28);color:#8ccbf5}
+    .tw-tr-btn:disabled{opacity:.6;cursor:default}
     .tw-txt{margin:8px 0 6px;font-size:14px;line-height:1.65;color:rgba(255,255,255,.88);white-space:pre-wrap;word-break:break-word}
+    .tw-txt[hidden]{display:none}
+    .tw-trans{border-left:2px solid rgba(29,155,240,.45);padding-left:9px;color:rgba(255,255,255,.92)}
     .tw-imgs{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
     .tw-imgs img{max-width:100%;max-height:220px;border-radius:10px;border:1px solid rgba(255,255,255,.08)}
+    .tw-stats{display:flex;gap:14px;margin-top:9px;padding-top:8px;border-top:1px solid rgba(255,255,255,.07);font-size:12px;color:rgba(255,255,255,.45)}
+    .tw-stats span{white-space:nowrap}
+    .tw-replies{margin-top:8px}
+    .tw-replies-h{font-size:11.5px;letter-spacing:.08em;color:rgba(255,255,255,.36);margin-bottom:5px}
     .tw-foot{margin-top:8px;font-size:12px}
     .tw-foot a{color:#7ab8ff;text-decoration:none}
     /* 转贴条目 */
@@ -97,26 +114,55 @@ import Base from '../layouts/Base.astro';
         '</div>';
     }
 
+    function fmtNum(n) {
+      n = Number(n) || 0;
+      if (n >= 1e8) return (n / 1e8).toFixed(1).replace(/\.0$/, '') + ' 亿';
+      if (n >= 1e4) return (n / 1e4).toFixed(1).replace(/\.0$/, '') + ' 万';
+      if (n >= 1e3) return (n / 1e3).toFixed(1).replace(/\.0$/, '') + 'k';
+      return String(n);
+    }
+    const LANG_NAME = { en: '英语', ja: '日语', zh: '中文', ko: '韩语', ru: '俄语', fr: '法语', de: '德语', es: '西班牙语' };
+
     function tweetCard(tw) {
       if (!tw) return '';
+      const pid = tw.id || '';
       if (tw.error && !tw.text) {
         return '<div class="tw"><div class="tw-h"><b>X 帖子</b></div>' +
           '<div class="tw-txt" style="color:rgba(255,255,255,.45)">推文抓取失败，点开原链接查看</div>' +
           '<div class="tw-foot"><a href="' + esc(tw.url) + '" target="_blank" rel="noreferrer noopener">' + esc(tw.url) + '</a></div></div>';
       }
       const imgs = (tw.photos || []).map((p) => '<img src="data:' + p.mime + ';base64,' + p.b64 + '" loading="lazy" alt="">').join('');
-      const replyTag = tw.replyTo && tw.replyTo.handle ? '<div style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:4px">回复 @' + esc(tw.replyTo.handle) + '</div>' : '';
+      const langName = LANG_NAME[tw.lang] || tw.lang || '英语';
+      const needTr = tw.text && (tw.lang && tw.lang !== 'zh');
+      const st = tw.stats || {};
+      const statsBar = (st.likes || st.replies || st.retweets || st.quotes)
+        ? '<div class="tw-stats">' +
+            (st.replies ? '<span>💬 ' + fmtNum(st.replies) + '</span>' : '') +
+            (st.retweets ? '<span>🔁 ' + fmtNum(st.retweets) + '</span>' : '') +
+            (st.likes ? '<span>♥ ' + fmtNum(st.likes) + '</span>' : '') +
+            (st.quotes ? '<span>📌 ' + fmtNum(st.quotes) + '</span>' : '') +
+          '</div>' : '';
+      const replyTag = tw.replyTo && tw.replyTo.handle ? '<div class="tw-replyto">回复 @' + esc(tw.replyTo.handle) + '</div>' : '';
       let replies = '';
       if (tw.replies && tw.replies.length) {
-        replies = '<div style="margin-top:8px"><div style="font-size:11.5px;letter-spacing:.08em;color:rgba(255,255,255,.36);margin-bottom:5px">原帖评论</div>' +
-          tw.replies.map(quoteCard).join('') + '</div>';
+        replies = '<div class="tw-replies"><div class="tw-replies-h">原帖评论</div>' + tw.replies.map(quoteCard).join('') + '</div>';
       }
-      return '<div class="tw"><div class="tw-h"><b>' + esc(tw.author || 'X 用户') + '</b>' +
-        (tw.handle ? '<span>@' + esc(tw.handle) + '</span>' : '') +
-        (tw.date ? '<span>' + esc(tw.date) + '</span>' : '') + '</div>' +
+      const avatarHtml = tw.avatar
+        ? '<img class="tw-av" src="' + esc(tw.avatar) + '" referrerpolicy="no-referrer" loading="lazy" alt="">'
+        : '<div class="tw-av tw-av-0">' + esc((tw.author || '?')[0] || '?') + '</div>';
+      return '<div class="tw" data-twid="' + esc(pid) + '">' +
+        '<div class="tw-h">' + avatarHtml +
+          '<div class="tw-id"><b>' + esc(tw.author || 'X 用户') + '</b>' +
+          (tw.handle ? '<span class="tw-handle">@' + esc(tw.handle) + '</span>' : '') +
+          (tw.date ? '<span class="tw-date">' + esc(tw.date) + '</span>' : '') + '</div>' +
+        '</div>' +
         replyTag +
-        (tw.text ? '<div class="tw-txt">' + esc(tw.text) + '</div>' : '') +
+        (needTr ? '<div class="tw-tr"><span class="tw-tr-label">翻译自 ' + esc(langName) + '</span>' +
+            '<button class="tw-tr-btn" data-twid="' + esc(pid) + '" data-lang="' + esc(tw.lang) + '">翻译</button></div>' : '') +
+        (tw.text ? '<div class="tw-txt" data-orig="1">' + esc(tw.text) + '</div>' : '') +
+        (tw.text ? '<div class="tw-txt tw-trans" hidden></div>' : '') +
         (imgs ? '<div class="tw-imgs">' + imgs + '</div>' : '') +
+        statsBar +
         quoteCard(tw.quote) + replies +
         '<div class="tw-foot"><a href="' + esc(tw.url) + '" target="_blank" rel="noreferrer noopener">在 X 查看原帖 →</a></div></div>';
     }
@@ -199,6 +245,30 @@ import Base from '../layouts/Base.astro';
     };
 
     listEl.addEventListener('click', async (e) => {
+      const trBtn = e.target.closest('.tw-tr-btn');
+      if (trBtn) {
+        const twBox = trBtn.closest('.tw');
+        const orig = twBox.querySelector('.tw-txt[data-orig]');
+        const trans = twBox.querySelector('.tw-trans');
+        if (!orig || !trans) return;
+        const showing = !trans.hidden;
+        if (showing) { trans.hidden = true; orig.hidden = false; trBtn.textContent = '翻译'; return; }
+        if (trans.dataset.loaded) { trans.hidden = false; orig.hidden = true; trBtn.textContent = '显示原文'; return; }
+        trBtn.disabled = true; trBtn.textContent = '翻译中…';
+        try {
+          const text = orig.textContent || '';
+          let done = false;
+          for (let attempt = 0; attempt < 3 && !done; attempt++) {
+            const r = await fetch('/api/translate?text=' + encodeURIComponent(text) + '&tl=zh-CN');
+            const d = await r.json().catch(() => ({}));
+            if (d && d.text) { trans.textContent = d.text; trans.dataset.loaded = '1'; trans.hidden = false; orig.hidden = true; trBtn.textContent = '显示原文'; done = true; }
+            else await new Promise((res) => setTimeout(res, 900));
+          }
+          if (!done) { trBtn.textContent = '翻译失败，再点一次'; }
+        } catch (err) { trBtn.textContent = '翻译失败'; }
+        finally { trBtn.disabled = false; }
+        return;
+      }
       const likeBtn = e.target.closest('.like');
       if (likeBtn) {
         const span = likeBtn.querySelector('span');

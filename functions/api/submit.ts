@@ -243,6 +243,9 @@ export const onRequestPost = async ({ env, request }: { env: any; request: Reque
         quote: t.quote || null,
         replyTo: t.replyTo || null,
         replies: t.replies || [],
+        avatar: t.avatar || '',
+        lang: t.lang || '',
+        stats: t.stats || {},
         error: t.error || null,
       });
     } catch {

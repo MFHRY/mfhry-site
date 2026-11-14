@@ -28,6 +28,12 @@ export interface TweetData {
   replyTo?: { handle?: string };
   /** 原帖的回复/评论（能抓到的部分） */
   replies?: TweetQuote[];
+  /** 原帖作者头像 */
+  avatar?: string;
+  /** 原文语言（en 等），用于「翻译自 xx」 */
+  lang?: string;
+  /** 统计数据 */
+  stats?: { likes?: number; replies?: number; retweets?: number; quotes?: number };
   error?: string;
 }
 
@@ -83,6 +89,9 @@ export async function fetchTweet(url: string): Promise<TweetData> {
   let quote: TweetQuote | undefined;
   let replyTo: { handle?: string } | undefined;
   const replies: TweetQuote[] = [];
+  let avatar = '';
+  let lang = '';
+  let stats: { likes?: number; replies?: number; retweets?: number; quotes?: number } = {};
   try {
     const s = await fetch(`https://cdn.syndication.twimg.com/tweet-result?id=${id}&lang=en&token=${token(id)}`, {
       signal: AbortSignal.timeout(8000),
@@ -100,6 +109,14 @@ export async function fetchTweet(url: string): Promise<TweetData> {
       if (!author && j.user?.name) author = String(j.user.name);
       if (!handle && j.user?.screen_name) handle = String(j.user.screen_name);
       if (!date && j.created_at) date = String(j.created_at).slice(0, 10);
+      if (j.user?.profile_image_url_https) avatar = String(j.user.profile_image_url_https);
+      if (j.lang) lang = String(j.lang);
+      stats = {
+        likes: Number(j.favorite_count) || 0,
+        replies: Number(j.conversation_count) || Number(j.reply_count) || 0,
+        retweets: Number(j.retweet_count) || 0,
+        quotes: Number(j.quote_count) || 0,
+      };
 
       // 引用/转贴的原推文（quoted_tweet）
       const q = j.quoted_tweet || j.quotedTweet;
@@ -154,5 +171,5 @@ export async function fetchTweet(url: string): Promise<TweetData> {
   }
 
   if (!text && !photos.length && !author) return { url: canon, error: '抓取失败' };
-  return { url: canon, id, author, handle, text, date, photos, quote, replyTo, replies };
+  return { url: canon, id, author, handle, text, date, photos, quote, replyTo, replies, avatar, lang, stats };
 }
