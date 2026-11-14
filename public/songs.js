@@ -49,7 +49,7 @@ window.MFHRY_SONGS = [
       { label: 'わがままで何が悪い！ (feat. 重音テト & 初音ミク)', zh: '任性有什么不好！', q: 'wagamama de nani ga warui', r2: '/api/r2?key=music/wagamama.mp3', cover: '/api/r2?key=music/cover-wagamama.jpg' },
       { label: 'プラズマ·サンダー·スーバーノウァ', zh: '等离子雷霆超新星', q: 'plasma supernova', r2: '/api/r2?key=music/plasma.mp3', cover: '/api/r2?key=music/cover-plasma.jpg', artist: 'Chenomio feat. 重音テト' },
       { label: 'ETERNAL FLAME 〜空の箱', zh: '永恒之焰', q: 'eternal flame', r2: '/api/r2?key=music/eternal-flame.mp3', cover: '/api/r2?key=music/cover-eternal-flame.jpg', artist: 'ダイヤモンドダスト', nc: 2159532094 },
-      { label: 'ストリーミングハート (feat. 初音ミク)', zh: '流心', q: 'streaming heart', r2: '/api/r2?key=music/streamingheart.mp3', cover: '/api/r2?key=music/cover-streamingheart.jpg' },
+      { label: 'ストリーミングハート (feat. 初音ミク)', zh: '流心', q: 'streaming heart', r2: '/api/r2?key=music/streamingheart.mp3', cover: '/api/r2?key=music/cover-streamingheart.jpg', artist: 'DECO*27', nc: 28364360 },
       { label: 'ラストラス (feat. 初音ミク)', zh: '星汉灿烂', q: 'last lass hatsune miku', r2: '/api/r2?key=music/lastlass.mp3', cover: '/api/r2?key=music/cover-lastlass.jpg', artist: '*Luna', nc: 2722447378 },
       { label: 'カルチャ (feat. 初音ミク)', zh: '文化', q: 'culture tsumiki', r2: '/api/r2?key=music/culture.mp3', cover: '/api/r2?key=music/cover-culture.jpg' },
       { label: 'シアンブルー (feat. 初音ミク)', zh: '青空蓝', q: 'cyan blue police piccadilly', r2: '/api/r2?key=music/cyanblue.mp3', cover: '/api/r2?key=music/cover-cyanblue.jpg' },
