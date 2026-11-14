@@ -4,6 +4,7 @@ import Base from '../layouts/Base.astro';
 
 <Base title="记录">
   <h1>记录</h1>
+  <p class="muted">镜像存档 · 点开即看原站完整内容</p>
 
   <div class="grid single">
     <a class="card" href="/standwithjensen/">
@@ -12,257 +13,19 @@ import Base from '../layouts/Base.astro';
         <span class="stars">整站镜像</span>
       </div>
       <p class="desc">三十三年值得一个答案。我们要求 NVIDIA 董事会让黄仁勋回归，直到独立调查完成并有明确证据。</p>
-      <p class="excerpt">点进去直接看到原站全部内容：主视觉、公开信全文、历年照片、精选留言、签名墙。</p>
+      <p class="excerpt">主视觉、公开信全文、历年照片、精选留言、签名墙，全部本地存档。</p>
       <div class="meta">
         <span class="lang"><i style="background:#76b900"></i>镜像</span>
-        <span id="cstat">公开签名者 —</span>
-        <span id="cupd">每 15 分钟同步</span>
+        <span>每 15 分钟同步</span>
+        <span>只读</span>
       </div>
     </a>
   </div>
 
-  <p class="muted jnote">
-    下面是镜像下来的公开签名者（可搜索全部），数据每 15 分钟随定时部署刷新 ·
-    <a href="https://standwithjensen.com" target="_blank" rel="noreferrer noopener">原站 ↗</a>
-  </p>
-
-  <div id="stat" class="jstat"></div>
-
-  <div class="filters">
-    <input id="q" type="search" placeholder="搜索姓名…" autocomplete="off" />
-
-    <div class="chips" id="affs">
-      <button class="chip on" data-aff="">全部</button>
-      <button class="chip" data-aff="currentEmployee">现任员工</button>
-      <button class="chip" data-aff="formerEmployee">前员工</button>
-      <button class="chip" data-aff="shareholder">股东</button>
-      <button class="chip" data-aff="supporter">支持者</button>
-      <button class="chip" data-aff="" data-none="1">未标注</button>
-    </div>
-
-    <select id="pageSize" class="class-select">
-      <option value="50">每页 50</option>
-      <option value="100" selected>每页 100</option>
-      <option value="200">每页 200</option>
-    </select>
-  </div>
-
-  <div class="roster" id="list"></div>
-  <p class="muted" id="empty" hidden>没有匹配的签名者。</p>
-
-  <div class="pager" id="pager"></div>
-
-  <p class="muted" id="updated" hidden></p>
-
-  <script is:inline>
-    const listEl = document.getElementById('list');
-    const emptyEl = document.getElementById('empty');
-    const pagerEl = document.getElementById('pager');
-    const statEl = document.getElementById('stat');
-    const updatedEl = document.getElementById('updated');
-    const q = document.getElementById('q');
-    const affs = document.getElementById('affs');
-    const pageSizeSel = document.getElementById('pageSize');
-
-    const CP = (...c) => Array.from(c, (x) => String.fromCodePoint(x)).join('');
-    const ENTITY = { '&': CP(38, 97, 109, 112, 59), '<': CP(38, 108, 116, 59), '>': CP(38, 103, 116, 59), '"': CP(38, 113, 117, 111, 116, 59), "'": CP(38, 35, 51, 57, 59) };
-    const esc = (s) => String(s == null ? '' : s).replace(/&/g, ENTITY['&']).replace(/[<>"']/g, (c) => ENTITY[c]);
-    const num = (n) => Number(n || 0).toLocaleString('zh-CN');
-    const AFF = {
-      currentEmployee: '现任员工',
-      formerEmployee: '前员工',
-      shareholder: '股东',
-      supporter: '支持者',
-      '': '未标注',
-    };
-    const when = (t) => {
-      if (!t) return '';
-      const d = new Date(t);
-      if (isNaN(d.getTime())) return String(t);
-      return d.toLocaleString('sv-SE', { timeZone: 'Asia/Shanghai' }).slice(0, 16);
-    };
-
-    let all = [];
-    let filtered = [];
-    let page = 1;
-    let aff = '';
-    let size = 100;
-
-    function renderStats(data) {
-      const c = data.campaign || {};
-      const cards = [
-        ['签名总数', num(c.total)],
-        ['公开签名者', num(data.capturedPublic || (data.items || []).length)],
-        ['现任员工', num(c.currentEmployees)],
-        ['前员工', num(c.formerEmployees)],
-        ['股东', num(c.shareholders)],
-        ['支持者', num(c.supporters)],
-      ];
-      statEl.innerHTML = cards
-        .map(([k, v]) => '<div class="jcard"><span class="jk">' + esc(k) + '</span><b>' + esc(v) + '</b></div>')
-        .join('');
-      updatedEl.hidden = false;
-      updatedEl.textContent = '镜像抓取时间：' + (data.fetchedAt ? when(data.fetchedAt) : '未知') + ' · 数据来源 standwithjensen.com 公开接口';
-
-      const cstat = document.getElementById('cstat');
-      const cupd = document.getElementById('cupd');
-      if (cstat) cstat.textContent = '公开签名者 ' + num(data.capturedPublic || (data.items || []).length) + ' 人 · 总签名 ' + num(c.total);
-      if (cupd) cupd.textContent = data.fetchedAt ? '更新于 ' + when(data.fetchedAt) : '每 15 分钟同步';
-    }
-
-    function apply() {
-      const kw = q.value.trim().toLowerCase();
-      filtered = all.filter((x) => {
-        const a = x.affiliation || '';
-        const okAff = aff === '__none' ? !a : aff === '' ? true : a === aff;
-        const okKw = !kw || String(x.name || '').toLowerCase().includes(kw);
-        return okAff && okKw;
-      });
-      const pages = Math.max(1, Math.ceil(filtered.length / size));
-      if (page > pages) page = pages;
-      render();
-    }
-
-    function render() {
-      const pages = Math.max(1, Math.ceil(filtered.length / size));
-      const start = (page - 1) * size;
-      const slice = filtered.slice(start, start + size);
-      listEl.innerHTML = slice
-        .map((x) => {
-          const a = x.affiliation || '';
-          return (
-            '<div class="stu jstu">' +
-            '<div class="jmain">' +
-            '<span class="nm">' + esc(x.name || '(未署名)') + '</span>' +
-            (x.title ? '<span class="jtitle">' + esc(x.title) + '</span>' : '') +
-            (x.testimonial ? '<span class="jmsg">' + esc(x.testimonial) + '</span>' : '') +
-            '</div>' +
-            '<div class="jright">' +
-            '<span class="jtag">' + esc(AFF[a] || a || '未标注') + '</span>' +
-            '<span class="jdate">' + esc(when(x.createdAt)) + '</span>' +
-            '</div>' +
-            '</div>'
-          );
-        })
-        .join('');
-      emptyEl.hidden = filtered.length > 0;
-      pagerEl.innerHTML =
-        filtered.length > size
-          ? '<button class="pbtn" data-go="prev"' + (page <= 1 ? ' disabled' : '') + '>上一页</button>' +
-            '<span class="pinfo">' + num(start + 1) + '–' + num(Math.min(start + size, filtered.length)) + ' / ' + num(filtered.length) + '（第 ' + page + ' / ' + pages + ' 页）</span>' +
-            '<button class="pbtn" data-go="next"' + (page >= pages ? ' disabled' : '') + '>下一页</button>'
-          : '<span class="pinfo">共 ' + num(filtered.length) + ' 名公开签名者</span>';
-    }
-
-    async function load() {
-      try {
-        const res = await fetch('/data/jensen-mirror.json', { cache: 'no-store' });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const data = await res.json();
-        all = data.items || [];
-        renderStats(data);
-        apply();
-      } catch (err) {
-        statEl.innerHTML = '<div class="jcard"><span class="jk">镜像</span><b>加载失败</b></div>';
-        emptyEl.hidden = false;
-        emptyEl.textContent = '镜像加载失败：' + err.message + '（原站 ' + 'https://standwithjensen.com' + '）';
-      }
-    }
-
-    let timer = null;
-    q.addEventListener('input', () => {
-      clearTimeout(timer);
-      timer = setTimeout(() => { page = 1; apply(); }, 220);
-    });
-    pageSizeSel.addEventListener('change', () => {
-      size = Number(pageSizeSel.value) || 100;
-      page = 1;
-      apply();
-    });
-    affs.addEventListener('click', (e) => {
-      const b = e.target.closest('.chip');
-      if (!b) return;
-      for (const c of affs.children) c.classList.remove('on');
-      b.classList.add('on');
-      const v = b.dataset.aff;
-      aff = b.dataset.none === '1' ? '__none' : v;
-      page = 1;
-      apply();
-    });
-    pagerEl.addEventListener('click', (e) => {
-      const b = e.target.closest('[data-go]');
-      if (!b || b.disabled) return;
-      page += b.dataset.go === 'next' ? 1 : -1;
-      page = Math.max(1, page);
-      render();
-      window.scrollTo({ top: listEl.offsetTop - 80, behavior: 'smooth' });
-    });
-
-    load();
-    setInterval(load, 15 * 60 * 1000);
-  </script>
-
   <style>
-    .single { grid-template-columns: 1fr; margin: 14px 0 10px; }
-    .jnote { margin: 6px 0 14px; }
-    .jstat {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-      gap: 10px;
-      margin: 16px 0 18px;
+    .single {
+      grid-template-columns: 1fr;
+      margin: 14px 0 10px;
     }
-    .jcard {
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      background: var(--card);
-      padding: 12px 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-    .jcard .jk { font-size: 12px; color: var(--muted); }
-    .jcard b { font-size: 20px; font-weight: 650; }
-
-    .jstu {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 14px;
-      padding: 11px 12px;
-    }
-    .jmain { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-    .jmain .nm { font-size: 14.5px; font-weight: 600; color: var(--fg); }
-    .jtitle { font-size: 12.5px; color: var(--muted); }
-    .jmsg {
-      font-size: 12.5px;
-      color: rgba(255, 255, 255, .62);
-      line-height: 1.55;
-      word-break: break-word;
-    }
-    .jright { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: 0 0 auto; }
-    .jtag {
-      font-size: 11.5px;
-      padding: 2px 8px;
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      color: var(--muted);
-      white-space: nowrap;
-    }
-    .jdate { font-size: 11px; color: var(--muted); white-space: nowrap; }
-
-    .pager { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 20px 0 8px; flex-wrap: wrap; }
-    .pbtn {
-      font: inherit;
-      font-size: 13px;
-      padding: 5px 14px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: transparent;
-      color: var(--fg);
-      cursor: pointer;
-    }
-    .pbtn:disabled { opacity: .4; cursor: default; }
-    .pbtn:not(:disabled):hover { border-color: var(--accent); color: var(--accent); }
-    .pinfo { font-size: 12.5px; color: var(--muted); }
   </style>
 </Base>
