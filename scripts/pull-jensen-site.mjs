@@ -98,7 +98,8 @@ function extraScripts(lang) {
     sel.value=${JSON.stringify(lang)};
     sel.addEventListener('change',function(){
       var v=sel.value;
-      location.href='/standwithjensen/lang/'+encodeURIComponent(v);
+      // 默认语言就在站点根目录，其余在 lang/ 下
+      location.href=(v===${JSON.stringify(DEFAULT_LANG)})?'/standwithjensen/':'/standwithjensen/lang/'+encodeURIComponent(v);
     });
   }
 })();
