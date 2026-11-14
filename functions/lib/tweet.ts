@@ -5,6 +5,15 @@ export interface TweetPhoto {
   size: number;
 }
 
+/** 原帖里的「引用推文」/「被回复的推文」（转贴、评论上下文） */
+export interface TweetQuote {
+  author?: string;
+  handle?: string;
+  text?: string;
+  date?: string;
+  photos?: TweetPhoto[];
+}
+
 export interface TweetData {
   url: string;
   id?: string;
@@ -13,6 +22,12 @@ export interface TweetData {
   text?: string;
   date?: string;
   photos?: TweetPhoto[];
+  /** 原帖引用/转贴的那条推文（供评论、转贴上下文展示） */
+  quote?: TweetQuote;
+  /** 原帖是对谁说的（in_reply_to） */
+  replyTo?: { handle?: string };
+  /** 原帖的回复/评论（能抓到的部分） */
+  replies?: TweetQuote[];
   error?: string;
 }
 
@@ -65,6 +80,9 @@ export async function fetchTweet(url: string): Promise<TweetData> {
   }
 
   const photos: TweetPhoto[] = [];
+  let quote: TweetQuote | undefined;
+  let replyTo: { handle?: string } | undefined;
+  const replies: TweetQuote[] = [];
   try {
     const s = await fetch(`https://cdn.syndication.twimg.com/tweet-result?id=${id}&lang=en&token=${token(id)}`, {
       signal: AbortSignal.timeout(8000),
@@ -82,6 +100,27 @@ export async function fetchTweet(url: string): Promise<TweetData> {
       if (!author && j.user?.name) author = String(j.user.name);
       if (!handle && j.user?.screen_name) handle = String(j.user.screen_name);
       if (!date && j.created_at) date = String(j.created_at).slice(0, 10);
+
+      // 引用/转贴的原推文（quoted_tweet）
+      const q = j.quoted_tweet || j.quotedTweet;
+      if (q) {
+        quote = {
+          author: q.user?.name ? String(q.user.name) : undefined,
+          handle: q.user?.screen_name ? String(q.user.screen_name) : undefined,
+          text: q.text ? String(q.text) : undefined,
+          date: q.created_at ? String(q.created_at).slice(0, 10) : undefined,
+        };
+      }
+      // 原帖是回复某人的（in_reply_to）——用于展示「回复 @xxx」
+      if (j.in_reply_to_screen_name) replyTo = { handle: String(j.in_reply_to_screen_name) };
+      // parent（部分接口会给被回复推文内容）
+      if (j.parent?.text) {
+        replies.push({
+          author: j.parent.user?.name ? String(j.parent.user.name) : undefined,
+          handle: j.parent.user?.screen_name ? String(j.parent.user.screen_name) : undefined,
+          text: String(j.parent.text),
+        });
+      }
 
       const list: string[] = [];
       for (const p of j.photos || []) if (p?.url) list.push(String(p.url));
@@ -115,5 +154,5 @@ export async function fetchTweet(url: string): Promise<TweetData> {
   }
 
   if (!text && !photos.length && !author) return { url: canon, error: '抓取失败' };
-  return { url: canon, id, author, handle, text, date, photos };
+  return { url: canon, id, author, handle, text, date, photos, quote, replyTo, replies };
 }

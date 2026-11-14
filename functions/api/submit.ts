@@ -18,6 +18,8 @@ const MAX_TAG = 16;
 const MAX_COMMENT = 500;
 const PER_HOUR = 3;
 const COMMENT_PER_HOUR = 20;
+const MAX_COMMENTS_SHOW = 500;   // 每条投稿最多显示 500 条评论
+const MAX_REPOSTS_SHOW = 500;    // 转贴记录最多 500 条
 
 const ipOf = (req: Request) => req.headers.get('CF-Connecting-IP') || req.headers.get('x-forwarded-for') || 'unknown';
 const sqlTime = (msAgo = 0) => new Date(Date.now() - msAgo).toISOString().slice(0, 19).replace('T', ' ');
@@ -114,11 +116,11 @@ export const onRequestGet = async ({ env, request }: { env: any; request: Reques
   if (action === 'comments') {
     if (!Number.isInteger(id) || id < 1) return json({ error: 'bad id' }, 400);
     const rows = await env.DB.prepare(
-      'SELECT id, author, body, created_at FROM submit_comments WHERE post_id = ? ORDER BY id ASC LIMIT 200'
+      'SELECT id, author, body, created_at FROM submit_comments WHERE post_id = ? ORDER BY id ASC LIMIT 500'
     )
       .bind(id)
       .all();
-    return json({ ok: true, items: rows.results || [] });
+    return json({ ok: true, items: rows.results || [], total: rows.results?.length || 0 });
   }
 
   // 时间线：投稿 + 转贴事件混排（按时间倒序）
@@ -238,6 +240,9 @@ export const onRequestPost = async ({ env, request }: { env: any; request: Reque
         text: t.text || '',
         date: t.date || '',
         photos: (t.photos || []).map((p) => ({ mime: p.mime, b64: p.b64, size: p.size })),
+        quote: t.quote || null,
+        replyTo: t.replyTo || null,
+        replies: t.replies || [],
         error: t.error || null,
       });
     } catch {

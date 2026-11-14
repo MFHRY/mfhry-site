@@ -87,6 +87,16 @@ import Base from '../layouts/Base.astro';
       return (d.getFullYear() === now.getFullYear() ? p(d.getMonth() + 1) + '/' + p(d.getDate()) : d.getFullYear() + '/' + p(d.getMonth() + 1) + '/' + p(d.getDate())) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
     }
 
+    function quoteCard(q) {
+      if (!q || (!q.text && !q.author)) return '';
+      return '<div style="margin-top:8px;padding:9px 11px;border:1px solid rgba(255,255,255,.1);border-radius:10px;background:rgba(255,255,255,.03)">' +
+        '<div style="font-size:12.5px;color:rgba(255,255,255,.66)"><b>' + esc(q.author || 'X 用户') + '</b>' +
+        (q.handle ? ' <span style="color:rgba(255,255,255,.4)">@' + esc(q.handle) + '</span>' : '') +
+        (q.date ? ' <span style="color:rgba(255,255,255,.3)">· ' + esc(q.date) + '</span>' : '') + '</div>' +
+        (q.text ? '<div style="margin-top:4px;font-size:13px;line-height:1.6;color:rgba(255,255,255,.78);white-space:pre-wrap">' + esc(q.text) + '</div>' : '') +
+        '</div>';
+    }
+
     function tweetCard(tw) {
       if (!tw) return '';
       if (tw.error && !tw.text) {
@@ -95,11 +105,19 @@ import Base from '../layouts/Base.astro';
           '<div class="tw-foot"><a href="' + esc(tw.url) + '" target="_blank" rel="noreferrer noopener">' + esc(tw.url) + '</a></div></div>';
       }
       const imgs = (tw.photos || []).map((p) => '<img src="data:' + p.mime + ';base64,' + p.b64 + '" loading="lazy" alt="">').join('');
+      const replyTag = tw.replyTo && tw.replyTo.handle ? '<div style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:4px">回复 @' + esc(tw.replyTo.handle) + '</div>' : '';
+      let replies = '';
+      if (tw.replies && tw.replies.length) {
+        replies = '<div style="margin-top:8px"><div style="font-size:11.5px;letter-spacing:.08em;color:rgba(255,255,255,.36);margin-bottom:5px">原帖评论</div>' +
+          tw.replies.map(quoteCard).join('') + '</div>';
+      }
       return '<div class="tw"><div class="tw-h"><b>' + esc(tw.author || 'X 用户') + '</b>' +
         (tw.handle ? '<span>@' + esc(tw.handle) + '</span>' : '') +
         (tw.date ? '<span>' + esc(tw.date) + '</span>' : '') + '</div>' +
+        replyTag +
         (tw.text ? '<div class="tw-txt">' + esc(tw.text) + '</div>' : '') +
         (imgs ? '<div class="tw-imgs">' + imgs + '</div>' : '') +
+        quoteCard(tw.quote) + replies +
         '<div class="tw-foot"><a href="' + esc(tw.url) + '" target="_blank" rel="noreferrer noopener">在 X 查看原帖 →</a></div></div>';
     }
 
