@@ -4,8 +4,25 @@ import Base from '../layouts/Base.astro';
 
 <Base title="记录">
   <h1>记录</h1>
-  <p class="muted">
-    Stand with Jensen 公开签名者镜像 · 每 15 分钟自动更新 ·
+
+  <div class="grid single">
+    <a class="card" href="/standwithjensen/">
+      <div class="card-head">
+        <h3>Stand with Jensen · 致 NVIDIA 董事会的一封公开信</h3>
+        <span class="stars">整站镜像</span>
+      </div>
+      <p class="desc">三十三年值得一个答案。我们要求 NVIDIA 董事会让黄仁勋回归，直到独立调查完成并有明确证据。</p>
+      <p class="excerpt">点进去直接看到原站全部内容：主视觉、公开信全文、历年照片、精选留言、签名墙。</p>
+      <div class="meta">
+        <span class="lang"><i style="background:#76b900"></i>镜像</span>
+        <span id="cstat">公开签名者 —</span>
+        <span id="cupd">每 15 分钟同步</span>
+      </div>
+    </a>
+  </div>
+
+  <p class="muted jnote">
+    下面是镜像下来的公开签名者（可搜索全部），数据每 15 分钟随定时部署刷新 ·
     <a href="https://standwithjensen.com" target="_blank" rel="noreferrer noopener">原站 ↗</a>
   </p>
 
@@ -86,6 +103,11 @@ import Base from '../layouts/Base.astro';
         .join('');
       updatedEl.hidden = false;
       updatedEl.textContent = '镜像抓取时间：' + (data.fetchedAt ? when(data.fetchedAt) : '未知') + ' · 数据来源 standwithjensen.com 公开接口';
+
+      const cstat = document.getElementById('cstat');
+      const cupd = document.getElementById('cupd');
+      if (cstat) cstat.textContent = '公开签名者 ' + num(data.capturedPublic || (data.items || []).length) + ' 人 · 总签名 ' + num(c.total);
+      if (cupd) cupd.textContent = data.fetchedAt ? '更新于 ' + when(data.fetchedAt) : '每 15 分钟同步';
     }
 
     function apply() {
@@ -181,6 +203,8 @@ import Base from '../layouts/Base.astro';
   </script>
 
   <style>
+    .single { grid-template-columns: 1fr; margin: 14px 0 10px; }
+    .jnote { margin: 6px 0 14px; }
     .jstat {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));

@@ -1,3 +1,6 @@
 # 登录功能已下线，老链接别 404
 /login/*    /games/   302
 /login      /games/   302
+
+# Stand with Jensen 整站镜像：SPA 深链接回退到镜像首页
+/standwithjensen/*    /standwithjensen/index.html   200

@@ -53,6 +53,9 @@ jobs:
       - name: Mirror Stand with Jensen signers
         run: node scripts/pull-jensen.mjs
 
+      - name: Mirror Stand with Jensen site
+        run: node scripts/pull-jensen-site.mjs
+
       - name: Build
         run: pnpm build
 
