@@ -106,6 +106,7 @@
   .gdivider{flex:0 0 100%;width:100%;display:flex;align-items:center;gap:10px;margin:10px 0 2px;
     font-size:11px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;pointer-events:none}
   .gdivider::before,.gdivider::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.28),transparent)}
+  .gdivider.bare{height:1px;margin:14px 0 6px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.30),transparent)}
   .chip .zh{font-size:.9em;opacity:.62;margin-left:1px;letter-spacing:0}
   .chip:hover .zh,.chip.on .zh{opacity:.82}
 
@@ -414,7 +415,7 @@
 </div>
 
 <audio id="au" preload="auto"></audio>
-<script src="/songs.js?v=13"></script>
+<script src="/songs.js?v=14"></script>
 <script>
 (() => {
   'use strict';
@@ -980,10 +981,10 @@
       const row = document.createElement('div');
       row.className = 'row';
       for (const h of g.items) {
-        if (h.divider) {
+        if ('divider' in h) {
           const dv = document.createElement('div');
-          dv.className = 'gdivider';
-          dv.textContent = h.divider;
+          dv.className = h.divider ? 'gdivider' : 'gdivider bare';
+          dv.textContent = h.divider || '';
           row.appendChild(dv);
           continue;
         }
