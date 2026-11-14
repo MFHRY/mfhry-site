@@ -43,7 +43,7 @@ window.MFHRY_SONGS = [
       { label: '真夜中のドア〜stay with me', zh: '深夜之门', q: 'mayonaka no door', r2: '/api/r2?key=music/mayonaka-door.mp3', cover: '/api/r2?key=music/cover-mayonaka-door.jpg' },
       { label: 'Tokyo Drift', zh: '东京漂移', q: 'tokyo drift teriyaki boyz', r2: '/api/r2?key=music/tokyodrift.mp3', cover: '/api/r2?key=music/cover-tokyodrift.jpg', artist: 'Teriyaki Boyz', nc: 5176741 },
       { label: '化けの花', zh: '诡化之花', q: 'bakenohana', r2: '/api/r2?key=music/bakenohana.mp3', cover: '/api/r2?key=music/cover-bakenohana.jpg' },
-      { label: 'ディスコミュ星人', zh: '交流障碍星人', q: 'discomy', r2: '/api/r2?key=music/discomyu.mp3', cover: '/api/r2?key=music/cover-discomyu.jpg', artist: 'ななもり。/ ナナヲアカリ', nc: 459717346 },
+      { label: 'ディスコミュ星人', zh: '交流障碍星人', q: 'discomy', r2: '/api/r2?key=music/discomyu.mp3', cover: '/api/r2?key=music/cover-discomyu.jpg', artist: 'ナナヲアカリ', nc: 459717346 },
       { label: 'みくみくにしてあげる♪【してやんよ】', zh: '将你MIKUMIKU掉♪', q: 'mikumiku ni shite ageru', r2: '/api/r2?key=music/mikumiku.mp3', cover: '/api/r2?key=music/cover-mikumiku.jpg' },
       { label: 'アンデッド (feat. 鏡音リン)', zh: '不死者', q: 'undead 25ji', r2: '/api/r2?key=music/undead.mp3', cover: '/api/r2?key=music/cover-undead.jpg' },
       { label: 'わがままで何が悪い！ (feat. 重音テト & 初音ミク)', zh: '任性有什么不好！', q: 'wagamama de nani ga warui', r2: '/api/r2?key=music/wagamama.mp3', cover: '/api/r2?key=music/cover-wagamama.jpg' },
