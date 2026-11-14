@@ -273,16 +273,30 @@
   .fs-q small{display:block;color:rgba(255,255,255,.5);font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .fs-q b{display:block;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .fs-empty{color:rgba(255,255,255,.38);font-size:12px;padding:8px 2px}
-  @media (max-width:820px){
-    .fs-ly{display:none!important}
+  /* 移动端：纵向布局，歌词占满剩余高度 */
+  @media (max-width:860px){
+    .fs-top{padding:12px 16px}
+    .fs-body{flex-direction:column;gap:12px;padding:6px 16px 2px;justify-content:flex-start;min-height:0;overflow:hidden}
+    .fs-art{width:min(38vw,132px);border-radius:7px}
+    .fs-mv{width:100%;max-height:38vh}
+    .fs-info{width:100%;max-width:100%;text-align:left;flex:none}
+    .fs-title{font-size:19px;line-height:1.26}
+    .fs-artist{font-size:13px;margin-top:3px}
+    .fs-prog{margin-top:14px}
+    .fs-ctrl{margin-top:12px;gap:22px}
+    .fs-ctrl .mini{font-size:15px;width:24px;height:24px}
+    .fs-ctrl .fs-play svg{width:30px;height:30px}
+    .fs-vol{display:none}
+    .fs-ly{width:100%;max-width:100%;max-height:none;min-height:0;flex:1;padding:0}
+    .ly-head{padding-bottom:8px}
+    .ly-ja{font-size:15.5px}
+    .ly-zh{font-size:11.5px}
+    .fs-queue{padding:6px 14px 12px}
+    .fs-q{max-width:200px;padding:6px 12px 6px 6px}
+    .fs-q img{width:30px;height:30px}
   }
-  @media (max-width:720px){
-    .fs-body{flex-direction:column;gap:20px;padding-top:4px;justify-content:center}
-    .fs-art{width:min(54vw,220px)}
-    .fs-info{width:100%;max-width:360px;text-align:center}
-    .fs-prog,.fs-vol{margin-top:16px}
-    .fs-vol input{max-width:64%;margin:0 auto}
-    .fs-ly{display:none!important}
+  @media (max-width:860px) and (max-height:620px){
+    .fs-art{display:none}
   }
 
   /* 网易云评论面板（精选歌 chip 的 💬 按钮打开） */
