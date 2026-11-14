@@ -81,7 +81,8 @@ Only Jensen can keep NVDA great!"</blockquote></figure><figure class="sl-row-ent
     sel.value="bn";
     sel.addEventListener('change',function(){
       var v=sel.value;
-      location.href=(v==='zh-Hans')?'/standwithjensen/':'/standwithjensen/lang/'+encodeURIComponent(v);
+      // 默认语言就在站点根目录，其余在 lang/ 下
+      location.href=(v==="zh-Hans")?'/standwithjensen/':'/standwithjensen/lang/'+encodeURIComponent(v);
     });
   }
 })();

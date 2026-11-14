@@ -161,7 +161,10 @@ async function main() {
             returnByValue: true,
           });
           const out = res.result?.value || '';
-          if (out.length >= 20000) html = out;
+          // 自校验：抓到的页面语言必须和目标一致，否则说明读到了上一次渲染的残留
+          const langOk = new RegExp('<html[^>]*lang="' + lang + '"').test(out.slice(0, 400));
+          if (out.length >= 20000 && langOk) html = out;
+          else if (out.length >= 20000) console.warn(`[jensen-capture] ${lang} 语言不匹配，重试`);
         } catch (e) {
           console.warn(`[jensen-capture] ${lang} 第 ${attempt} 次失败：${e.message}`);
         }
