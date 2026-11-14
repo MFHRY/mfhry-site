@@ -103,6 +103,9 @@
   .chip:active{transform:scale(.97)}
   .chip.on{background:linear-gradient(165deg,rgba(127,209,176,.34),rgba(127,209,176,.14));
     border-color:rgba(127,209,176,.55);color:#fff;box-shadow:var(--glass-hi),0 10px 26px rgba(48,150,116,.35)}
+  .gdivider{flex:0 0 100%;width:100%;display:flex;align-items:center;gap:10px;margin:10px 0 2px;
+    font-size:11px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;pointer-events:none}
+  .gdivider::before,.gdivider::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.28),transparent)}
 
   .vol{display:flex;align-items:center;gap:9px;margin-top:12px;font-size:11px;color:var(--muted)}
   .vol input{flex:1}
@@ -409,7 +412,7 @@
 </div>
 
 <audio id="au" preload="auto"></audio>
-<script src="/songs.js?v=7"></script>
+<script src="/songs.js?v=8"></script>
 <script>
 (() => {
   'use strict';
@@ -975,6 +978,13 @@
       const row = document.createElement('div');
       row.className = 'row';
       for (const h of g.items) {
+        if (h.divider) {
+          const dv = document.createElement('div');
+          dv.className = 'gdivider';
+          dv.textContent = h.divider;
+          row.appendChild(dv);
+          continue;
+        }
         const b = document.createElement('span');
         b.className = 'chip';
         const t = document.createElement('span');
