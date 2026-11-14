@@ -61,7 +61,8 @@ function main() {
     return;
   }
   mkdirSync(ARCHIVE, { recursive: true });
-  const day = new Date().toISOString().slice(0, 10);
+  // 按北京时间分日，避免 UTC 跨零点归错日期
+  const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai' }).format(new Date());
   writeFileSync(join(ARCHIVE, `${day}.html`), readFileSync(SITE, 'utf8'), 'utf8');
   console.log(`[jensen-history] 当日快照 archive/${day}.html`);
 

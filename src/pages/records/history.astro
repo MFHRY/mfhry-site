@@ -86,6 +86,19 @@ try {
 
   <script is:inline>
     const fmt = (n) => Number(n || 0).toLocaleString('zh-CN');
+    // 存档里是 UTC，统一按北京时间显示
+    const SH = new Intl.DateTimeFormat('zh-CN', {
+      timeZone: 'Asia/Shanghai',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hour12: false,
+    });
+    const fmtTime = (iso) => {
+      try {
+        return SH.format(new Date(iso)).replace(/\//g, '-');
+      } catch {
+        return String(iso);
+      }
+    };
     const tbody = document.querySelector('#tl tbody');
     const note = document.getElementById('tlnote');
 
@@ -98,7 +111,7 @@ try {
           return;
         }
         const latest = pts[0];
-        document.getElementById('nowat').textContent = latest.at.replace('T', ' ').replace('Z', ' UTC');
+        document.getElementById('nowat').textContent = fmtTime(latest.at) + ' 北京时间';
         document.getElementById('nowtotal').textContent = '总签名 ' + fmt(latest.total);
         document.getElementById('nowpub').textContent = '公开签名者 ' + fmt(latest.capturedPublic);
         note.textContent = `共 ${d.points.length} 个点，下面是最近 ${pts.length} 次（每 15 分钟一次）`;
@@ -108,7 +121,7 @@ try {
             const delta = prev ? p.total - prev.total : 0;
             const cls = delta > 0 ? 'up' : delta < 0 ? 'down' : '';
             const d = delta ? ` (${delta > 0 ? '+' : ''}${delta})` : '';
-            return `<tr><td>${p.at.replace('T', ' ').replace('Z', '')}</td><td class="${cls}">${fmt(p.total)}${d}</td><td>${fmt(p.currentEmployees)}</td><td>${fmt(p.formerEmployees)}</td><td>${fmt(p.shareholders)}</td><td>${fmt(p.supporters)}</td></tr>`;
+            return `<tr><td>${fmtTime(p.at)}</td><td class="${cls}">${fmt(p.total)}${d}</td><td>${fmt(p.currentEmployees)}</td><td>${fmt(p.formerEmployees)}</td><td>${fmt(p.shareholders)}</td><td>${fmt(p.supporters)}</td></tr>`;
           })
           .join('');
       })
