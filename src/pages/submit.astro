@@ -3,15 +3,16 @@ import Base from '../layouts/Base.astro';
 ---
 <Base title="投稿">
   <h1>投稿</h1>
-  <p class="muted">投一篇短文 / 想法，直接公开（每 IP 每小时 3 条）。</p>
+  <p class="muted">投一篇短文 / 想法，或贴一条 X（推特）链接自动生成推文卡片。直接公开，可被转贴、评论。每 IP 每小时 3 条。</p>
 
   <div class="composer">
     <input id="nick" class="key" type="text" maxlength="24" placeholder="昵称（可选，留空匿名）" />
     <input id="title" class="key" type="text" maxlength="80" placeholder="标题（可选）" />
     <textarea id="body" maxlength="2000" placeholder="内容…（最多 2000 字）"></textarea>
+    <input id="x" class="key" type="url" placeholder="X / 推特链接（可选，贴了会抓成推文卡片）" />
     <div class="crow">
-      <input id="tag" class="key" type="text" maxlength="16" placeholder="标签（可选，如 想法 / 日记 / 安利）" />
-      <input id="link" class="key" type="url" maxlength="300" placeholder="链接（可选）" />
+      <input id="tag" class="key" type="text" maxlength="16" placeholder="标签（可选）" />
+      <input id="link" class="key" type="url" maxlength="300" placeholder="普通链接（可选）" />
       <button id="send" class="send">投稿</button>
     </div>
     <div id="status" class="muted"></div>
@@ -40,15 +41,43 @@ import Base from '../layouts/Base.astro';
     .meta{color:rgba(255,255,255,.4);font-size:12px}
     .sub-body{margin:9px 0;font-size:14px;line-height:1.7;color:rgba(255,255,255,.85);white-space:pre-wrap;word-break:break-word}
     .sub-link{display:inline-block;font-size:12.5px;color:#7ab8ff;word-break:break-all;margin-bottom:8px}
-    .like{border:0;border-radius:999px;padding:4px 12px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.6);font-size:12px;cursor:pointer}
-    .like:hover{background:rgba(255,255,255,.16);color:#fff}
+    .acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px}
+    .act{border:0;border-radius:999px;padding:4px 12px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.6);font-size:12px;cursor:pointer}
+    .act:hover{background:rgba(255,255,255,.16);color:#fff}
+    .act.on{color:#ff9a6a}
+    /* X 推文卡片 */
+    .tw{margin:10px 0;border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:12px 14px;background:rgba(0,0,0,.22)}
+    .tw-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .tw-h b{font-size:14px;color:#fff}
+    .tw-h span{font-size:12px;color:rgba(255,255,255,.42)}
+    .tw-txt{margin:8px 0 6px;font-size:14px;line-height:1.65;color:rgba(255,255,255,.88);white-space:pre-wrap;word-break:break-word}
+    .tw-imgs{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+    .tw-imgs img{max-width:100%;max-height:220px;border-radius:10px;border:1px solid rgba(255,255,255,.08)}
+    .tw-foot{margin-top:8px;font-size:12px}
+    .tw-foot a{color:#7ab8ff;text-decoration:none}
+    /* 转贴条目 */
+    .rp{display:flex;align-items:center;gap:7px;padding:8px 12px;font-size:12.5px;color:rgba(255,255,255,.5);background:rgba(255,255,255,.02);border-left:2px solid rgba(255,150,90,.4);border-radius:0 8px 8px 0;margin:6px 0}
+    .rp b{color:rgba(255,255,255,.8);font-weight:600}
+    /* 评论 */
+    .cmts{margin-top:10px;padding-top:10px;border-top:1px dashed rgba(255,255,255,.1);display:none}
+    .cmts.on{display:block}
+    .cmt{display:flex;gap:8px;padding:6px 0;font-size:13px;line-height:1.6}
+    .cmt b{color:rgba(255,255,255,.85);flex:0 0 auto}
+    .cmt .t{color:rgba(255,255,255,.32);font-size:11px;flex:0 0 auto}
+    .cmt .b{color:rgba(255,255,255,.72);white-space:pre-wrap;word-break:break-word}
+    .cmt-form{display:flex;gap:8px;margin-top:8px}
+    .cmt-form input{flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#fff;border-radius:9px;padding:7px 10px;font-size:13px}
+    .cmt-form button{border:0;border-radius:9px;padding:7px 14px;background:rgba(255,150,90,.85);color:#fff;font-size:13px;cursor:pointer}
+    .cmt-empty{font-size:12.5px;color:rgba(255,255,255,.35);padding:6px 0}
   </style>
 
   <script is:inline>
     const $ = (id) => document.getElementById(id);
-    const nickEl = $('nick'), titleEl = $('title'), bodyEl = $('body'), tagEl = $('tag'), linkEl = $('link');
-    const sendEl = $('send'), statusEl = $('status'), listEl = $('list'), emptyEl = $('empty');
+    const nickEl = $('nick'), titleEl = $('title'), bodyEl = $('body'), xEl = $('x'),
+          tagEl = $('tag'), linkEl = $('link'), sendEl = $('send'), statusEl = $('status'),
+          listEl = $('list'), emptyEl = $('empty');
     const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
     function tm(t) {
       if (!t) return '';
       const d = new Date(String(t).replace(' ', 'T') + 'Z');
@@ -57,47 +86,157 @@ import Base from '../layouts/Base.astro';
       const now = new Date();
       return (d.getFullYear() === now.getFullYear() ? p(d.getMonth() + 1) + '/' + p(d.getDate()) : d.getFullYear() + '/' + p(d.getMonth() + 1) + '/' + p(d.getDate())) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
     }
+
+    function tweetCard(tw) {
+      if (!tw) return '';
+      if (tw.error && !tw.text) {
+        return '<div class="tw"><div class="tw-h"><b>X 帖子</b></div>' +
+          '<div class="tw-txt" style="color:rgba(255,255,255,.45)">推文抓取失败，点开原链接查看</div>' +
+          '<div class="tw-foot"><a href="' + esc(tw.url) + '" target="_blank" rel="noreferrer noopener">' + esc(tw.url) + '</a></div></div>';
+      }
+      const imgs = (tw.photos || []).map((p) => '<img src="data:' + p.mime + ';base64,' + p.b64 + '" loading="lazy" alt="">').join('');
+      return '<div class="tw"><div class="tw-h"><b>' + esc(tw.author || 'X 用户') + '</b>' +
+        (tw.handle ? '<span>@' + esc(tw.handle) + '</span>' : '') +
+        (tw.date ? '<span>' + esc(tw.date) + '</span>' : '') + '</div>' +
+        (tw.text ? '<div class="tw-txt">' + esc(tw.text) + '</div>' : '') +
+        (imgs ? '<div class="tw-imgs">' + imgs + '</div>' : '') +
+        '<div class="tw-foot"><a href="' + esc(tw.url) + '" target="_blank" rel="noreferrer noopener">在 X 查看原帖 →</a></div></div>';
+    }
+
     function card(s) {
       const geo = [s.country, s.region, s.city].filter(Boolean).join(' · ');
+      const isX = s.tweet || /(?:x\.com|twitter\.com)/i.test(s.link || '');
       return '<div class="sub" data-id="' + s.id + '">' +
         '<div class="sub-head"><b>' + esc(s.title || '(无标题)') + '</b>' +
         (s.tag ? '<span class="tag">' + esc(s.tag) + '</span>' : '') +
         '<span class="meta">' + esc(s.author) + (geo ? ' · ' + esc(geo) : '') + ' · ' + tm(s.created_at) + '</span></div>' +
-        '<div class="sub-body">' + esc(s.body) + '</div>' +
-        (s.link ? '<a class="sub-link" href="' + esc(s.link) + '" target="_blank" rel="noreferrer noopener">' + esc(s.link) + '</a>' : '') +
-        '<button class="like" data-id="' + s.id + '">♥ ' + (s.likes || 0) + '</button></div>';
+        (s.body ? '<div class="sub-body">' + esc(s.body) + '</div>' : '') +
+        (s.tweet ? tweetCard(s.tweet) : '') +
+        (s.link && !isX ? '<a class="sub-link" href="' + esc(s.link) + '" target="_blank" rel="noreferrer noopener">' + esc(s.link) + '</a>' : '') +
+        '<div class="acts">' +
+          '<button class="act like" data-id="' + s.id + '">♥ <span>' + (s.likes || 0) + '</span></button>' +
+          '<button class="act rp-btn" data-id="' + s.id + '">🔁 <span>' + (s.reposts || 0) + '</span> 转贴</button>' +
+          '<button class="act cmt-btn" data-id="' + s.id + '">💬 <span>' + (s.commentCount || 0) + '</span> 评论</button>' +
+        '</div>' +
+        '<div class="cmts" id="cmts-' + s.id + '"></div></div>';
     }
+
+    function rpRow(r) {
+      return '<div class="rp"><span>🔁</span><b>' + esc(r.reposter) + '</b><span>转贴了</span><b>' + esc(r.postAuthor) + '</b>' +
+        '<span>的「' + esc(r.title || (r.body || '').slice(0, 24) || '投稿') + '」</span><span>· ' + tm(r.at) + '</span></div>';
+    }
+
     async function load() {
       try {
         const r = await fetch('/api/submit?limit=50', { cache: 'no-store' });
         const d = await r.json();
         if (!d.ok) return;
-        listEl.innerHTML = (d.items || []).map(card).join('');
-        emptyEl.hidden = (d.items || []).length > 0;
+        const items = d.items || [];
+        let html = '';
+        // 顶部最新转贴动态（最多 5 条）
+        (d.reposts || []).slice(0, 5).forEach((rp) => { html += rpRow(rp); });
+        html += items.map(card).join('');
+        listEl.innerHTML = html;
+        emptyEl.hidden = items.length > 0;
       } catch (e) {}
     }
+
+    async function loadComments(postId, box) {
+      box.innerHTML = '<div class="cmt-empty">加载评论…</div>';
+      try {
+        const r = await fetch('/api/submit?action=comments&id=' + postId, { cache: 'no-store' });
+        const d = await r.json();
+        let html = '';
+        if (d.ok && d.items && d.items.length) {
+          html += d.items.map((c) =>
+            '<div class="cmt"><b>' + esc(c.author) + '</b><span class="t">' + tm(c.created_at) + '</span>' +
+            '<span class="b">' + esc(c.body) + '</span></div>').join('');
+        } else html += '<div class="cmt-empty">还没有评论，说点什么。</div>';
+        html += '<div class="cmt-form"><input maxlength="24" placeholder="昵称（可选）" class="c-nick" data-id="' + postId + '">' +
+          '<input maxlength="500" placeholder="写评论…" class="c-body" data-id="' + postId + '">' +
+          '<button class="c-send" data-id="' + postId + '">发表</button></div>';
+        box.innerHTML = html;
+      } catch (e) { box.innerHTML = '<div class="cmt-empty">评论加载失败</div>'; }
+    }
+
     sendEl.onclick = async () => {
       const body = bodyEl.value.trim();
-      if (!body) { statusEl.textContent = '内容不能为空'; return; }
+      const x = xEl.value.trim();
+      if (!body && !x) { statusEl.textContent = '内容不能为空（或贴一条 X 链接）'; return; }
       statusEl.textContent = '投稿中…';
       sendEl.disabled = true;
       try {
-        const r = await fetch('/api/submit', { method: 'POST', headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ title: titleEl.value, body, author: nickEl.value, tag: tagEl.value, link: linkEl.value }) });
+        const r = await fetch('/api/submit', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ title: titleEl.value, body, author: nickEl.value, tag: tagEl.value, link: linkEl.value, x }),
+        });
         const d = await r.json();
-        if (d.ok) { statusEl.textContent = '已发布 ✓'; bodyEl.value = ''; titleEl.value = ''; tagEl.value = ''; linkEl.value = ''; load(); }
-        else statusEl.textContent = d.error || '投稿失败';
+        if (d.ok) {
+          statusEl.textContent = d.tweet ? '已发布 ✓（推文已抓成卡片）' : '已发布 ✓';
+          bodyEl.value = ''; titleEl.value = ''; tagEl.value = ''; linkEl.value = ''; xEl.value = '';
+          load();
+        } else statusEl.textContent = d.error || '投稿失败';
       } catch (e) { statusEl.textContent = '网络错误'; }
       finally { sendEl.disabled = false; }
     };
-    listEl.onclick = async (e) => {
-      const b = e.target.closest('.like');
-      if (!b) return;
-      const cur = Number(b.textContent.replace(/[^\d]/g, '')) || 0;
-      b.textContent = '…';
-      try { await fetch('/api/submit?action=like&id=' + b.dataset.id); b.textContent = '♥ ' + (cur + 1); }
-      catch (e) { b.textContent = '♥ ' + cur; }
-    };
+
+    listEl.addEventListener('click', async (e) => {
+      const likeBtn = e.target.closest('.like');
+      if (likeBtn) {
+        const span = likeBtn.querySelector('span');
+        const cur = Number(span.textContent) || 0;
+        span.textContent = cur + 1;
+        try { await fetch('/api/submit?action=like&id=' + likeBtn.dataset.id); } catch (err) { span.textContent = cur; }
+        return;
+      }
+      const rpBtn = e.target.closest('.rp-btn');
+      if (rpBtn) {
+        rpBtn.disabled = true;
+        const author = prompt('转贴用昵称（可留空）') || '';
+        const span = rpBtn.querySelector('span');
+        const cur = Number(span.textContent) || 0;
+        try {
+          const r = await fetch('/api/submit?action=repost&id=' + rpBtn.dataset.id + '&author=' + encodeURIComponent(author));
+          const d = await r.json();
+          if (d.ok) { span.textContent = cur + 1; load(); }
+          else { alert(d.error || '转贴失败'); rpBtn.disabled = false; }
+        } catch (err) { rpBtn.disabled = false; }
+        return;
+      }
+      const cmtBtn = e.target.closest('.cmt-btn');
+      if (cmtBtn) {
+        const id = cmtBtn.dataset.id;
+        const box = document.getElementById('cmts-' + id);
+        if (!box) return;
+        const open = box.classList.toggle('on');
+        if (open) loadComments(id, box);
+        return;
+      }
+      const cSend = e.target.closest('.c-send');
+      if (cSend) {
+        const id = cSend.dataset.id;
+        const box = document.getElementById('cmts-' + id);
+        const nick = box.querySelector('.c-nick').value.trim();
+        const bodyIn = box.querySelector('.c-body');
+        const body = bodyIn.value.trim();
+        if (!body) return;
+        cSend.disabled = true;
+        try {
+          const r = await fetch('/api/submit?action=comment', {
+            method: 'POST', headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ id: Number(id), author: nick, body }),
+          });
+          const d = await r.json();
+          if (d.ok) {
+            const counter = box.closest('.sub').querySelector('.cmt-btn span');
+            counter.textContent = (Number(counter.textContent) || 0) + 1;
+            loadComments(id, box);
+          } else alert(d.error || '评论失败');
+        } catch (err) { alert('网络错误'); }
+        finally { cSend.disabled = false; }
+      }
+    });
+
     load();
   </script>
 </Base>
