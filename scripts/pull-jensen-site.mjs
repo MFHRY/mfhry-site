@@ -7,7 +7,7 @@
  *       语言选择器改为跳转到对应的静态语言页。
  * 产物：public/standwithjensen/index.html（简体中文）+ lang/<lang>.html（其余 14 种）。
  */
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync, cpSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -98,7 +98,7 @@ function extraScripts(lang) {
     sel.value=${JSON.stringify(lang)};
     sel.addEventListener('change',function(){
       var v=sel.value;
-      location.href='/standwithjensen/lang/'+encodeURIComponent(v)+'.html';
+      location.href='/standwithjensen/lang/'+encodeURIComponent(v);
     });
   }
 })();
@@ -118,11 +118,26 @@ async function main() {
   const tmp = `${OUT}.tmp`;
   rmSync(tmp, { recursive: true, force: true });
   mkdirSync(join(tmp, 'assets'), { recursive: true });
+  // 历史快照目录要跨重建保留
+  if (existsSync(join(OUT, 'archive'))) {
+    cpSync(join(OUT, 'archive'), join(tmp, 'archive'), { recursive: true });
+    console.log('[jensen-site] 保留历史快照 archive/');
+  }
   mkdirSync(join(tmp, 'images'), { recursive: true });
   mkdirSync(join(tmp, 'lang'), { recursive: true });
 
   const cssName = 'site.css';
-  const cssSize = await download(`${SOURCE}${cssRemote}`, join(tmp, 'assets', cssName));
+  // 上游暂时不可用时，沿用上一份已下载的 CSS
+  let cssSize = 0;
+  try {
+    cssSize = await download(`${SOURCE}${cssRemote}`, join(tmp, 'assets', cssName));
+  } catch (err) {
+    const cached = join(OUT, 'assets', cssName);
+    if (!existsSync(cached)) throw err;
+    cpSync(cached, join(tmp, 'assets', cssName));
+    cssSize = statSync(cached).size;
+    console.warn(`[jensen-site] CSS 下载失败，沿用缓存（${err.message}）`);
+  }
   const css = readFileSync(join(tmp, 'assets', cssName), 'utf8').replace(
     /url\(\s*['"]?\/images\//g,
     `url(${BASE}/images/`
@@ -131,8 +146,15 @@ async function main() {
   console.log(`[jensen-site] CSS ${cssRemote} → assets/${cssName} (${cssSize} bytes)`);
 
   for (const img of IMAGES) {
-    const size = await download(`${SOURCE}/${img}`, join(tmp, img));
-    console.log(`[jensen-site] 图片 ${img} → ${size} bytes`);
+    try {
+      const size = await download(`${SOURCE}/${img}`, join(tmp, img));
+      console.log(`[jensen-site] 图片 ${img} → ${size} bytes`);
+    } catch (err) {
+      const cached = join(OUT, img);
+      if (!existsSync(cached)) throw err;
+      cpSync(cached, join(tmp, img));
+      console.warn(`[jensen-site] 图片 ${img} 下载失败，沿用缓存`);
+    }
   }
 
   const written = [];
