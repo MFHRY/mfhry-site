@@ -258,13 +258,15 @@ import Base from '../layouts/Base.astro';
         try {
           const text = orig.textContent || '';
           let done = false;
-          for (let attempt = 0; attempt < 3 && !done; attempt++) {
-            const r = await fetch('/api/translate?text=' + encodeURIComponent(text) + '&tl=zh-CN');
-            const d = await r.json().catch(() => ({}));
-            if (d && d.text) { trans.textContent = d.text; trans.dataset.loaded = '1'; trans.hidden = false; orig.hidden = true; trBtn.textContent = '显示原文'; done = true; }
-            else await new Promise((res) => setTimeout(res, 900));
+          for (let attempt = 0; attempt < 5 && !done; attempt++) {
+            try {
+              const r = await fetch('/api/translate?text=' + encodeURIComponent(text) + '&tl=zh-CN');
+              const d = await r.json().catch(() => ({}));
+              if (d && d.text) { trans.textContent = d.text; trans.dataset.loaded = '1'; trans.hidden = false; orig.hidden = true; trBtn.textContent = '显示原文'; done = true; }
+            } catch (err) { /* 单次失败继续重试 */ }
+            if (!done) await new Promise((res) => setTimeout(res, 1500));
           }
-          if (!done) { trBtn.textContent = '翻译失败，再点一次'; }
+          if (!done) { trBtn.textContent = '翻译失败，点我再试'; }
         } catch (err) { trBtn.textContent = '翻译失败'; }
         finally { trBtn.disabled = false; }
         return;
