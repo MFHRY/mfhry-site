@@ -1,0 +1,119 @@
+---
+import Base from '../../layouts/Base.astro';
+import { readdirSync, existsSync } from 'node:fs';
+
+const ARCHIVE_DIR = 'public/standwithjensen/archive';
+let days: string[] = [];
+try {
+  if (existsSync(ARCHIVE_DIR)) {
+    days = readdirSync(ARCHIVE_DIR)
+      .filter((f) => f.endsWith('.html'))
+      .map((f) => f.replace(/\.html$/, ''))
+      .sort()
+      .reverse();
+  }
+} catch {}
+---
+
+<Base title="历史 · 记录">
+  <h1>历史</h1>
+  <p class="muted">
+    每 15 分钟记一次数据，每天存一份整页快照 · <a href="/records/">← 返回记录</a>
+  </p>
+
+  <div class="grid single">
+    <a class="card" href="/standwithjensen/">
+      <div class="card-head">
+        <h3>现在 · Stand with Jensen 镜像</h3>
+        <span class="stars" id="nowat">—</span>
+      </div>
+      <p class="desc">点开就是当前缓存的整站页面（15 种语言可切换）。</p>
+      <div class="meta">
+        <span class="lang"><i style="background:#76b900"></i>当前</span>
+        <span id="nowtotal">总签名 —</span>
+        <span id="nowpub">公开签名者 —</span>
+      </div>
+    </a>
+  </div>
+
+  <h2>统计时间线</h2>
+  <p class="muted" id="tlnote">加载中…</p>
+  <div class="tlwrap">
+    <table class="tl" id="tl">
+      <thead>
+        <tr><th>时间</th><th>总签名</th><th>现任</th><th>前员工</th><th>股东</th><th>支持者</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <h2>每日整页快照</h2>
+  {days.length === 0 ? (
+    <p class="muted">还没有快照，等第一次定时任务跑完就会出现。</p>
+  ) : (
+    <ul class="days">
+      {days.map((d) => (
+        <li>
+          <a href={`/standwithjensen/archive/${d}.html`}>{d}</a>
+          <span class="muted">那天缓存的整站页面</span>
+        </li>
+      ))}
+    </ul>
+  )}
+
+  <style>
+    .single { grid-template-columns: 1fr; margin: 14px 0; }
+    .tlwrap { overflow-x: auto; }
+    .tl { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .tl th, .tl td { padding: 6px 10px; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap; }
+    .tl th:first-child, .tl td:first-child { text-align: left; }
+    .tl th { color: var(--muted); font-weight: 500; }
+    .tl .up { color: #4ade80; }
+    .tl .down { color: #f87171; }
+    .days { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; }
+    .days li {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 8px 12px;
+      background: var(--card);
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .days a { font-weight: 600; text-decoration: none; }
+    .days .muted { font-size: 11.5px; }
+  </style>
+
+  <script is:inline>
+    const fmt = (n) => Number(n || 0).toLocaleString('zh-CN');
+    const tbody = document.querySelector('#tl tbody');
+    const note = document.getElementById('tlnote');
+
+    fetch('/data/jensen-history.json', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((d) => {
+        const pts = (d.points || []).slice(-96).reverse();
+        if (!pts.length) {
+          note.textContent = '还没有历史数据。';
+          return;
+        }
+        const latest = pts[0];
+        document.getElementById('nowat').textContent = latest.at.replace('T', ' ').replace('Z', ' UTC');
+        document.getElementById('nowtotal').textContent = '总签名 ' + fmt(latest.total);
+        document.getElementById('nowpub').textContent = '公开签名者 ' + fmt(latest.capturedPublic);
+        note.textContent = `共 ${d.points.length} 个点，下面是最近 ${pts.length} 次（每 15 分钟一次）`;
+        tbody.innerHTML = pts
+          .map((p, i) => {
+            const prev = pts[i + 1];
+            const delta = prev ? p.total - prev.total : 0;
+            const cls = delta > 0 ? 'up' : delta < 0 ? 'down' : '';
+            const d = delta ? ` (${delta > 0 ? '+' : ''}${delta})` : '';
+            return `<tr><td>${p.at.replace('T', ' ').replace('Z', '')}</td><td class="${cls}">${fmt(p.total)}${d}</td><td>${fmt(p.currentEmployees)}</td><td>${fmt(p.formerEmployees)}</td><td>${fmt(p.shareholders)}</td><td>${fmt(p.supporters)}</td></tr>`;
+          })
+          .join('');
+      })
+      .catch(() => {
+        note.textContent = '历史数据加载失败。';
+      });
+  </script>
+</Base>
