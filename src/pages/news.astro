@@ -73,21 +73,58 @@ import Base from '../layouts/Base.astro';
       const data = await res.json();
       const news = data.news || [];
       emptyEl.hidden = news.length > 0;
+
       listEl.innerHTML = news
-        .map(
-          (n) =>
-            '<article class="newscard">' +
-            '<header><span class="ntitle">' + esc(n.title) + '</span><time>' + esc(fmt(n.created_at)) + '</time></header>' +
+        .map((n) => {
+          const imgs = n.images || [];
+          const hero = imgs.length
+            ? '<div class="nhero"><a href="/api/media/' + imgs[0] + '" target="_blank" rel="noreferrer"><img loading="lazy" src="/api/media/' + imgs[0] + '" alt=""></a></div>'
+            : '';
+          const extra = imgs.length > 1
+            ? '<div class="ngallery">' + imgs.slice(1).map((id) => '<a href="/api/media/' + id + '" target="_blank" rel="noreferrer"><img loading="lazy" src="/api/media/' + id + '" alt=""></a>').join('') + '</div>'
+            : '';
+          return (
+            '<article class="newscard narticle" id="news-' + n.id + '">' +
+            '<div class="nmeta"><time>' + esc(fmt(n.created_at)) + '</time></div>' +
+            hero +
+            '<div class="nmain">' +
+            '<h2 class="ntitle">' + esc(n.title) + '</h2>' +
             (n.body ? '<div class="nbody" id="nb-' + n.id + '" data-plain="' + esc(n.body) + '" data-tr="0">' + esc(n.body).replace(/\n/g, '<br>') + '</div><button class="trbtn" data-t="nb-' + n.id + '">译</button>' : '') +
-            ((n.images || []).length
-              ? '<div class="ngallery">' + n.images.map((id) => '<a href="/api/media/' + id + '" target="_blank" rel="noreferrer"><img loading="lazy" src="/api/media/' + id + '" alt="" /></a>').join('') + '</div>'
-              : '') +
+            extra +
             videoHtml(n.video) +
             xHtml(n.x, n.id) +
+            '</div>' +
             '</article>'
-        )
+          );
+        })
         .join('');
     })();
   </script>
+
+  <style>
+    /* 新闻详情（照 NVIDIA 博客样式）：日期 → 大配图 → 正文 + 右侧精选 */
+    .news { display: flex; flex-direction: column; gap: 34px; }
+    .narticle {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+    }
+    .nmeta { font-size: 12.5px; color: var(--muted); letter-spacing: .02em; }
+    .nmeta time { color: var(--muted); }
+    .nhero {
+      width: 100%;
+      border-radius: 6px;
+      overflow: hidden;
+      background: #000;
+    }
+    .nhero img { width: 100%; height: auto; display: block; object-fit: cover; }
+    .nmain { display: flex; flex-direction: column; gap: 10px; }
+    .nmain .ntitle { font-size: 22px; font-weight: 650; line-height: 1.35; margin: 0; }
+    .nbody { font-size: 15px; line-height: 1.95; color: var(--fg); word-break: break-word; }
+    .narticle .ngallery { margin: 12px 0 0; }
+  </style>
 
 </Base>
