@@ -192,6 +192,29 @@ export const onRequestPost = async ({ env, request }: { env: any; request: Reque
     return json({ ok: true, id: (ins.meta as any)?.last_row_id ?? null });
   }
 
+  // 管理员：删除投稿 / 修复内容（口令 x-admin-key 或 body.key）
+  if (action === 'admin-delete' || action === 'admin-fix') {
+    const key = request.headers.get('x-admin-key') || b?.key || '';
+    if (!env.ADMIN_KEY || key !== env.ADMIN_KEY) return json({ error: '无权' }, 403);
+    const pid = Number(b?.id);
+    if (!Number.isInteger(pid) || pid < 1) return json({ error: 'bad id' }, 400);
+    if (action === 'admin-delete') {
+      await env.DB.prepare('DELETE FROM submit_comments WHERE post_id = ?').bind(pid).run();
+      await env.DB.prepare('DELETE FROM submit_reposts WHERE post_id = ?').bind(pid).run();
+      await env.DB.prepare('DELETE FROM submissions WHERE id = ?').bind(pid).run();
+      return json({ ok: true, deleted: pid });
+    }
+    // admin-fix：覆盖 title/body/tag/author
+    const t = String(b?.title ?? '').slice(0, MAX_TITLE);
+    const bd = String(b?.body ?? '').slice(0, MAX_BODY);
+    const tg = String(b?.tag ?? '').slice(0, MAX_TAG);
+    const au = String(b?.author ?? '').slice(0, MAX_AUTHOR);
+    await env.DB.prepare('UPDATE submissions SET title = ?, body = ?, tag = ?, author = ? WHERE id = ?')
+      .bind(t, bd, tg, au || '匿名', pid)
+      .run();
+    return json({ ok: true, fixed: pid });
+  }
+
   // 新建投稿
   const body = String(b?.body || '').trim().slice(0, MAX_BODY);
   const xUrl = String(b?.x || b?.link || '').trim().slice(0, MAX_LINK);
