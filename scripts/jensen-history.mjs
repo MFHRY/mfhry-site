@@ -74,8 +74,27 @@ function main() {
     capturedPublic: Number(snap.capturedPublic) || 0,
   };
 
+  // 抓取失败时 pull-jensen 会沿用仓库里那份旧镜像继续构建，
+  // 那份数据可能已经很旧。过期或数值离奇暴跌都拒绝入库，否则时间线会被污染。
+  const MAX_AGE_HOURS = 3;
+  const fetchedAt = Number.isFinite(Date.parse(snap?.fetchedAt)) ? Date.parse(snap.fetchedAt) : 0;
+  const ageHours = fetchedAt ? (Date.now() - fetchedAt) / 3600000 : Infinity;
+  const stale = !fetchedAt || ageHours > MAX_AGE_HOURS;
+  const crashed = Boolean(last && last.total > 0 && point.total < last.total * 0.9);
+
+  if (stale) {
+    console.warn(
+      `[jensen-history] 镜像数据已过期（${fetchedAt ? ageHours.toFixed(1) + ' 小时前' : '缺少 fetchedAt'}），本次不记入时间线`
+    );
+  } else if (crashed) {
+    console.warn(
+      `[jensen-history] 总签名从 ${last.total} 跌到 ${point.total}（异常），疑似抓到残缺数据，本次不记入时间线`
+    );
+  }
+
+  const skipPoint = stale || crashed;
   // 同一分钟重复运行不重复记
-  if (!last || last.at !== point.at) points.push(point);
+  if (!skipPoint && (!last || last.at !== point.at)) points.push(point);
   const trimmed = points.slice(-MAX_POINTS);
   writeFileSync(HIST, JSON.stringify({ source: 'https://standwithjensen.com', points: trimmed }), 'utf8');
   console.log(`[jensen-history] 统计时间线 ${trimmed.length} 条（最新 ${at}）`);
@@ -88,9 +107,14 @@ function main() {
   mkdirSync(ARCHIVE, { recursive: true });
   // 按北京时间分日，避免 UTC 跨零点归错日期
   const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai' }).format(new Date());
-  const page = freezeSnapshot(readFileSync(SITE, 'utf8'), snap);
-  writeFileSync(join(ARCHIVE, `${day}.html`), page, 'utf8');
-  console.log(`[jensen-history] 当日快照 archive/${day}.html`);
+  if (skipPoint) {
+    // 数据不可信时不要覆盖当天快照，否则存档也会被写进假数字
+    console.warn(`[jensen-history] 跳过当日快照（数据不可信）`);
+  } else {
+    const page = freezeSnapshot(readFileSync(SITE, 'utf8'), snap);
+    writeFileSync(join(ARCHIVE, `${day}.html`), page, 'utf8');
+    console.log(`[jensen-history] 当日快照 archive/${day}.html`);
+  }
 
   // 兼容旧快照：把尚未冻结数据的文件按当天最后一条统计回填一次。
   for (const f of readdirSync(ARCHIVE)) {
