@@ -86,8 +86,7 @@
        全屏字幕形态（host 带 fs 属性时）：去掉卡片、边框、阴影，整屏只留歌词
        ------------------------------------------------------------------ */
     :host([fs]){
-      position:fixed; inset:0; z-index:var(--ap-z-fullscreen);
-      background:#000; display:block; overflow:hidden;
+      display:block; height:100%; overflow:hidden; background:transparent;
     }
     :host([fs]) .ap-card{
       height:100%; width:100%; box-sizing:border-box;
@@ -102,7 +101,9 @@
     :host([fs]) .ap-lyhead{ display:none; }          /* 标题/偏移/折叠在全屏隐藏 */
     :host([fs]) .ap-lybody{ flex:1 1 auto; display:flex; min-height:0; }
     :host([fs]) .ap-lybox{
-      flex:1 1 auto; max-height:none; display:flex; align-items:center;
+      flex:1 1 auto; max-height:none;
+      /* 不用 flex 居中：超高内容会向上下同时溢出，transform 坐标系会错位 */
+      display:block;
       -webkit-mask-image:linear-gradient(180deg,transparent,#000 22%,#000 78%,transparent);
               mask-image:linear-gradient(180deg,transparent,#000 22%,#000 78%,transparent);
     }
@@ -322,10 +323,18 @@
       if (!force && Date.now() - this._userScrollAt < 3000) return;
 
       var p = this._positions[ni];
-      if (!p) return;
       var h = box.clientHeight || 320;
-      var target = p.top + p.h / 2 - h / 2;
-      var max = Math.max(0, (this._positions[this._positions.length - 1].top + 80) - h);
+      /* 位置缓存会在字号/容器变化后过期（如进入全屏），
+         所以对目标行直接读实时布局，保证当前行一定滚到可视区中部 */
+      var live = cur ? { top: cur.offsetTop, h: cur.offsetHeight } : p;
+      if (!live) return;
+      var last = this._positions[this._positions.length - 1];
+      var contentH = Math.max(
+        this._q('inner').scrollHeight,
+        last ? last.top + 80 : 0
+      );
+      var target = live.top + live.h / 2 - h / 2;
+      var max = Math.max(0, contentH - h);
       target = clamp(target, 0, max);
       this._q('inner').style.transform = 'translate3d(0,' + (-target) + 'px,0)';  /* [87][208] */
     }

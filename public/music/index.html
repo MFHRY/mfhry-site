@@ -159,29 +159,56 @@
 
   .pg-sr{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
 
-  /* ---------------- 全屏字幕层（无卡片） ---------------- */
-  .pg-fs{ position:fixed; inset:0; z-index:100; background:#000; }
-  .pg-fs[hidden]{ display:none; }
-  .pg-fs-ctrl{
-    position:fixed; left:50%; bottom:calc(env(safe-area-inset-bottom,0px) + 24px);
-    transform:translateX(-50%); z-index:101;
-    display:flex; align-items:center; gap:8px; padding:6px;
-    border-radius:999px; background:rgba(28,28,30,.62);
+  /* ---------------- 全屏：左播放卡片 + 右滚动字幕 ---------------- */
+  .pg-root[data-fs]{ height:100vh; overflow:hidden; background:#000; color:#f5f5f7; }
+  .pg-root[data-fs] .pg-ambient{ display:none; }
+  .pg-root[data-fs] .pg-bar{ display:none; }
+  .pg-root[data-fs] .pg-wrap{
+    max-width:none; height:100%; box-sizing:border-box;
+    padding:clamp(12px,2vh,24px) clamp(12px,2vw,32px);
+    display:grid; grid-template-columns:minmax(300px,34%) minmax(0,1fr);
+    gap:clamp(16px,2.4vw,40px); align-items:stretch;
+  }
+  .pg-root[data-fs] .pg-grid{ display:contents; }
+  .pg-root[data-fs] .pg-col{ min-height:0; min-width:0; gap:12px; }
+  .pg-root[data-fs] .pg-col:first-child{ display:flex; flex-direction:column; }
+  /* 右栏必须能收缩，否则歌词容器被内容撑高、永远不滚动、看不到高亮 */
+  .pg-root[data-fs] .pg-col:last-child{ display:flex; flex-direction:column; }
+  .pg-root[data-fs] .pg-col:last-child > div{
+    display:flex; flex-direction:column; flex:1 1 auto; min-height:0; }
+  .pg-root[data-fs] .pg-col:first-child > section{ display:none; }   /* 目录曲单让位给待播列表 */
+  .pg-root[data-fs] .pg-sticky{ display:flex; flex-direction:column; gap:12px; min-height:0; }
+  .pg-root[data-fs] ap-search{ display:none; }                        /* 全屏不显示搜索 */
+  .pg-root[data-fs] ap-player{ flex:1 1 auto; min-height:0; }
+  .pg-root[data-fs] .pg-tabs{ display:none; }
+  .pg-root[data-fs] .pg-panels{ flex:1 1 auto; min-height:0; height:100%; }
+  .pg-root[data-fs] .pg-panel{ display:none; }
+  .pg-root[data-fs] #panel-lyrics{
+    display:block; height:100%; min-height:0; overflow:hidden; }
+  .pg-root[data-fs] #panel-lyrics ap-lyrics{
+    display:block; height:100%; min-height:0; }
+  /* 全屏退出按钮：浮层右上角，44px 热区 */
+  .pg-fs-exit{
+    position:fixed; top:calc(env(safe-area-inset-top,0px) + 16px);
+    right:calc(env(safe-area-inset-right,0px) + 16px); z-index:101;
+    width:44px; height:44px; border:0; border-radius:999px; padding:0;
+    display:none; align-items:center; justify-content:center;
+    background:rgba(28,28,30,.62); color:#f5f5f7; cursor:pointer;
     -webkit-backdrop-filter:blur(20px) saturate(180%);
             backdrop-filter:blur(20px) saturate(180%);
-    opacity:0; pointer-events:none; transition:opacity .24s cubic-bezier(.4,0,.2,1);
   }
-  .pg-fs.pg-fs-show .pg-fs-ctrl{ opacity:1; pointer-events:auto; }
-  .pg-fs-ctrl button{
-    width:44px; height:44px; min-width:44px; min-height:44px; padding:0;
-    display:inline-flex; align-items:center; justify-content:center;
-    border:0; border-radius:999px; background:transparent; color:#f5f5f7;
-    cursor:pointer; transition:background-color .24s cubic-bezier(.4,0,.2,1);
+  .pg-fs-exit:hover{ background:rgba(60,60,67,.72); }
+  .pg-fs-exit:focus-visible{ outline:none; box-shadow:0 0 0 2px #000,0 0 0 4px #0a84ff; }
+  .pg-fs-exit svg{ width:24px; height:24px; display:block; }
+  .pg-root[data-fs] .pg-fs-exit{ display:inline-flex; }
+  @media (max-width:820px){
+    /* 窄屏全屏改为上下：上卡片、下字幕 */
+    .pg-root[data-fs] .pg-wrap{
+      grid-template-columns:minmax(0,1fr);
+      grid-template-rows:minmax(0,auto) minmax(0,1fr);
+    }
+    .pg-root[data-fs] ap-player #plist{ max-height:none; }
   }
-  .pg-fs-ctrl button:hover{ background:rgba(255,255,255,.14); }
-  .pg-fs-ctrl button:focus-visible{ outline:none; box-shadow:0 0 0 2px #000,0 0 0 4px #0a84ff; }
-  .pg-fs-ctrl svg{ width:24px; height:24px; display:block; }
-  @media (prefers-reduced-motion:reduce){ .pg-fs-ctrl{ transition:none; } }
 
   /* 窄屏字号降 1px [31] */
   @media (max-width:360px){
@@ -266,8 +293,8 @@
   <div class="pg-toast" id="toast" role="status" aria-live="polite"></div>
   <div class="pg-sr" id="live" role="status" aria-live="polite"></div>
 
-  <!-- 全屏字幕层：全屏时只显示歌词，不显示卡片（按钮/控制条 3s 自动隐藏） -->
-  <div class="pg-fs" id="fsLayer" hidden></div>
+  <!-- 全屏时右上角的退出按钮（由 [data-fs] 显示） -->
+  <button class="pg-fs-exit" id="fsExit" type="button" aria-label="退出全屏"></button>
 </div>
 
 <script src="/songs.js?v=19"></script>
@@ -559,107 +586,68 @@
 
   setMod('lyrics');
 
-  /* ------------------------------------------------- 全屏字幕（无卡片播放层） */
-  var fsLayer = $('fsLayer');
-  var fsLy = null, fsOn = false, fsHideTimer = 0, fsTriggerEl = null;
-
-  function fsBtn(icon, label, fn) {
-    var b = document.createElement('button');
-    b.type = 'button';
-    b.setAttribute('aria-label', label);
-    b.innerHTML = icon;
-    b.addEventListener('click', fn);
-    return b;
-  }
-
-  function ensureFs() {
-    if (fsLy) return;
-    fsLy = document.createElement('ap-lyrics');
-    fsLy.id = 'fsLyrics';
-    fsLy.setAttribute('fs', '');            /* 纯歌词形态：无卡片 */
-    fsLayer.appendChild(fsLy);
-    fsLy.addEventListener('ap-toast', function (ev) {
-      showToast((ev.detail && ev.detail.text) || '');
-    });
-    fsLy.addEventListener('ap-lyrics-seek', function (ev) { player.seek(ev.detail.time); });
-
-    var ctrl = document.createElement('div');
-    ctrl.className = 'pg-fs-ctrl';
-    var prev = fsBtn(AP.ICON.prev, '上一首', function () {
-      var n = queue.length; if (!n) return;
-      playIndex((player.currentIndex - 1 + n) % n, true);
-      fsPoke();
-    });
-    var toggle = fsBtn(AP.ICON.play, '播放/暂停', function () {
-      if (AP.Store.state.playing) player.pause(); else player.play();
-      fsPoke();
-    });
-    var next = fsBtn(AP.ICON.next, '下一首', function () {
-      var n = queue.length; if (!n) return;
-      playIndex((player.currentIndex + 1) % n, true);
-      fsPoke();
-    });
-    var exit = fsBtn(AP.ICON.compress, '退出全屏', function () { exitFs(); });
-    ctrl.appendChild(prev); ctrl.appendChild(toggle);
-    ctrl.appendChild(next); ctrl.appendChild(exit);
-    fsLayer.appendChild(ctrl);
-
-    /* 播放按钮图标随状态变化 */
-    AP.Store.on(function (st) {
-      toggle.innerHTML = st.playing ? AP.ICON.pause : AP.ICON.play;
-      toggle.setAttribute('aria-label', st.playing ? '暂停' : '播放');
-    });
-  }
-
-  /* 控制条 3s 自动隐藏；移动鼠标/触摸时重新出现 */
-  function fsPoke() {
-    fsLayer.classList.add('pg-fs-show');
-    clearTimeout(fsHideTimer);
-    fsHideTimer = setTimeout(function () { fsLayer.classList.remove('pg-fs-show'); }, 3000);
-  }
+  /* ------------------------------------------------- 全屏：左卡片 + 右字幕 */
+  var rootEl = $('root');
+  var fsOn = false, fsTriggerEl = null, fsListWasOpen = false;
 
   function enterFs(trigger) {
-    ensureFs();
     fsTriggerEl = trigger || null;
-    fsLayer.hidden = false;
-    fsPoke();
-    var req = fsLayer.requestFullscreen ? fsLayer.requestFullscreen() : Promise.reject();
+    /* 字幕用面板里的歌词实例，先确保已挂载 */
+    var ly = modEl('lyrics');
+    if (ly) ly.setAttribute('fs', '');          /* 沉浸形态：无卡片、大字幕 */
+    /* 全屏字号/容器尺寸变化后必须重算行位置，否则滚动目标会算错 */
+    if (ly) requestAnimationFrame(function () {
+      requestAnimationFrame(function () { if (ly._measure) ly._measure(); });
+    });
+    rootEl.setAttribute('data-fs', '');         /* 页面切两栏：左卡片 / 右字幕 */
+    /* 左栏顺便展开待播列表（退出时还原） */
+    try {
+      fsListWasOpen = !player.shadowRoot.getElementById('plist').hasAttribute('hidden');
+      player.setAttribute('playlist-open', 'true');
+    } catch (e) { }
+    document.documentElement.style.overflow = 'hidden';
+    var req = rootEl.requestFullscreen ? rootEl.requestFullscreen() : Promise.reject();
     (req || Promise.reject()).then(function () {
       fsOn = true;
     }).catch(function () {
-      /* 不支持 Fullscreen API：保留固定层作为兜底，仍可 ESC 退出 */
-      fsOn = true;
-      document.documentElement.style.overflow = 'hidden';
+      fsOn = true;                              /* 兜底：仍是全屏布局，ESC 可退 */
       showToast('当前浏览器不支持全屏 API，已使用覆盖模式');
     });
   }
 
   function exitFs() {
-    if (document.fullscreenElement === fsLayer) {
+    if (document.fullscreenElement === rootEl) {
       (document.exitFullscreen() || Promise.resolve()).catch(function () { });
     }
     fsOn = false;
-    fsLayer.hidden = true;
-    fsLayer.classList.remove('pg-fs-show');
-    clearTimeout(fsHideTimer);
+    rootEl.removeAttribute('data-fs');
+    var ly = _mods.lyrics;
+    if (ly) ly.removeAttribute('fs');
     document.documentElement.style.overflow = '';
+    try {
+      player.setAttribute('playlist-open', fsListWasOpen ? 'true' : 'false');
+    } catch (e) { }
     if (fsTriggerEl) { try { fsTriggerEl.focus(); } catch (e) { } fsTriggerEl = null; }
+    /* 退出后重建位置缓存，避免全屏尺寸下的旧偏移 */
+    if (ly && ly._measure) { try { ly._measure(); } catch (e) { } }
   }
 
   function toggleFs(trigger) {
-    if (document.fullscreenElement === fsLayer || (!fsLayer.hidden && fsOn)) exitFs();
+    if (fsOn || rootEl.hasAttribute('data-fs')) exitFs();
     else enterFs(trigger);
   }
 
-  /* 播放器的全屏按钮/双击封面 → 交给页面开「纯歌词全屏」 */
+  /* 播放器的全屏按钮 / 双击封面 → 页面级全屏布局 */
   player._fsDelegate = true;
   player.addEventListener('ap-fs-toggle', function () { toggleFs(player); });
 
-  fsLayer.addEventListener('pointermove', fsPoke);
-  fsLayer.addEventListener('pointerdown', fsPoke);
+  var fsExitBtn = $('fsExit');
+  fsExitBtn.innerHTML = AP.ICON.compress;
+  fsExitBtn.addEventListener('click', function () { exitFs(); });
+
   document.addEventListener('fullscreenchange', function () {
-    if (document.fullscreenElement === fsLayer) { fsOn = true; fsPoke(); return; }
-    if (fsOn && document.fullscreenElement === null) exitFs();   /* ESC 或系统退出 */
+    if (document.fullscreenElement === rootEl) { fsOn = true; return; }
+    if (fsOn && document.fullscreenElement === null) exitFs();   /* ESC / 系统退出 */
   });
   document.addEventListener('keydown', function (ev) {
     if (ev.key === 'Escape' && fsOn) exitFs();

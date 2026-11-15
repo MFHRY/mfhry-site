@@ -220,6 +220,9 @@
     /* 视觉隐藏但可被读屏（[50]） */
     .ap-sr{ position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
       clip:rect(0 0 0 0);white-space:nowrap;border:0; }
+    /* [hidden] 必须真的隐藏：作者样式里的 display（如 .ap-poster{display:flex}）
+       会覆盖 UA 的 [hidden]{display:none}，导致"有声音没画面" */
+    [hidden]{ display:none !important; }
     /* 隐藏滚动条但可滚（[29][86][196]） */
     .ap-noscroll{ scrollbar-width:none;-ms-overflow-style:none; }
     .ap-noscroll::-webkit-scrollbar{ width:0;height:0;display:none; }
