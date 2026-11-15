@@ -52,9 +52,12 @@
   .pg-ambient{
     position:fixed; inset:0; z-index:0; pointer-events:none;
     opacity:.42;                    /* [193] ≤0.5 */
+    /* 取色来自当前歌曲封面（--pg-tint 是 "r,g,b"） */
     background:
-      radial-gradient(60% 40% at 20% 0%,rgba(10,132,255,.12),transparent 70%),
+      radial-gradient(60% 40% at 20% 0%,rgba(var(--pg-tint,10,132,255),.16),transparent 70%),
+      radial-gradient(52% 42% at 88% 8%,rgba(var(--pg-tint,10,132,255),.10),transparent 72%),
       radial-gradient(50% 40% at 90% 10%,rgba(255,255,255,.10),transparent 70%);
+    transition:background 900ms cubic-bezier(.4,0,.2,1);
   }
   .pg-root[data-theme="dark"] .pg-ambient{ opacity:.28; }
 
@@ -119,6 +122,8 @@
     .pg-panels{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr);
       gap:var(--pg-gap); align-items:start; }
     .pg-panel[hidden]{ display:block; }     /* 宽屏全部并列 */
+    /* 歌词是主模块：整列铺满，否则只占半列、看起来"卡片向左偏" */
+    #panel-lyrics{ grid-column:1 / -1; }
   }
 
   /* 歌曲目录（保留旧站全部曲单） */
@@ -190,8 +195,8 @@
     content:''; position:fixed; inset:0; z-index:-2; pointer-events:none;
     background-color:rgba(0,0,0,.42);
     background-image:
-      radial-gradient(110% 80% at 18% 0%, rgba(10,132,255,.20), transparent 62%),
-      radial-gradient(100% 70% at 88% 100%, rgba(255,64,129,.16), transparent 60%),
+      radial-gradient(110% 80% at 18% 0%, rgba(var(--pg-tint,10,132,255),.26), transparent 62%),
+      radial-gradient(100% 70% at 88% 100%, rgba(var(--pg-tint,10,132,255),.18), transparent 60%),
       linear-gradient(180deg, rgba(0,0,0,.30), rgba(0,0,0,.72));
   }
   /* 原生全屏元素同样铺满（含 Safari 前缀） */
@@ -541,6 +546,58 @@
     if (autoplay !== false) player.play();
   }
 
+  /* --------------------------------------------- 背景随歌曲切换（封面取色） */
+  var tintCache = loadJSON('ap:tint', {}) || {};
+  var tintSeq = 0;
+
+  function rgbToTint(r, g, b) {
+    /* 稍微提饱和，避免灰扑扑 */
+    var mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+    var l = (mx + mn) / 2 / 255;
+    if (mx > 0 && (mx - mn) / mx < 0.18) {          /* 近似灰：退回低调蓝 */
+      return '96,116,146';
+    }
+    var boost = function (v) {
+      var nl = l < 0.45 ? 0.45 : (l > 0.72 ? 0.66 : l);
+      return Math.max(0, Math.min(255, Math.round(v + (v - l * 255) * 0.25 + (nl - l) * 90)));
+    };
+    return boost(r) + ',' + boost(g) + ',' + boost(b);
+  }
+
+  function setTint(url) {
+    var seq = ++tintSeq;
+    if (!url) { root.style.removeProperty('--pg-tint'); return; }
+    if (tintCache[url]) { root.style.setProperty('--pg-tint', tintCache[url]); return; }
+    var img = new Image();
+    img.decoding = 'async';
+    img.onload = function () {
+      if (seq !== tintSeq) return;                   /* 已切歌，丢弃旧结果 */
+      try {
+        var c = document.createElement('canvas');
+        c.width = c.height = 16;
+        var g = c.getContext('2d', { willReadFrequently: true });
+        g.drawImage(img, 0, 0, 16, 16);
+        var d = g.getImageData(0, 0, 16, 16).data;
+        var r = 0, gg = 0, b = 0, n = 0;
+        for (var i = 0; i < d.length; i += 4) {
+          if (d[i + 3] < 128) continue;
+          r += d[i]; gg += d[i + 1]; b += d[i + 2]; n++;
+        }
+        if (!n) return;
+        var tint = rgbToTint(r / n, gg / n, b / n);
+        tintCache[url] = tint;
+        try {
+          var keys = Object.keys(tintCache);
+          if (keys.length > 60) { delete tintCache[keys[0]]; }
+          localStorage.setItem('ap:tint', JSON.stringify(tintCache));
+        } catch (e) { }
+        if (seq === tintSeq) root.style.setProperty('--pg-tint', tint);
+      } catch (e) { }
+    };
+    img.onerror = function () { if (seq === tintSeq) root.style.removeProperty('--pg-tint'); };
+    img.src = url;
+  }
+
   /* --------------------------------------------------- 从播放列表移除歌曲 */
   function removeFromQueue(i) {
     if (i < 0 || i >= queue.length) return;
@@ -575,6 +632,7 @@
       resolveOnline(t, i);
     }
     if (t) {
+      setTint(t.cover || '');
       document.title = (t.zh || t.label || '音乐') + ' · mfhry.store';   /* [200] */
       saveJSON(LSH, tid(t));
       announce('正在播放 ' + (t.zh || t.label || ''));
