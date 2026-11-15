@@ -23,6 +23,7 @@
 
   .pg-root{
     --pg-max:1200px;                 /* [191] 页面最大宽 */
+    --pg-tint:10,132,255;            /* 当前歌曲封面主色，切歌时更新 */
     --pg-pad:24px;                   /* [191] 左右 padding */
     --pg-gap:24px;                   /* [30][195] 模块间距 16–24 */
     --pg-text:#1d1d1f;               /* [19] */
@@ -51,12 +52,12 @@
   /* 极淡环境光：固定层但 opacity ≤0.5、不拦截交互（[193][3] 允许的例外） */
   .pg-ambient{
     position:fixed; inset:0; z-index:0; pointer-events:none;
-    opacity:.42;                    /* [193] ≤0.5 */
+    opacity:.9;
     /* 取色来自当前歌曲封面（--pg-tint 是 "r,g,b"） */
     background:
-      radial-gradient(60% 40% at 20% 0%,rgba(var(--pg-tint,10,132,255),.16),transparent 70%),
-      radial-gradient(52% 42% at 88% 8%,rgba(var(--pg-tint,10,132,255),.10),transparent 72%),
-      radial-gradient(50% 40% at 90% 10%,rgba(255,255,255,.10),transparent 70%);
+      radial-gradient(58% 46% at 16% 0%,rgba(var(--pg-tint),.34),transparent 72%),
+      radial-gradient(52% 44% at 88% 6%,rgba(var(--pg-tint),.22),transparent 74%),
+      radial-gradient(70% 60% at 50% 108%,rgba(var(--pg-tint),.18),transparent 76%);
     transition:background 900ms cubic-bezier(.4,0,.2,1);
   }
   .pg-root[data-theme="dark"] .pg-ambient{ opacity:.28; }
@@ -185,7 +186,10 @@
   .pg-root[data-fs]::before{
     content:''; position:fixed; inset:-28%; z-index:-3; pointer-events:none;
     background-color:#0b0b0d;               /* 模糊边缘落在这层底色上，不再透出页面 */
-    background-image:var(--fs-cover, none);
+    /* 封面不存在/加载失败时，用当前歌曲主色渐变兜底，不会是纯黑 */
+    background-image:var(--fs-cover, none),
+      radial-gradient(70% 60% at 22% 18%, rgba(var(--pg-tint),.55), transparent 72%),
+      radial-gradient(70% 60% at 82% 86%, rgba(var(--pg-tint),.38), transparent 74%);
     background-size:cover; background-position:center;
     filter:blur(64px) saturate(155%) brightness(.60);
     transform:scale(1.12);
@@ -387,16 +391,16 @@
   <button class="pg-fs-exit" id="fsExit" type="button" aria-label="退出全屏"></button>
 </div>
 
-<script src="/songs.js?v=19"></script>
-<script src="/music/engine.js?v=1"></script>
+<script src="/songs.js?v=20"></script>
+<script src="/music/engine.js?v=3"></script>
 <!-- 组件按模块拆分，单文件均 < 1500 行（[216][219]）；ap-core 必须最先加载 -->
-<script src="/music/ap-core.js?v=1"></script>
-<script src="/music/ap-player.js?v=1"></script>
-<script src="/music/ap-lyrics.js?v=1"></script>
-<script src="/music/ap-comments.js?v=1"></script>
-<script src="/music/ap-mv.js?v=1"></script>
-<script src="/music/ap-search.js?v=1"></script>
-<script src="/music/ap-cache.js?v=1"></script>
+<script src="/music/ap-core.js?v=3"></script>
+<script src="/music/ap-player.js?v=3"></script>
+<script src="/music/ap-lyrics.js?v=3"></script>
+<script src="/music/ap-comments.js?v=3"></script>
+<script src="/music/ap-mv.js?v=3"></script>
+<script src="/music/ap-search.js?v=3"></script>
+<script src="/music/ap-cache.js?v=3"></script>
 <script>
 /* ============================================================================
  * 页面编排层（唯一知道所有模块存在的地方）

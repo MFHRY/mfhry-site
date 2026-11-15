@@ -77,8 +77,14 @@
       font-size:var(--ap-time);                     /* 11px [45] */
       color:var(--ap-text-2); letter-spacing:0; }
     /* ---- 控制区 [69][70][71][72] ---- */
-    .ap-controls{ display:flex; align-items:center; gap:var(--ap-space-1); }
-    .ap-controls .ap-grow{ flex:1 1 auto; }
+    /* 控制行：允许换行，避免"全屏按钮"被挤出卡片右边界 */
+    .ap-controls{
+      display:flex; align-items:center; gap:var(--ap-space-1);
+      flex-wrap:wrap; row-gap:var(--ap-space-1); min-width:0;
+    }
+    .ap-controls .ap-grow{ flex:1 1 0; min-width:0; }
+    .ap-controls .ap-btn, .ap-controls .ap-main{ flex:0 0 auto; }
+    .ap-vol{ min-width:0; flex:0 0 auto; }
     .ap-main{
       width:52px; height:52px; min-width:52px; min-height:52px;   /* 52px [69] */
       border-radius:var(--ap-radius-btn);
@@ -163,6 +169,10 @@
     .ap-status{ font-size:12px; color:var(--ap-text-2); min-height:16px; letter-spacing:0; }
     .ap-status.ap-err{ color:#d70015; }
     /* 窄容器降级（[31] 容器查询） */
+    @container (max-width:440px){
+      /* 先收起音量条（保留静音键），给全屏/列表按钮腾位置 */
+      .ap-volbar{ display:none; }
+    }
     @container (max-width:340px){
       .ap-art{ width:52px; height:52px; }
       .ap-title{ font-size:16px; }
