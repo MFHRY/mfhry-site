@@ -299,9 +299,14 @@
   /* 宽屏的 .pg-panels 是两列 grid，全屏必须改回单列，否则歌词只占半宽 */
   .pg-root[data-fs] .pg-panels{ display:block; flex:1 1 auto; min-height:0; height:100%; }
   .pg-root[data-fs] .pg-panel{ display:none; }
-  .pg-root[data-fs] #panel-lyrics{
+  .pg-root[data-fs][data-mod="lyrics"] #panel-lyrics{
     display:block; height:100%; min-height:0; overflow:hidden; }
-  .pg-root[data-fs] #panel-lyrics ap-lyrics{
+  .pg-root[data-fs][data-mod="lyrics"] #panel-lyrics ap-lyrics{
+    display:block; height:100%; min-height:0; }
+  /* 全屏里也能看 MV：切到 MV 模块时不退出全屏 */
+  .pg-root[data-fs][data-mod="mv"] #panel-mv{
+    display:block; height:100%; min-height:0; overflow:hidden; }
+  .pg-root[data-fs][data-mod="mv"] #panel-mv ap-mv{
     display:block; height:100%; min-height:0; }
   /* 全屏退出按钮：浮层右上角，44px 热区 */
   .pg-fs-exit{
@@ -317,6 +322,12 @@
   .pg-fs-exit:focus-visible{ outline:none; box-shadow:0 0 0 2px #000,0 0 0 4px #0a84ff; }
   .pg-fs-exit svg{ width:24px; height:24px; display:block; }
   .pg-root[data-fs] .pg-fs-exit{ display:inline-flex; }
+  /* 全屏看 MV 时的「回到歌词」按钮，位于退出按钮左侧 */
+  .pg-fs-back{
+    right:calc(env(safe-area-inset-right,0px) + 70px);
+    width:auto; padding:0 16px; font-size:13px; font-weight:600;
+  }
+  .pg-root[data-fs][data-mod="mv"] #fsBack{ display:inline-flex; }
   /* 触屏：所有可点元素至少 44px 高 */
   @media (hover:none), (pointer:coarse){
     .pg-chip{ min-height:44px; padding:10px 14px; }
@@ -433,6 +444,8 @@
 
   <!-- 全屏时右上角的退出按钮（由 [data-fs] 显示） -->
   <button class="pg-fs-exit" id="fsExit" type="button" aria-label="退出全屏"></button>
+  <!-- 全屏看 MV 时，回到歌词的小按钮 -->
+  <button class="pg-fs-exit pg-fs-back" id="fsBack" type="button" aria-label="回到歌词">歌词</button>
 </div>
 
 <script src="/songs.js?v=20"></script>
@@ -695,12 +708,23 @@
     queue.splice(i, 1);
 
     /* 当前索引跟着调整：删当前之前的整体前移 */
-    if (i < player.currentIndex) player.currentIndex = player.currentIndex - 1;
-    else if (wasCur) player.currentIndex = Math.min(i, queue.length - 1);
+    var newIndex = player.currentIndex;
+    if (i < player.currentIndex) newIndex = player.currentIndex - 1;
+    else if (wasCur) newIndex = Math.min(i, queue.length - 1);
 
     player.tracks = queue;
-    persist();
-    playIndex(player.currentIndex, wasPlaying && wasCur);   /* 删的是当前曲才续播下一首 */
+    if (wasCur) {
+      /* 删的就是当前曲：切到下一首并按原播放状态续播 */
+      player.currentIndex = newIndex;
+      persist();
+      playIndex(player.currentIndex, wasPlaying);
+    } else {
+      /* 删的是别的歌：只挪索引，绝不重新加载音频（进度/播放状态都保持） */
+      try { player._idx = newIndex; } catch (e) { }
+      try { AP.Store.set({ index: newIndex }); } catch (e) { }
+      if (player._renderList) { try { player._renderList(); } catch (e) { } }
+      persist();
+    }
     renderCatalog && renderCatalog();
     renderFsQueue && renderFsQueue();
     showToast('已从播放列表移除《' + (t.zh || t.label || '') + '》');
@@ -817,6 +841,8 @@
     var prev = activeMod;
     if (prev && panels[prev]) scrollMemo[prev] = window.scrollY;
     activeMod = mod;
+    /* 全屏 CSS 用它决定显示歌词还是 MV（.pg-root[data-fs][data-mod="mv"]） */
+    try { root.setAttribute('data-mod', mod); } catch (e) { }
     tabs.forEach(function (b) {
       var on = b.dataset.mod === mod;
       b.setAttribute('aria-selected', on ? 'true' : 'false');
@@ -968,6 +994,16 @@
   var fsExitBtn = $('fsExit');
   fsExitBtn.innerHTML = AP.ICON.compress;
   fsExitBtn.addEventListener('click', function () { exitFs(); });
+
+  /* 全屏看 MV 时回到歌词（不退出全屏） */
+  var fsBackBtn = $('fsBack');
+  if (fsBackBtn) {
+    fsBackBtn.addEventListener('click', function () {
+      var mv = modEl('mv');
+      if (mv && mv.pause) { try { mv.pause(); } catch (e) { } }
+      setMod('lyrics');
+    });
+  }
 
   document.addEventListener('fullscreenchange', function () {
     if (document.fullscreenElement === rootEl) { fsOn = true; return; }
