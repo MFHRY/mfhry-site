@@ -119,6 +119,7 @@
       text-shadow:0 1px 12px rgba(0,0,0,.35);        /* 压在模糊背景上也可读 */
     }
     /* 景深：离当前行越远越淡，视线自然聚焦（[78] 的延伸，仅全屏生效） */
+    :host([fs]) .ap-line[data-dist="0"]{ opacity:1; }
     :host([fs]) .ap-line[data-dist="1"]{ opacity:.46; }
     :host([fs]) .ap-line[data-dist="2"]{ opacity:.30; }
     :host([fs]) .ap-line[data-dist="3"]{ opacity:.20; }
@@ -232,9 +233,12 @@
         self._sync(AP.Store.state.time, true);
       });
       this._ro.observe(box);
+      /* 内容层也要观察：字体异步加载、长句折行都会改变各行的 offsetTop，
+         只观察外层容器的话滚动目标会一直用旧位置 */
+      try { this._ro.observe(this._q('inner')); } catch (e) { }
       this._onCleanup(function () { self._ro.disconnect(); });
       this._onCleanup(function () {
-        if (self._fixTimer) clearTimeout(self._fixTimer);
+
       });
 
       /* 订阅 store：曲目变了就换歌词，时间变了就同步（[90] 误差 ≤200ms 由 timeupdate 保证） */
@@ -330,8 +334,13 @@
       this._cur = ni;
 
       var lines = this._q('inner').querySelectorAll('.ap-line');
-      var prev = this._q('inner').querySelector('.ap-line.ap-cur');
-      if (prev) { prev.classList.remove('ap-cur'); prev.removeAttribute('aria-current'); }
+      /* 全量清理：重渲染/跳转后可能残留多个 .ap-cur，只保留唯一的当前行 */
+      for (var q = 0; q < lines.length; q++) {
+        if (lines[q].classList.contains('ap-cur')) {
+          lines[q].classList.remove('ap-cur');
+          lines[q].removeAttribute('aria-current');
+        }
+      }
       var cur = lines[ni];
       if (cur) {
         cur.classList.add('ap-cur');
@@ -372,16 +381,18 @@
 
       /* 对齐校验放在过渡结束之后：260ms 的平滑滚动期间读矩形会读到中间态，
          等动画停下来再量一次偏差，有就补一帧修正（保证当前行真的落在正中） */
-      if (this._fixTimer) clearTimeout(this._fixTimer);
+      /* 进入/退出全屏、卡片尺寸变化会让容器高度晚一步才定下来，
+         这里在 300ms / 900ms 各重算一次（用当时的真实高度，而不是拿矩形反推），
+         保证当前行最终落在字幕区正中。 */
+      if (this._realign) { clearTimeout(this._realign[0]); clearTimeout(this._realign[1]); }
       if (cur) {
-        /* 等平滑滚动（260ms）停下来再量：动画期间读到的都是中间态 */
-        this._fixTimer = setTimeout(function () {
+        var realign = function () {
           if (!cur.isConnected) return;
-          var b = box.getBoundingClientRect();
-          var cr = cur.getBoundingClientRect();
-          var delta = (cr.top + cr.height / 2) - (b.top + b.height / 2);
-          if (Math.abs(delta) > 2) apply(ty + delta);
-        }, 420);
+          var hh = box.clientHeight || h;
+          var mt = Math.max(0, Math.max(inner.scrollHeight, live.top + live.h) - hh);
+          apply(clamp(live.top + live.h / 2 - hh / 2, 0, mt));
+        };
+        this._realign = [setTimeout(realign, 300), setTimeout(realign, 900)];
       }
     }
   }

@@ -223,9 +223,9 @@
   /* 字幕与卡片共用同一列宽并居中，视觉上左右对齐 */
   .pg-root[data-fs]{
     /* 字幕与卡片共用同一列宽：视觉上左右严格对齐，不会出现"字幕宽、卡片窄" */
-    --fs-col:min(680px, calc(100% - 32px));
-    /* 播放卡片比字幕更宽（用户要求），左右仍严格居中 */
-    --fs-card:min(920px, calc(100% - 40px));
+    --fs-col:min(880px, calc(100% - 40px));
+    /* 卡片与字幕同宽：两者左右边界必须严格对齐（否则会显得卡片"歪"） */
+    --fs-card:var(--fs-col);
   }
   /* 上下排：上方大字幕，底部播放卡片 + 最底待播列表 */
   .pg-root[data-fs] .pg-wrap{
@@ -439,7 +439,7 @@
 <script src="/music/engine.js?v=3"></script>
 <!-- 组件按模块拆分，单文件均 < 1500 行（[216][219]）；ap-core 必须最先加载 -->
 <script src="/music/ap-core.js?v=3"></script>
-<script src="/music/ap-player.js?v=4"></script>
+<script src="/music/ap-player.js?v=5"></script>
 <script src="/music/ap-lyrics.js?v=4"></script>
 <script src="/music/ap-comments.js?v=3"></script>
 <script src="/music/ap-mv.js?v=4"></script>

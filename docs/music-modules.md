@@ -119,6 +119,14 @@ songs.js / catalog ──click──> page orchestrator ──> AP.Store
 - 页面背景用提亮色铺三层径向 + 一层线性渐变（`.pg-ambient`，`opacity:.9`，深色主题不再压暗）。
 - 灰度封面自动退回低调蓝；结果按封面 URL 缓存到 `localStorage['ap:tint']`（最多 60 条），切歌有竞态保护。
 
+## 全屏排版细节（2026-11 改善）
+- **同宽对齐**：字幕与播放卡片共用 `--fs-col`（`--fs-card:var(--fs-col)`），左右边界偏差实测 0px。
+- **行距与字号**：普通行 `clamp(16px,2.1vw,24px)`、行高 1.45、行间距 `clamp(10px,2.2vh,26px)`；当前行 `clamp(22px,3.1vw,34px)`、字重 650、行高 1.34、轻微负字距。
+- **景深**：`data-dist` 标记与当前行距离，±1/±2/±3 行透明度依次 0.46/0.30/0.20，当前行 1.0，视线自然聚焦。
+- **玻璃卡片**：`:host([fs]) .ap-card` 半透明 + 30px 背景模糊、22px 圆角、双层阴影，卡片压缩到 208–232px 高。
+- **待播栏**：chip 40px 高、左右 18px 渐变遮罩暗示可横滑、与卡片间距 18px。
+- **滚动对齐**：ResizeObserver 同时观察 `box` 与 `inner`（字体异步加载会改变每行 offsetTop），并在 300/900ms 各重算一次，实测当前行与字幕区中心偏差 0–5px。
+
 ## 触控与小屏适配
 - 所有可点元素 ≥44×44：`.pg-tab`、`.pg-chip`、`.pg-nc`（评论入口）、`.ap-collapse`、`.ap-rowdel`、`.pg-fsq`、`.pg-fs-exit`。
 - `@media (hover:none),(pointer:coarse)` 下曲目芯片提到 44px 高、内边距加大。

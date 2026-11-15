@@ -181,7 +181,7 @@
     }
     /* ---- 页面级全屏（data-fs）里的播放卡片：玻璃材质 + 紧凑排版 ---- */
     :host([fs]) .ap-card{
-      max-width:760px;                            /* 全屏卡片加宽（原 480 太窄） */
+      max-width:880px;                            /* 全屏卡片加宽，与字幕列同宽 */
       margin:0 auto;                              /* 影子树内同样居中 */
       background:rgba(28,28,30,.46);
       -webkit-backdrop-filter:blur(30px) saturate(180%);
