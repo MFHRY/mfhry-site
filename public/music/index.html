@@ -170,26 +170,35 @@
   .pg-sr{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
 
   /* ---------------- 全屏：左播放卡片 + 右滚动字幕 ---------------- */
+  /* 用 fixed 铺满整个视口：Safari 全屏时 100vh 可能略小于可用高度，会露出一圈 */
   .pg-root[data-fs]{
-    height:100vh; overflow:hidden; color:#f5f5f7; background:#0b0b0d;
-    position:relative; isolation:isolate;
+    position:fixed; inset:0; z-index:40; width:auto; height:auto; min-height:0;
+    overflow:hidden; color:#f5f5f7; background:#0b0b0d; isolation:isolate;
   }
-  /* 背景：当前封面放大模糊 + 暗角，避免整屏死黑 */
+  /* 背景：当前封面放大模糊 + 暗角。inset 扩到 -28%，把模糊淡出的边缘推到屏幕外，
+     否则边缘会透出一圈"淡化"的光晕（Safari 上尤其明显） */
   .pg-root[data-fs]::before{
-    content:''; position:fixed; inset:-12%; z-index:-2; pointer-events:none;
+    content:''; position:fixed; inset:-28%; z-index:-3; pointer-events:none;
+    background-color:#0b0b0d;               /* 模糊边缘落在这层底色上，不再透出页面 */
     background-image:var(--fs-cover, none);
     background-size:cover; background-position:center;
-    filter:blur(72px) saturate(160%) brightness(.62);
-    transform:scale(1.18);
-    opacity:.9;
+    filter:blur(64px) saturate(155%) brightness(.60);
+    transform:scale(1.12);
   }
-  /* 无封面时用暖冷双色渐变兜底，仍不是纯黑 */
+  /* 暗角与色调叠加，本身也带不透明底色，确保四边没有缝隙 */
   .pg-root[data-fs]::after{
-    content:''; position:fixed; inset:0; z-index:-1; pointer-events:none;
-    background:
+    content:''; position:fixed; inset:0; z-index:-2; pointer-events:none;
+    background-color:rgba(0,0,0,.42);
+    background-image:
       radial-gradient(110% 80% at 18% 0%, rgba(10,132,255,.20), transparent 62%),
       radial-gradient(100% 70% at 88% 100%, rgba(255,64,129,.16), transparent 60%),
       linear-gradient(180deg, rgba(0,0,0,.30), rgba(0,0,0,.72));
+  }
+  /* 原生全屏元素同样铺满（含 Safari 前缀） */
+  .pg-root[data-fs]:fullscreen,
+  .pg-root[data-fs]:-webkit-full-screen{
+    width:100vw; height:100vh; max-width:none; max-height:none;
+    margin:0; padding:0; inset:0;
   }
   .pg-root[data-fs] .pg-wrap{ position:relative; z-index:1; }
   /* 全屏里卡片用半透明材质，让背景透出来 */
