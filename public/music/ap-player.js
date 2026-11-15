@@ -193,6 +193,16 @@
       padding:16px 18px 14px;
     }
     :host([fs]) .ap-body{ gap:10px; }
+    /* 全屏卡片：封面在上、歌名与歌手居中，不再靠左 */
+    :host([fs]) .ap-head{
+      flex-direction:column; align-items:center; text-align:center;
+      gap:10px; justify-content:center;
+    }
+    :host([fs]) .ap-meta{
+      align-items:center; text-align:center; flex:0 0 auto; width:100%;
+    }
+    :host([fs]) .ap-title, :host([fs]) .ap-artist{ text-align:center; }
+    :host([fs]) .ap-status{ text-align:center; }
     :host([fs]) .ap-art{ width:58px; height:58px; border-radius:14px; }
     :host([fs]) .ap-title{ font-size:17px; letter-spacing:-0.02em; }
     :host([fs]) .ap-artist{ font-size:12.5px; }
