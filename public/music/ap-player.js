@@ -329,6 +329,8 @@
         'aria-valuemin="0" aria-valuemax="100" aria-valuenow="85">' +
         '<div class="ap-trackline"><div class="ap-fill" id="volfill"></div></div></div>' +
         '</div>' +
+        '<button class="ap-btn ap-focusable" id="mvbtn" type="button" ' +
+        'aria-label="播放 MV" aria-pressed="false">' + AP.ICON.video + '</button>' +
         '<button class="ap-btn ap-listbtn ap-focusable" id="listbtn" type="button" ' +
         'aria-label="播放列表" aria-expanded="false" aria-pressed="false">' + AP.ICON.list + '</button>' +
         '<button class="ap-btn ap-focusable" id="fullscreen" type="button" aria-label="进入全屏">' + AP.ICON.expand + '</button>' +
@@ -548,6 +550,15 @@
       /* --------- 列表展开/折叠（[39] 默认折叠 / [40] 属性可控） --------- */
       var listbtn = this._q('listbtn');
       var onListToggle = function () { self._toggleList(); };
+
+      /* MV 按钮：页面持有 MV 模块，这里只发事件 */
+      var mvBtn = this._q('mvbtn');
+      var onMv = function () {
+        self._emit('ap-mv-open', { index: AP.Store.state.index });
+      };
+      mvBtn.addEventListener('click', onMv);
+      this._onCleanup(function () { mvBtn.removeEventListener('click', onMv); });
+      this._syncMvBtn();
       listbtn.addEventListener('click', onListToggle);
       this._onCleanup(function () { listbtn.removeEventListener('click', onListToggle); });
 
@@ -815,6 +826,18 @@
       this._paintEq();
     }
 
+    /** MV 按钮反映当前曲目：没有 MV 时淡显并标注 */
+    _syncMvBtn() {
+      if (!this._q) return;
+      var b = this._q('mvbtn');
+      if (!b) return;
+      var t = AP.Store.track();
+      var has = !!(t && t.mv && t.mv.length);
+      b.style.opacity = has ? '' : '.42';
+      b.setAttribute('aria-label', has ? '播放 MV' : '这首没有 MV');
+      b.setAttribute('data-empty', has ? 'false' : 'true');
+    }
+
     _toggleList(force) {
       if (!this._q) return;
       var plist = this._q('plist'), btn = this._q('listbtn');
@@ -835,6 +858,7 @@
       var token = ++this._loadToken;            /* 取消上一次未完成的加载 [140] */
       this._idx = n;
       AP.Store.set({ index: n, time: 0, duration: 0, error: '', loading: true });
+      this._syncMvBtn();
 
       /* 切歌：先解绑旧源，避免旧请求回来污染（[75][140]） */
       a.pause();

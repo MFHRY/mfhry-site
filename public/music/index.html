@@ -629,6 +629,20 @@
     if (bootTrack && bootTrack.cover) setTint(bootTrack.cover);
   } catch (e) { }
 
+  /* 播放卡片里的 MV 按钮 → 切到 MV 模块并直接起播 */
+  player.addEventListener('ap-mv-open', function () {
+    var t = AP.Store.track();
+    if (!t || !t.mv || !t.mv.length) { showToast('这首没有 MV'); return; }
+    setMod('mv');
+    var mv = modEl('mv');
+    var panel = $('panel-mv');
+    if (panel && panel.scrollIntoView) panel.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    if (mv) {
+      /* 用户手势内调用，浏览器允许带声音播放 */
+      try { mv.play(); } catch (e) { }
+    }
+  });
+
   player.addEventListener('ap-queue-remove', function (ev) {
     removeFromQueue(ev.detail && ev.detail.index);
   });

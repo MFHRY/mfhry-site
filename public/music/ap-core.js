@@ -271,7 +271,9 @@
     x: svg('<path d="M7 7l10 10"/><path d="M17 7L7 17"/>', false),
     heart: svg('<path d="M12 20s-7.2-4.4-7.2-9A3.9 3.9 0 0 1 12 8.6 3.9 3.9 0 0 1 19.2 11c0 4.6-7.2 9-7.2 9Z"/>', false),
     playCircle: svg('<circle cx="12" cy="12" r="9"/><path d="M10.4 8.8l5.2 3.2-5.2 3.2z"/>', false),
-    chevron: svg('<path d="M9 5l7 7-7 7"/>', false)
+    chevron: svg('<path d="M9 5l7 7-7 7"/>', false),
+    /* MV：胶片 + 播放三角形 */
+    video: svg('<rect x="3" y="5.6" width="18" height="12.8" rx="2.4"/><path d="M10.4 9.4l4.6 2.6-4.6 2.6z"/>', false)
   };
   // 修正 prev 图标（上面第一个 path 有笔误，用干净版本覆盖）
   ICON.prev = svg('<path d="M7 5v14"/><path d="M18.5 6.2v11.6c0 .7-.8 1.1-1.4.6l-6.6-5.2a.9.9 0 0 1 0-1.4l6.6-5.2c.6-.5 1.4-.1 1.4.6Z"/>', false);
