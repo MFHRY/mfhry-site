@@ -89,7 +89,8 @@
       display:block; height:100%; overflow:hidden; background:transparent;
     }
     :host([fs]) .ap-card{
-      height:100%; width:100%; box-sizing:border-box;
+      height:100%; width:100% !important; max-width:none !important;
+      margin:0 auto; box-sizing:border-box;
       display:flex; flex-direction:column;
       padding:0 clamp(16px,6vw,120px);
       background:transparent;                        /* 无卡片材质 */
@@ -97,18 +98,21 @@
       box-shadow:none;                               /* 无卡片阴影 */
       -webkit-backdrop-filter:none; backdrop-filter:none;
       container-type:normal;
+      /* 关键：必须 stretch，否则整块字幕会按内容宽度收缩并贴左边（视觉上"偏左"） */
+      align-items:stretch;
     }
+    :host([fs]) .ap-lybody{ width:100% !important; align-items:stretch; }
     :host([fs]) .ap-lyhead{ display:none; }          /* 标题/偏移/折叠在全屏隐藏 */
-    :host([fs]) .ap-lybody{ flex:1 1 auto; display:flex; min-height:0; }
+    :host([fs]) .ap-lybody{ flex:1 1 auto; display:flex; min-height:0; width:100%; }
     :host([fs]) .ap-lybox{
-      flex:1 1 auto; max-height:none;
+      flex:1 1 auto; max-height:none; width:100% !important;
       /* 不用 flex 居中：超高内容会向上下同时溢出，transform 坐标系会错位 */
       display:block;
       -webkit-mask-image:linear-gradient(180deg,transparent,#000 22%,#000 78%,transparent);
               mask-image:linear-gradient(180deg,transparent,#000 22%,#000 78%,transparent);
     }
     :host([fs]) .ap-lyinner{
-      width:100%; padding:38vh 0;
+      width:100%; padding:34vh 0;
       gap:clamp(10px, 2.2vh, 26px);                  /* 行距随屏高呼吸 */
     }
     :host([fs]) .ap-line{
