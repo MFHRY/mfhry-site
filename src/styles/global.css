@@ -6,8 +6,19 @@
   --border: #e5e5e0;
   --accent: #2f6f5e;
   --accent-soft: #e8f2ee;
-  --radius: 14px;
-  --max: 880px;
+  --radius: 16px;
+  --max: 960px;
+  /* 排版节奏：间距只从这里取，页面之间才不会忽宽忽窄 */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --s7: 48px;
+  --s8: 64px;
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, .05), 0 10px 28px rgba(0, 0, 0, .05);
+  --shadow-2: 0 2px 6px rgba(0, 0, 0, .06), 0 18px 40px rgba(0, 0, 0, .09);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -31,6 +42,7 @@
 html {
   -webkit-text-size-adjust: 100%;
   scroll-behavior: smooth;
+  scroll-padding-top: 80px;          /* 锚点跳转不被吸顶导航挡住 */
 }
 
 body {
@@ -42,6 +54,11 @@ body {
   font: 16px/1.7 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
     "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+:where(a, button, input, textarea, select, summary):focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 72%, transparent);
+  outline-offset: 2px;
 }
 
 a {
@@ -65,7 +82,7 @@ img {
 .container {
   max-width: var(--max);
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 0 clamp(16px, 4vw, 28px);
 }
 
 /* header：毛玻璃导航 */
@@ -112,8 +129,17 @@ img {
 
 .site-header nav {
   display: flex;
-  gap: 4px;
+  gap: 2px;
   font-size: 15px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  scroll-snap-type: x proximity;
+}
+
+.site-header nav::-webkit-scrollbar {
+  display: none;
 }
 
 .site-header nav a {
@@ -158,15 +184,26 @@ img {
 
 /* main */
 main {
-  padding: 48px 0 24px;
+  padding: clamp(28px, 4vw, 56px) 0 var(--s6);
   min-height: 60vh;
 }
 
 h1 {
-  font-size: 30px;
-  line-height: 1.3;
-  margin: 0 0 6px;
-  letter-spacing: -0.01em;
+  font-size: clamp(26px, 2.6vw, 34px);
+  line-height: 1.22;
+  margin: 0 0 4px;
+  letter-spacing: -0.018em;
+  text-wrap: balance;
+}
+
+/* 标题下面那句说明：统一节奏与行长，避免每页各写一套 */
+h1 + .muted,
+h1 + p {
+  margin: var(--s2) 0 var(--s5);
+  font-size: 15px;
+  line-height: 1.7;
+  max-width: 64ch;
+  text-wrap: pretty;
 }
 
 h2 {
@@ -231,14 +268,15 @@ h2 {
 
 /* blocks */
 .block {
-  margin-bottom: 48px;
+  margin-bottom: clamp(36px, 5vw, 60px);
 }
 
 .block-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  margin-bottom: 16px;
+  gap: var(--s3);
+  margin-bottom: var(--s4);
 }
 
 .block-head a {
@@ -249,8 +287,8 @@ h2 {
 /* grid */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--s4);
 }
 
 /* 只有一两个项目时，单列铺开，别留一大块空白 */
@@ -275,16 +313,18 @@ h2 {
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 16px;
+  padding: 18px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--card);
-  transition: border-color 0.15s ease, transform 0.15s ease;
+  box-shadow: var(--shadow-1);
+  transition: border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
 }
 
 .card:hover {
   border-color: var(--accent);
   transform: translateY(-2px);
+  box-shadow: var(--shadow-2);
   color: inherit;
 }
 
@@ -352,13 +392,13 @@ h2 {
 .filters {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin: 20px 0 22px;
+  gap: var(--s3);
+  margin: var(--s5) 0 var(--s5);
 }
 
 .filters input {
   width: 100%;
-  padding: 9px 14px;
+  padding: 11px 16px;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--card);
@@ -383,10 +423,11 @@ h2 {
   background: var(--card);
   color: var(--muted);
   border-radius: 999px;
-  padding: 4px 12px;
+  padding: 6px 14px;
   font-size: 13px;
   cursor: pointer;
   font-family: inherit;
+  transition: background .16s, color .16s, border-color .16s;
 }
 
 .chip.on {
@@ -406,8 +447,8 @@ h2 {
 .posts li {
   display: flex;
   justify-content: space-between;
-  gap: 16px;
-  padding: 12px 0;
+  gap: var(--s4);
+  padding: 14px 0;
   border-bottom: 1px solid var(--border);
   font-size: 15px;
 }
@@ -624,6 +665,11 @@ a.game:hover {
 
 .notes summary {
   cursor: pointer;
+  /* 触屏可点：折叠标题也做成整行热区 */
+  min-height: 40px;
+  padding: 6px 0;
+  display: flex;
+  align-items: center;
 }
 
 .notes pre {
@@ -654,6 +700,9 @@ a.game:hover {
 .versions summary {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  gap: var(--s3);
+  min-height: 40px;
   cursor: pointer;
   font-size: 14px;
 }
@@ -672,10 +721,10 @@ a.game:hover {
   flex-wrap: wrap;
   justify-content: space-between;
   gap: 8px;
-  padding-top: 20px;
-  padding-bottom: 36px;
+  padding-top: var(--s5);
+  padding-bottom: var(--s7);
   border-top: 1px solid var(--border);
-  margin-top: 40px;
+  margin-top: var(--s7);
   font-size: 13px;
   color: var(--muted);
 }
@@ -1395,4 +1444,162 @@ input[type="button"]:disabled {
   color: var(--muted);
   border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
   background: color-mix(in srgb, var(--fg) 5%, transparent);
+}
+
+/* ===== 统一排版增强（全站） ===== */
+/* hero：头像与文字之间的间距随屏宽变化，名字用更稳的字号 */
+.hero {
+  gap: clamp(16px, 2.6vw, 30px);
+  margin-bottom: clamp(36px, 5vw, 56px);
+  align-items: center;
+}
+
+.avatar {
+  width: clamp(72px, 8vw, 96px);
+  height: clamp(72px, 8vw, 96px);
+  box-shadow: var(--shadow-1);
+}
+
+.hero h1 {
+  margin-bottom: 2px;
+}
+
+.tagline {
+  font-size: 16px;
+  margin: var(--s1) 0 var(--s2);
+}
+
+.bio {
+  max-width: 62ch;
+  line-height: 1.75;
+  margin: 0 0 var(--s4);
+}
+
+/* 标题行带操作按钮（文件 / 视频）：小屏换成上下排 */
+.vhead {
+  flex-wrap: wrap;
+  gap: var(--s3);
+  align-items: center;
+}
+
+.vhead h1 {
+  margin-bottom: 0;
+}
+
+/* 卡片网格：图片型卡片给多一点间距，避免贴边 */
+.games,
+.vids {
+  gap: var(--s4);
+  margin-top: var(--s5);
+}
+
+/* 正文段落统一行长，宽屏不出现一行 100 多字的难读长句 */
+main p,
+.newscard .nbody,
+.post .pbody {
+  text-wrap: pretty;
+}
+
+/* 平板/窄桌面：导航改为横滑，避免 9 个入口挤成两行 */
+@media (max-width: 1000px) {
+  .site-header nav a {
+    scroll-snap-align: center;
+    white-space: nowrap;
+  }
+
+  .bar {
+    gap: var(--s3);
+  }
+
+  /* 横滑时右侧渐隐，提示还能往右划 */
+  .site-header nav {
+    -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 26px), transparent 100%);
+            mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 26px), transparent 100%);
+  }
+}
+
+/* 触屏：可点元素抬高到 40px+，手点得准 */
+@media (hover: none), (pointer: coarse) {
+  .site-header nav a,
+  .brand,
+  .chip,
+  .tab,
+  .refresh,
+  .pick,
+  .send,
+  .links a,
+  .posts li a,
+  .lb,
+  .play,
+  .trbtn {
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .card,
+  .game,
+  .vid,
+  .newscard {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* 手机：标题与说明之间收紧一点，正文首屏别被挤压 */
+@media (max-width: 560px) {
+  main {
+    padding-top: var(--s6);
+  }
+
+  h1 + .muted,
+  h1 + p {
+    font-size: 14.5px;
+    margin-bottom: var(--s4);
+  }
+
+  .block-head {
+    align-items: baseline;
+  }
+
+  .grid,
+  .games,
+  .vids {
+    gap: var(--s3);
+  }
+
+  .card {
+    padding: 16px;
+  }
+}
+
+/* 手机头部：站名一行、导航整行横滑，9 个入口不再被压到 289px */
+@media (max-width: 620px) {
+  .bar {
+    height: auto;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--s2);
+    padding: 8px 0;
+  }
+
+  .brand {
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    font-size: 16px;
+  }
+
+  .site-header nav {
+    /* 贴到容器两端，横滑时内容可以顶到屏幕边缘 */
+    margin: 0 calc(-1 * clamp(16px, 4vw, 28px));
+    padding: 0 clamp(16px, 4vw, 28px);
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 10px, #000 calc(100% - 18px), transparent 100%);
+            mask-image: linear-gradient(90deg, transparent 0, #000 10px, #000 calc(100% - 18px), transparent 100%);
+  }
+
+  .site-header nav a {
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+  }
 }
