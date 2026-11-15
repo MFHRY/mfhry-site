@@ -81,6 +81,48 @@
       .ap-line{ font-size:14px; }
       .ap-line.ap-cur{ font-size:16px; }
     }
+
+    /* ------------------------------------------------------------------
+       全屏字幕形态（host 带 fs 属性时）：去掉卡片、边框、阴影，整屏只留歌词
+       ------------------------------------------------------------------ */
+    :host([fs]){
+      position:fixed; inset:0; z-index:var(--ap-z-fullscreen);
+      background:#000; display:block; overflow:hidden;
+    }
+    :host([fs]) .ap-card{
+      height:100%; width:100%; box-sizing:border-box;
+      display:flex; flex-direction:column;
+      padding:0 clamp(16px,6vw,120px);
+      background:transparent;                        /* 无卡片材质 */
+      border:0; border-radius:0;                     /* 无卡片圆角 */
+      box-shadow:none;                               /* 无卡片阴影 */
+      -webkit-backdrop-filter:none; backdrop-filter:none;
+      container-type:normal;
+    }
+    :host([fs]) .ap-lyhead{ display:none; }          /* 标题/偏移/折叠在全屏隐藏 */
+    :host([fs]) .ap-lybody{ flex:1 1 auto; display:flex; min-height:0; }
+    :host([fs]) .ap-lybox{
+      flex:1 1 auto; max-height:none; display:flex; align-items:center;
+      -webkit-mask-image:linear-gradient(180deg,transparent,#000 22%,#000 78%,transparent);
+              mask-image:linear-gradient(180deg,transparent,#000 22%,#000 78%,transparent);
+    }
+    :host([fs]) .ap-lyinner{ width:100%; padding:38vh 0; gap:var(--ap-space-5); }
+    :host([fs]) .ap-line{
+      font-size:clamp(16px,2.1vw,24px); line-height:1.6;
+      color:#8e8e93; opacity:.62;
+    }
+    :host([fs]) .ap-line .ap-zh{ font-size:clamp(14px,1.7vw,20px); opacity:.8; }
+    :host([fs]) .ap-line.ap-cur{
+      font-size:clamp(22px,3.1vw,34px);              /* 当前行放大，演员字幕感 */
+      font-weight:600; color:#f5f5f7; opacity:1;
+    }
+    :host([fs]) .ap-line.ap-cur .ap-zh{
+      font-size:clamp(18px,2.5vw,28px); color:#d2d2d7; opacity:1;
+    }
+    :host([fs]) .ap-lyempty{ color:#98989d; padding:40vh 0; font-size:clamp(14px,1.8vw,18px); }
+    @media (prefers-reduced-motion:reduce){
+      :host([fs]) .ap-lyinner{ transition:none; }
+    }
   `;
 
   class ApLyrics extends AP.Base {

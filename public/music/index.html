@@ -159,6 +159,30 @@
 
   .pg-sr{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
 
+  /* ---------------- 全屏字幕层（无卡片） ---------------- */
+  .pg-fs{ position:fixed; inset:0; z-index:100; background:#000; }
+  .pg-fs[hidden]{ display:none; }
+  .pg-fs-ctrl{
+    position:fixed; left:50%; bottom:calc(env(safe-area-inset-bottom,0px) + 24px);
+    transform:translateX(-50%); z-index:101;
+    display:flex; align-items:center; gap:8px; padding:6px;
+    border-radius:999px; background:rgba(28,28,30,.62);
+    -webkit-backdrop-filter:blur(20px) saturate(180%);
+            backdrop-filter:blur(20px) saturate(180%);
+    opacity:0; pointer-events:none; transition:opacity .24s cubic-bezier(.4,0,.2,1);
+  }
+  .pg-fs.pg-fs-show .pg-fs-ctrl{ opacity:1; pointer-events:auto; }
+  .pg-fs-ctrl button{
+    width:44px; height:44px; min-width:44px; min-height:44px; padding:0;
+    display:inline-flex; align-items:center; justify-content:center;
+    border:0; border-radius:999px; background:transparent; color:#f5f5f7;
+    cursor:pointer; transition:background-color .24s cubic-bezier(.4,0,.2,1);
+  }
+  .pg-fs-ctrl button:hover{ background:rgba(255,255,255,.14); }
+  .pg-fs-ctrl button:focus-visible{ outline:none; box-shadow:0 0 0 2px #000,0 0 0 4px #0a84ff; }
+  .pg-fs-ctrl svg{ width:24px; height:24px; display:block; }
+  @media (prefers-reduced-motion:reduce){ .pg-fs-ctrl{ transition:none; } }
+
   /* 窄屏字号降 1px [31] */
   @media (max-width:360px){
     .pg-wrap{ padding:16px 16px 32px; }
@@ -241,6 +265,9 @@
 
   <div class="pg-toast" id="toast" role="status" aria-live="polite"></div>
   <div class="pg-sr" id="live" role="status" aria-live="polite"></div>
+
+  <!-- 全屏字幕层：全屏时只显示歌词，不显示卡片（按钮/控制条 3s 自动隐藏） -->
+  <div class="pg-fs" id="fsLayer" hidden></div>
 </div>
 
 <script src="/songs.js?v=19"></script>
@@ -501,7 +528,9 @@
       if (show) panels[k].removeAttribute('hidden');
       else panels[k].setAttribute('hidden', '');
     });
-    /* 懒初始化：首次切到才创建/刷新（[188]） */
+    /* 懒初始化：首次切到才创建/刷新（[188]）；宽屏标签栏隐藏、四模块并列，
+       因此宽屏必须一次性全部挂载，否则评论/MV/缓存永远无法打开 */
+    if (isWide()) { ['lyrics', 'comments', 'mv', 'cache'].forEach(modEl); }
     var el = modEl(mod);
     if (mod === 'cache' && el && el.refresh) el.refresh();
     /* 恢复该模块上次的滚动位置（[183]） */
@@ -529,6 +558,113 @@
   wideMq.addEventListener('change', function () { setMod(activeMod); });
 
   setMod('lyrics');
+
+  /* ------------------------------------------------- 全屏字幕（无卡片播放层） */
+  var fsLayer = $('fsLayer');
+  var fsLy = null, fsOn = false, fsHideTimer = 0, fsTriggerEl = null;
+
+  function fsBtn(icon, label, fn) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.setAttribute('aria-label', label);
+    b.innerHTML = icon;
+    b.addEventListener('click', fn);
+    return b;
+  }
+
+  function ensureFs() {
+    if (fsLy) return;
+    fsLy = document.createElement('ap-lyrics');
+    fsLy.id = 'fsLyrics';
+    fsLy.setAttribute('fs', '');            /* 纯歌词形态：无卡片 */
+    fsLayer.appendChild(fsLy);
+    fsLy.addEventListener('ap-toast', function (ev) {
+      showToast((ev.detail && ev.detail.text) || '');
+    });
+    fsLy.addEventListener('ap-lyrics-seek', function (ev) { player.seek(ev.detail.time); });
+
+    var ctrl = document.createElement('div');
+    ctrl.className = 'pg-fs-ctrl';
+    var prev = fsBtn(AP.ICON.prev, '上一首', function () {
+      var n = queue.length; if (!n) return;
+      playIndex((player.currentIndex - 1 + n) % n, true);
+      fsPoke();
+    });
+    var toggle = fsBtn(AP.ICON.play, '播放/暂停', function () {
+      if (AP.Store.state.playing) player.pause(); else player.play();
+      fsPoke();
+    });
+    var next = fsBtn(AP.ICON.next, '下一首', function () {
+      var n = queue.length; if (!n) return;
+      playIndex((player.currentIndex + 1) % n, true);
+      fsPoke();
+    });
+    var exit = fsBtn(AP.ICON.compress, '退出全屏', function () { exitFs(); });
+    ctrl.appendChild(prev); ctrl.appendChild(toggle);
+    ctrl.appendChild(next); ctrl.appendChild(exit);
+    fsLayer.appendChild(ctrl);
+
+    /* 播放按钮图标随状态变化 */
+    AP.Store.on(function (st) {
+      toggle.innerHTML = st.playing ? AP.ICON.pause : AP.ICON.play;
+      toggle.setAttribute('aria-label', st.playing ? '暂停' : '播放');
+    });
+  }
+
+  /* 控制条 3s 自动隐藏；移动鼠标/触摸时重新出现 */
+  function fsPoke() {
+    fsLayer.classList.add('pg-fs-show');
+    clearTimeout(fsHideTimer);
+    fsHideTimer = setTimeout(function () { fsLayer.classList.remove('pg-fs-show'); }, 3000);
+  }
+
+  function enterFs(trigger) {
+    ensureFs();
+    fsTriggerEl = trigger || null;
+    fsLayer.hidden = false;
+    fsPoke();
+    var req = fsLayer.requestFullscreen ? fsLayer.requestFullscreen() : Promise.reject();
+    (req || Promise.reject()).then(function () {
+      fsOn = true;
+    }).catch(function () {
+      /* 不支持 Fullscreen API：保留固定层作为兜底，仍可 ESC 退出 */
+      fsOn = true;
+      document.documentElement.style.overflow = 'hidden';
+      showToast('当前浏览器不支持全屏 API，已使用覆盖模式');
+    });
+  }
+
+  function exitFs() {
+    if (document.fullscreenElement === fsLayer) {
+      (document.exitFullscreen() || Promise.resolve()).catch(function () { });
+    }
+    fsOn = false;
+    fsLayer.hidden = true;
+    fsLayer.classList.remove('pg-fs-show');
+    clearTimeout(fsHideTimer);
+    document.documentElement.style.overflow = '';
+    if (fsTriggerEl) { try { fsTriggerEl.focus(); } catch (e) { } fsTriggerEl = null; }
+  }
+
+  function toggleFs(trigger) {
+    if (document.fullscreenElement === fsLayer || (!fsLayer.hidden && fsOn)) exitFs();
+    else enterFs(trigger);
+  }
+
+  /* 播放器的全屏按钮/双击封面 → 交给页面开「纯歌词全屏」 */
+  player._fsDelegate = true;
+  player.addEventListener('ap-fs-toggle', function () { toggleFs(player); });
+
+  fsLayer.addEventListener('pointermove', fsPoke);
+  fsLayer.addEventListener('pointerdown', fsPoke);
+  document.addEventListener('fullscreenchange', function () {
+    if (document.fullscreenElement === fsLayer) { fsOn = true; fsPoke(); return; }
+    if (fsOn && document.fullscreenElement === null) exitFs();   /* ESC 或系统退出 */
+  });
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape' && fsOn) exitFs();
+  });
+
 
   /* ------------------------------------------------------------ 曲单渲染 */
   function renderCatalog() {

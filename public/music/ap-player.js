@@ -534,7 +534,6 @@
       var fsBtn = this._q('fullscreen');
       var onFs = function () {
         self.toggleFullscreen(fsBtn);
-        fsBtn.setAttribute('aria-label', document.fullscreenElement === self ? '退出全屏' : '进入全屏');
       };
       fsBtn.addEventListener('click', onFs);
       this._onCleanup(function () { fsBtn.removeEventListener('click', onFs); });
@@ -591,10 +590,12 @@
       this._renderEmpty();
     }
 
-    /** 全屏入口（[136][137]） */
+    /** 全屏入口（[136][137]）；页面接管时（_fsDelegate）只发事件，
+     *  由页面把全屏层换成「纯歌词字幕」——全屏不再只显示卡片 */
     toggleFullscreen(trigger) {
       var self = this;
       this._fsTrigger = trigger || null;
+      if (this._fsDelegate) { this._emit('ap-fs-toggle', { on: true }); return; }
       if (document.fullscreenElement === this) {
         (document.exitFullscreen ? document.exitFullscreen() : Promise.reject()).catch(function () { });
         return;
