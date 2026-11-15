@@ -330,9 +330,9 @@
             vers.appendChild(b);
           });
         }
-        /* 分辨率切换（保留旧功能） */
+        /* 分辨率切换：单源也显示标签，让用户知道当前画质 */
         var cur = t.mv[self._vers];
-        if (cur && cur.res && cur.res.length > 1) {
+        if (cur && cur.res && cur.res.length >= 1) {
           self._res = clamp(self._res, 0, cur.res.length - 1);
           cur.res.forEach(function (r, j) {
             var b = document.createElement('button');

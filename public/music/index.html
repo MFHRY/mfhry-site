@@ -221,17 +221,22 @@
   .pg-root[data-fs] .pg-ambient{ display:none; }
   .pg-root[data-fs] .pg-bar{ display:none; }
   /* 字幕与卡片共用同一列宽并居中，视觉上左右对齐 */
-  .pg-root[data-fs]{ --fs-col:min(640px, calc(100% - 32px)); }
+  .pg-root[data-fs]{
+    /* 字幕与卡片共用同一列宽：视觉上左右严格对齐，不会出现"字幕宽、卡片窄" */
+    --fs-col:min(680px, calc(100% - 32px));
+    /* 播放卡片比字幕更宽（用户要求），左右仍严格居中 */
+    --fs-card:min(920px, calc(100% - 40px));
+  }
   /* 上下排：上方大字幕，底部播放卡片 + 最底待播列表 */
   .pg-root[data-fs] .pg-wrap{
     max-width:none; height:100%; box-sizing:border-box;
     padding:clamp(10px,1.6vh,20px) clamp(16px,4vw,56px)
-            calc(clamp(20px,4.5vh,48px) + env(safe-area-inset-bottom,0px));
+            calc(clamp(8px,1.4vh,18px) + env(safe-area-inset-bottom,0px));
     display:flex; flex-direction:column; min-height:0;
   }
   .pg-root[data-fs] .pg-grid{
     display:flex; flex-direction:column; flex:1 1 auto;
-    min-height:0; width:100%; gap:clamp(10px,1.6vh,20px);
+    min-height:0; width:100%; gap:clamp(12px,2.4vh,28px);
   }
   .pg-root[data-fs] .pg-col{ min-height:0; min-width:0; width:100%; gap:0; }
   /* 歌词区：占据卡片以上的所有空间 */
@@ -240,10 +245,12 @@
     width:var(--fs-col); max-width:var(--fs-col); margin:0 auto; }
   .pg-root[data-fs] #col-modules > div{
     display:flex; flex-direction:column; flex:1 1 auto; min-height:0; }
-  /* 播放卡片：底部居中、限宽、四边留白 */
+  /* 播放卡片：底部居中，与字幕同宽；间距来自 .pg-grid 的 gap */
   .pg-root[data-fs] #col-player{
     order:2; display:flex; flex-direction:column; flex:0 0 auto;
-    width:var(--fs-col); max-width:var(--fs-col); margin:0 auto;
+    width:var(--fs-card); max-width:var(--fs-card);
+    margin:0 auto;
+    align-self:center;
   }
   /* 最底一排：待播列表（横向滚动，腾出竖向空间给字幕） */
   .pg-fs-queue{
@@ -255,9 +262,14 @@
   }
   .pg-fs-queue::-webkit-scrollbar{ width:0; height:0; display:none; }
   .pg-fs-queue[hidden]{ display:none !important; }
+  /* 左右边缘渐隐，暗示可以横向滑动 */
+  .pg-fs-queue{
+    -webkit-mask-image:linear-gradient(90deg,transparent,#000 18px,#000 calc(100% - 18px),transparent);
+            mask-image:linear-gradient(90deg,transparent,#000 18px,#000 calc(100% - 18px),transparent);
+  }
   .pg-fsq{
     display:inline-flex; align-items:center; gap:8px; flex:0 0 auto;
-    min-height:44px; padding:0 14px; box-sizing:border-box;
+    min-height:40px; padding:0 14px; box-sizing:border-box;
     border-radius:999px; border:1px solid rgba(255,255,255,.16);
     background:rgba(255,255,255,.08); color:#f5f5f7;
     font-size:13px; letter-spacing:-0.01em; white-space:nowrap; cursor:pointer;
@@ -279,7 +291,10 @@
   .pg-root[data-fs] .pg-sticky{
     display:flex; flex-direction:column; gap:10px; min-height:0; width:100%; }
   .pg-root[data-fs] ap-search{ display:none; }                        /* 全屏不显示搜索 */
-  .pg-root[data-fs] ap-player{ flex:0 0 auto; width:100%; }
+  .pg-root[data-fs] ap-player{
+    flex:0 0 auto; width:100%;
+    display:flex; justify-content:center;      /* 卡片在列内居中，不再靠左 */
+  }
   .pg-root[data-fs] .pg-tabs{ display:none; }
   /* 宽屏的 .pg-panels 是两列 grid，全屏必须改回单列，否则歌词只占半宽 */
   .pg-root[data-fs] .pg-panels{ display:block; flex:1 1 auto; min-height:0; height:100%; }
@@ -424,10 +439,10 @@
 <script src="/music/engine.js?v=3"></script>
 <!-- 组件按模块拆分，单文件均 < 1500 行（[216][219]）；ap-core 必须最先加载 -->
 <script src="/music/ap-core.js?v=3"></script>
-<script src="/music/ap-player.js?v=3"></script>
-<script src="/music/ap-lyrics.js?v=3"></script>
+<script src="/music/ap-player.js?v=4"></script>
+<script src="/music/ap-lyrics.js?v=4"></script>
 <script src="/music/ap-comments.js?v=3"></script>
-<script src="/music/ap-mv.js?v=3"></script>
+<script src="/music/ap-mv.js?v=4"></script>
 <script src="/music/ap-search.js?v=3"></script>
 <script src="/music/ap-cache.js?v=3"></script>
 <script>
@@ -864,6 +879,7 @@
     var cur = AP.Store.track();
     if (cur && cur.cover) rootEl.style.setProperty('--fs-cover', 'url("' + cur.cover + '")');
     else rootEl.style.removeProperty('--fs-cover');
+    try { player.setAttribute('fs', ''); } catch (e) { }   /* 播放卡片切到玻璃全屏样式 */
     /* 卡片内列表收起，待播改到最底一排，竖向空间留给字幕（退出时还原） */
     try {
       fsListWasOpen = !player.shadowRoot.getElementById('plist').hasAttribute('hidden');
@@ -891,6 +907,7 @@
     if (qb) { qb.hidden = true; qb.innerHTML = ''; }
     var ly = _mods.lyrics;
     if (ly) ly.removeAttribute('fs');
+    try { player.removeAttribute('fs'); } catch (e) { }
     document.documentElement.style.overflow = '';
     try {
       player.setAttribute('playlist-open', fsListWasOpen ? 'true' : 'false');

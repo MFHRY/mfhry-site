@@ -107,18 +107,30 @@
       -webkit-mask-image:linear-gradient(180deg,transparent,#000 22%,#000 78%,transparent);
               mask-image:linear-gradient(180deg,transparent,#000 22%,#000 78%,transparent);
     }
-    :host([fs]) .ap-lyinner{ width:100%; padding:38vh 0; gap:var(--ap-space-5); }
-    :host([fs]) .ap-line{
-      font-size:clamp(16px,2.1vw,24px); line-height:1.6;
-      color:#8e8e93; opacity:.62;
+    :host([fs]) .ap-lyinner{
+      width:100%; padding:38vh 0;
+      gap:clamp(10px, 2.2vh, 26px);                  /* 行距随屏高呼吸 */
     }
-    :host([fs]) .ap-line .ap-zh{ font-size:clamp(14px,1.7vw,20px); opacity:.8; }
+    :host([fs]) .ap-line{
+      font-size:clamp(16px,2.1vw,24px); line-height:1.45;
+      letter-spacing:0.005em;
+      color:#e8e8ed; opacity:.62;
+      text-wrap:balance;                             /* 长句折行更匀 */
+      text-shadow:0 1px 12px rgba(0,0,0,.35);        /* 压在模糊背景上也可读 */
+    }
+    /* 景深：离当前行越远越淡，视线自然聚焦（[78] 的延伸，仅全屏生效） */
+    :host([fs]) .ap-line[data-dist="1"]{ opacity:.46; }
+    :host([fs]) .ap-line[data-dist="2"]{ opacity:.30; }
+    :host([fs]) .ap-line[data-dist="3"]{ opacity:.20; }
+    :host([fs]) .ap-line .ap-zh{ font-size:clamp(14px,1.7vw,20px); opacity:.78; }
     :host([fs]) .ap-line.ap-cur{
       font-size:clamp(22px,3.1vw,34px);              /* 当前行放大，演员字幕感 */
-      font-weight:600; color:#f5f5f7; opacity:1;
+      font-weight:650; letter-spacing:-0.012em;
+      line-height:1.34; color:#fff; opacity:1;
+      text-shadow:0 2px 20px rgba(0,0,0,.45);
     }
     :host([fs]) .ap-line.ap-cur .ap-zh{
-      font-size:clamp(18px,2.5vw,28px); color:#d2d2d7; opacity:1;
+      font-size:clamp(18px,2.5vw,28px); color:#e5e5ea; opacity:1;
     }
     :host([fs]) .ap-lyempty{ color:#98989d; padding:40vh 0; font-size:clamp(14px,1.8vw,18px); }
     @media (prefers-reduced-motion:reduce){
@@ -221,6 +233,9 @@
       });
       this._ro.observe(box);
       this._onCleanup(function () { self._ro.disconnect(); });
+      this._onCleanup(function () {
+        if (self._fixTimer) clearTimeout(self._fixTimer);
+      });
 
       /* 订阅 store：曲目变了就换歌词，时间变了就同步（[90] 误差 ≤200ms 由 timeupdate 保证） */
       this._storeOff = AP.Store.on(function (st) {
@@ -322,6 +337,11 @@
         cur.classList.add('ap-cur');
         cur.setAttribute('aria-current', 'true');   /* [91] */
       }
+      /* 景深标记：只标最近 3 行，全屏下按距离渐隐 */
+      for (var kk = 0; kk < lines.length; kk++) {
+        var d = Math.abs(kk - ni);
+        lines[kk].setAttribute('data-dist', String(d > 3 ? 3 : d));
+      }
 
       /* 用户刚滚过 → 3s 内不抢滚动位置 */
       if (!force && Date.now() - this._userScrollAt < 3000) return;
@@ -340,7 +360,29 @@
       var target = live.top + live.h / 2 - h / 2;
       var max = Math.max(0, contentH - h);
       target = clamp(target, 0, max);
-      this._q('inner').style.transform = 'translate3d(0,' + (-target) + 'px,0)';  /* [87][208] */
+
+      var inner = this._q('inner');
+      var self2 = this;
+      var ty = target;
+      var apply = function (v) {
+        ty = clamp(v, 0, max);
+        inner.style.transform = 'translate3d(0,' + (-ty) + 'px,0)';  /* [87][208] */
+      };
+      apply(target);
+
+      /* 对齐校验放在过渡结束之后：260ms 的平滑滚动期间读矩形会读到中间态，
+         等动画停下来再量一次偏差，有就补一帧修正（保证当前行真的落在正中） */
+      if (this._fixTimer) clearTimeout(this._fixTimer);
+      if (cur) {
+        /* 等平滑滚动（260ms）停下来再量：动画期间读到的都是中间态 */
+        this._fixTimer = setTimeout(function () {
+          if (!cur.isConnected) return;
+          var b = box.getBoundingClientRect();
+          var cr = cur.getBoundingClientRect();
+          var delta = (cr.top + cr.height / 2) - (b.top + b.height / 2);
+          if (Math.abs(delta) > 2) apply(ty + delta);
+        }, 420);
+      }
     }
   }
 
