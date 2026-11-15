@@ -21,7 +21,7 @@ import Base from '../layouts/Base.astro';
   <div id="list"></div>
   <p class="muted" id="empty" hidden>还没有投稿，来投第一篇。</p>
 
-  <style>
+  <style is:global>
     .composer{display:flex;flex-direction:column;gap:10px;margin:16px 0 22px;padding:16px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.09);border-radius:14px}
     .key{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#fff;border-radius:10px;padding:10px 12px;font-size:14px;width:100%;box-sizing:border-box}
     .key::placeholder{color:rgba(255,255,255,.35)}
