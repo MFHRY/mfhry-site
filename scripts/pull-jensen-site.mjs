@@ -38,6 +38,23 @@ async function download(url, dest) {
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const buf = Buffer.from(await res.arrayBuffer());
+      // 上游是 Replit 静态站：资源不存在时会用 200 返回整页 HTML。
+      // 不校验就会把 HTML 存成 .css / .webp，线上于是“裸奔”。
+      const head = buf
+        .subarray(0, 800)
+        .toString('utf8')
+        .replace(/^\uFEFF/, '')
+        .trimStart()
+        .toLowerCase();
+      const isHtml =
+        head.startsWith('<!doctype') || head.startsWith('<html') || head.startsWith('<head');
+      const wantsCss = dest.toLowerCase().endsWith('.css');
+      if (wantsCss && (isHtml || !head.includes('{'))) {
+        throw new Error(`返回的不是 CSS（${buf.length} 字节，疑似 HTML 回退页）`);
+      }
+      if (!wantsCss && isHtml) {
+        throw new Error(`返回的是 HTML（${buf.length} 字节），不是二进制资源`);
+      }
       writeFileSync(dest, buf);
       return buf.length;
     } catch (err) {
@@ -143,6 +160,10 @@ async function main() {
     /url\(\s*['"]?\/images\//g,
     `url(${BASE}/images/`
   );
+  // 最后一道防线：宁可让构建失败，也不要把 HTML 当样式表发出去
+  if (/^\s*<(!doctype|html)/i.test(css.slice(0, 400)) || !css.includes('{')) {
+    throw new Error(`CSS 内容异常（${css.length} 字符，疑似 HTML），已中止构建`);
+  }
   writeFileSync(join(tmp, 'assets', cssName), css, 'utf8');
   console.log(`[jensen-site] CSS ${cssRemote} → assets/${cssName} (${cssSize} bytes)`);
 
