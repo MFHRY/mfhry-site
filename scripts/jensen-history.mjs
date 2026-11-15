@@ -26,6 +26,31 @@ function readJson(file, fallback) {
   }
 }
 
+function freezeSnapshot(html, snap) {
+  const c = snap?.campaign || snap || {};
+  const archiveData = {
+    campaign: snap?.campaign || {
+      total: Number(c.total) || 0,
+      currentEmployees: Number(c.currentEmployees) || 0,
+      formerEmployees: Number(c.formerEmployees) || 0,
+      shareholders: Number(c.shareholders) || 0,
+      supporters: Number(c.supporters) || 0,
+    },
+    publicTotal: Number(snap?.publicTotal) || 0,
+    capturedPublic: Number(snap?.capturedPublic) || 0,
+  };
+  const payload = JSON.stringify(archiveData).replace(/</g, '\\u003c');
+  const marker = '<script id="jensen-archive-data">window.__JENSEN_ARCHIVE_SNAPSHOT__=';
+  const script = `${marker}${payload};</script>`;
+  let out = html.replace(/<script id="jensen-archive-data">[\s\S]*?<\/script>/i, script);
+  if (out === html) out = out.replace('</head>', `${script}</head>`);
+  // 存档必须使用当日冻结数据，不能再请求当前的 jensen-mirror.json。
+  return out.replace(
+    /function load\(\)\{fetch\('\/data\/jensen-mirror\.json',[\s\S]*?catch\(function\(\)\{\}\)\}/,
+    'function load(){paint(window.__JENSEN_ARCHIVE_SNAPSHOT__)}'
+  );
+}
+
 function main() {
   if (!existsSync(DATA)) {
     console.warn('[jensen-history] 没有镜像数据，跳过');
@@ -63,8 +88,24 @@ function main() {
   mkdirSync(ARCHIVE, { recursive: true });
   // 按北京时间分日，避免 UTC 跨零点归错日期
   const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai' }).format(new Date());
-  writeFileSync(join(ARCHIVE, `${day}.html`), readFileSync(SITE, 'utf8'), 'utf8');
+  const page = freezeSnapshot(readFileSync(SITE, 'utf8'), snap);
+  writeFileSync(join(ARCHIVE, `${day}.html`), page, 'utf8');
   console.log(`[jensen-history] 当日快照 archive/${day}.html`);
+
+  // 兼容旧快照：把尚未冻结数据的文件按当天最后一条统计回填一次。
+  for (const f of readdirSync(ARCHIVE)) {
+    if (!/^\d{4}-\d{2}-\d{2}\.html$/.test(f)) continue;
+    const file = join(ARCHIVE, f);
+    const html = readFileSync(file, 'utf8');
+    if (html.includes('jensen-archive-data')) continue;
+    const archiveDay = f.slice(0, 10);
+    const dayPoint = trimmed
+      .filter((p) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai' }).format(new Date(p.at)) === archiveDay)
+      .at(-1);
+    if (!dayPoint) continue;
+    writeFileSync(file, freezeSnapshot(html, dayPoint), 'utf8');
+    console.log(`[jensen-history] 回填旧快照 ${f}`);
+  }
 
   const cutoff = new Date(Date.now() - KEEP_DAYS * 86400000).toISOString().slice(0, 10);
   for (const f of readdirSync(ARCHIVE)) {
