@@ -11,6 +11,16 @@
      页面外壳样式：只作用于本页 .pg-* 元素，不修改 html/body（约束 2）。
      模块内部样式全部在各自 Shadow DOM 中，与这里完全隔离（约束 1/10）。
      --------------------------------------------------------------------------- */
+  /* 本页是独立静态页，没有全站 reset：必须自己清掉 body 默认 8px 外边距，
+     否则深色页面四周会露出一圈白边 */
+  html,body{ margin:0; padding:0; }
+  html,body{ background:#f5f5f7; }
+  @media (prefers-color-scheme:dark){ html,body{ background:#000; } }
+  html[data-theme="dark"],body[data-theme="dark"],
+  html.dark,body.dark{ background:#000; }
+  html[data-theme="light"],body[data-theme="light"],
+  html.light,body.light{ background:#f5f5f7; }
+
   .pg-root{
     --pg-max:1200px;                 /* [191] 页面最大宽 */
     --pg-pad:24px;                   /* [191] 左右 padding */
@@ -187,7 +197,9 @@
   .pg-root[data-fs] ap-lyrics{ filter:none; }
   .pg-root[data-fs] .pg-ambient{ display:none; }
   .pg-root[data-fs] .pg-bar{ display:none; }
-  /* 上下排：上方大字幕铺满，底部居中播放卡片（不贴边） */
+  /* 字幕与卡片共用同一列宽并居中，视觉上左右对齐 */
+  .pg-root[data-fs]{ --fs-col:min(640px, calc(100% - 32px)); }
+  /* 上下排：上方大字幕，底部播放卡片 + 最底待播列表 */
   .pg-root[data-fs] .pg-wrap{
     max-width:none; height:100%; box-sizing:border-box;
     padding:clamp(10px,1.6vh,20px) clamp(16px,4vw,56px)
@@ -200,16 +212,47 @@
   }
   .pg-root[data-fs] .pg-col{ min-height:0; min-width:0; width:100%; gap:0; }
   /* 歌词区：占据卡片以上的所有空间 */
-  .pg-root[data-fs] .pg-col:last-child{
-    order:1; display:flex; flex-direction:column; flex:1 1 auto; min-height:0; }
-  .pg-root[data-fs] .pg-col:last-child > div{
+  .pg-root[data-fs] #col-modules{
+    order:1; display:flex; flex-direction:column; flex:1 1 auto; min-height:0;
+    width:var(--fs-col); max-width:var(--fs-col); margin:0 auto; }
+  .pg-root[data-fs] #col-modules > div{
     display:flex; flex-direction:column; flex:1 1 auto; min-height:0; }
   /* 播放卡片：底部居中、限宽、四边留白 */
-  .pg-root[data-fs] .pg-col:first-child{
+  .pg-root[data-fs] #col-player{
     order:2; display:flex; flex-direction:column; flex:0 0 auto;
-    width:100%; max-width:min(560px,92%); margin:0 auto;
+    width:var(--fs-col); max-width:var(--fs-col); margin:0 auto;
   }
-  .pg-root[data-fs] .pg-col:first-child > section{ display:none; }   /* 目录曲单让位给待播列表 */
+  /* 最底一排：待播列表（横向滚动，腾出竖向空间给字幕） */
+  .pg-fs-queue{
+    order:3; flex:0 0 auto; width:100%;
+    display:flex; align-items:center; gap:8px;
+    padding:4px 0 calc(2px + env(safe-area-inset-bottom,0px));
+    overflow-x:auto; overflow-y:hidden; scrollbar-width:none;
+    -webkit-overflow-scrolling:touch;
+  }
+  .pg-fs-queue::-webkit-scrollbar{ width:0; height:0; display:none; }
+  .pg-fs-queue[hidden]{ display:none !important; }
+  .pg-fsq{
+    display:inline-flex; align-items:center; gap:8px; flex:0 0 auto;
+    min-height:44px; padding:0 14px; box-sizing:border-box;
+    border-radius:999px; border:1px solid rgba(255,255,255,.16);
+    background:rgba(255,255,255,.08); color:#f5f5f7;
+    font-size:13px; letter-spacing:-0.01em; white-space:nowrap; cursor:pointer;
+    transition:background-color .24s cubic-bezier(.4,0,.2,1), border-color .24s cubic-bezier(.4,0,.2,1);
+  }
+  .pg-fsq:hover{ background:rgba(255,255,255,.15); }
+  .pg-fsq[aria-current="true"]{
+    background:rgba(10,132,255,.30); border-color:rgba(10,132,255,.55); font-weight:600;
+  }
+  .pg-fsq:focus-visible{ outline:none; box-shadow:0 0 0 2px #000,0 0 0 4px #0a84ff; }
+  .pg-fsq .n{ font-variant-numeric:tabular-nums; opacity:.6; font-size:11px; }
+  .pg-fsq .x{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:22px; height:22px; border-radius:50%; font-size:15px; line-height:1;
+    opacity:.6; transition:opacity .2s, background-color .2s;
+  }
+  .pg-fsq .x:hover{ opacity:1; background:rgba(255,59,48,.32); }
+  .pg-root[data-fs] #col-player > section{ display:none; }   /* 目录曲单让位给待播列表 */
   .pg-root[data-fs] .pg-sticky{
     display:flex; flex-direction:column; gap:10px; min-height:0; width:100%; }
   .pg-root[data-fs] ap-search{ display:none; }                        /* 全屏不显示搜索 */
@@ -237,7 +280,7 @@
   .pg-fs-exit svg{ width:24px; height:24px; display:block; }
   .pg-root[data-fs] .pg-fs-exit{ display:inline-flex; }
   @media (max-width:820px){
-    .pg-root[data-fs] .pg-col:first-child{ max-width:100%; }
+    .pg-root[data-fs] #col-player{ max-width:100%; }
     .pg-root[data-fs] .pg-wrap{ padding-left:14px; padding-right:14px; }
   }
 
@@ -262,7 +305,6 @@
     <header class="pg-bar">
       <div>
         <h1>音乐</h1>
-        <small>二次元曲库 · 本地无损优先，缺的直接从 osu! 镜像取</small>
       </div>
       <nav class="pg-nav" aria-label="站点导航">
         <a href="/">首页</a>
@@ -279,7 +321,7 @@
 
     <div class="pg-grid">
       <!-- 左列：搜索 + 播放器 + 曲单 -->
-      <div class="pg-col">
+      <div class="pg-col" id="col-player">
         <div class="pg-sticky">
           <ap-search id="search"></ap-search>
           <div style="height:20px"></div>
@@ -294,7 +336,7 @@
       </div>
 
       <!-- 右列：模块面板 -->
-      <div class="pg-col">
+      <div class="pg-col" id="col-modules">
         <div>
           <div class="pg-tabs" role="tablist" aria-label="音乐模块" id="tabs">
             <button class="pg-tab" role="tab" id="tab-lyrics" aria-selected="true"
@@ -318,6 +360,9 @@
           </div>
         </div>
       </div>
+
+      <!-- 全屏时才显示的最底一排：待播列表 -->
+      <div class="pg-fs-queue" id="fsQueue" role="list" aria-label="待播列表" hidden></div>
     </div>
   </div>
 
@@ -487,6 +532,31 @@
     if (autoplay !== false) player.play();
   }
 
+  /* --------------------------------------------------- 从播放列表移除歌曲 */
+  function removeFromQueue(i) {
+    if (i < 0 || i >= queue.length) return;
+    if (queue.length === 1) { showToast('这是最后一首，不能移除'); return; }
+    var t = queue[i];
+    var wasCur = i === player.currentIndex;
+    var wasPlaying = AP.Store.state.playing;
+    queue.splice(i, 1);
+
+    /* 当前索引跟着调整：删当前之前的整体前移 */
+    if (i < player.currentIndex) player.currentIndex = player.currentIndex - 1;
+    else if (wasCur) player.currentIndex = Math.min(i, queue.length - 1);
+
+    player.tracks = queue;
+    persist();
+    playIndex(player.currentIndex, wasPlaying && wasCur);   /* 删的是当前曲才续播下一首 */
+    renderCatalog && renderCatalog();
+    renderFsQueue && renderFsQueue();
+    showToast('已从播放列表移除《' + (t.zh || t.label || '') + '》');
+  }
+
+  player.addEventListener('ap-queue-remove', function (ev) {
+    removeFromQueue(ev.detail && ev.detail.index);
+  });
+
   /* --------------------------------------------------------- 曲目切换钩子 */
   var lastSrc = '';
   player.addEventListener('ap-change', function (ev) {
@@ -635,11 +705,12 @@
     var cur = AP.Store.track();
     if (cur && cur.cover) rootEl.style.setProperty('--fs-cover', 'url("' + cur.cover + '")');
     else rootEl.style.removeProperty('--fs-cover');
-    /* 左栏顺便展开待播列表（退出时还原） */
+    /* 卡片内列表收起，待播改到最底一排，竖向空间留给字幕（退出时还原） */
     try {
       fsListWasOpen = !player.shadowRoot.getElementById('plist').hasAttribute('hidden');
-      player.setAttribute('playlist-open', 'true');
+      player.setAttribute('playlist-open', 'false');
     } catch (e) { }
+    renderFsQueue();
     document.documentElement.style.overflow = 'hidden';
     var req = rootEl.requestFullscreen ? rootEl.requestFullscreen() : Promise.reject();
     (req || Promise.reject()).then(function () {
@@ -657,6 +728,8 @@
     fsOn = false;
     rootEl.removeAttribute('data-fs');
     rootEl.style.removeProperty('--fs-cover');
+    var qb = $('fsQueue');
+    if (qb) { qb.hidden = true; qb.innerHTML = ''; }
     var ly = _mods.lyrics;
     if (ly) ly.removeAttribute('fs');
     document.documentElement.style.overflow = '';
@@ -668,6 +741,36 @@
     if (ly && ly._measure) { try { ly._measure(); } catch (e) { } }
   }
 
+  /* 最底待播列表：横向 chips，点击直接切歌 */
+  function renderFsQueue() {
+    var bar = $('fsQueue');
+    if (!bar) return;
+    bar.innerHTML = '';
+    if (!queue.length) { bar.hidden = true; return; }
+    bar.hidden = false;
+    var idx = player.currentIndex;
+    queue.forEach(function (t, i) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'pg-fsq ap-focusable';
+      b.setAttribute('aria-current', i === idx ? 'true' : 'false');
+      b.setAttribute('aria-label', '播放 ' + (t.zh || t.label || ''));
+      b.innerHTML = '<span class="n">' + (i + 1) + '</span><span>' +
+        (t.zh || t.label || '') + '</span>' +
+        '<span class="x" role="button" tabindex="-1" aria-label="移除">×</span>';
+      b.addEventListener('click', function () { playIndex(i, true); renderFsQueue(); });
+      var x = b.querySelector('.x');
+      x.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        removeFromQueue(i);
+      });
+      bar.appendChild(b);
+    });
+    var act = bar.querySelector('[aria-current="true"]');
+    if (act && act.scrollIntoView) act.scrollIntoView({ block: 'nearest', inline: 'center' });
+  }
+  window.__apFsQueue = renderFsQueue;
+
   function toggleFs(trigger) {
     if (fsOn || rootEl.hasAttribute('data-fs')) exitFs();
     else enterFs(trigger);
@@ -676,6 +779,15 @@
   /* 播放器的全屏按钮 / 双击封面 → 页面级全屏布局 */
   player._fsDelegate = true;
   player.addEventListener('ap-fs-toggle', function () { toggleFs(player); });
+
+  /* 全屏中切歌或队列变化 → 重绘底部待播栏 */
+  AP.Store.on(function (st) {
+    if (!fsOn) return;
+    if (st.index !== renderFsQueue._last || st.playing === undefined) {
+      renderFsQueue._last = st.index;
+      renderFsQueue();
+    }
+  });
 
   var fsExitBtn = $('fsExit');
   fsExitBtn.innerHTML = AP.ICON.compress;

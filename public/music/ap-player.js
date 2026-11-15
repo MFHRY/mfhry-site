@@ -130,6 +130,17 @@
     .ap-rowartist{ font-size:12px; color:var(--ap-text-2);
       overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .ap-rowtime{ font-size:11px; color:var(--ap-text-2); }
+    /* 从播放列表移除（44px 热区，默认淡显、悬停/聚焦变实） */
+    .ap-rowdel{
+      width:32px; height:32px; min-width:32px; min-height:32px; padding:0;
+      display:inline-flex; align-items:center; justify-content:center;
+      border:0; border-radius:50%; background:transparent; color:var(--ap-text-2);
+      cursor:pointer; opacity:.55; transition:opacity var(--ap-dur) var(--ap-ease),
+        background-color var(--ap-dur) var(--ap-ease), color var(--ap-dur) var(--ap-ease);
+    }
+    .ap-row:hover .ap-rowdel, .ap-rowdel:focus-visible{ opacity:1; }
+    .ap-rowdel:hover{ background:rgba(255,59,48,.16); color:#ff453a; }
+    .ap-rowdel svg{ width:14px; height:14px; }
     /* 均衡器三根条 [114][115][116][117] */
     .ap-eq{ display:flex; align-items:flex-end; gap:2px; height:14px; width:20px; }
     .ap-eq i{
@@ -762,17 +773,28 @@
           '<span class="ap-rowtxt">' +
           '<span class="ap-rowtitle">' + esc(t.zh || t.label || '') + '</span>' +
           '<span class="ap-rowartist">' + esc(t.artist || t.label || '') + '</span></span>' +
-          '<span class="ap-rowtime ap-num">' + (t.durText || '') + '</span>';
+          '<span class="ap-rowtime ap-num">' + (t.durText || '') + '</span>' +
+          '<button class="ap-rowdel ap-focusable" type="button" data-del="' + i + '" ' +
+          'aria-label="从播放列表移除 ' + esc(t.zh || t.label || '') + '">' + AP.ICON.close + '</button>';
         /* 点击行切歌并自动播放（[121]）；不跳回顶部（[122] 由 scrollTop 保持实现） */
         var onClick = function () { self._select(i, true); };
         var onKey = function (ev) {
           if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); self._select(i, true); }
         };
+        /* 移除按钮：不触发行点击 */
+        var del = row.querySelector('[data-del]');
+        var onDel = function (ev) {
+          ev.stopPropagation();
+          ev.preventDefault();
+          self._emit('ap-queue-remove', { index: i });
+        };
+        if (del) del.addEventListener('click', onDel);
         row.addEventListener('click', onClick);
         row.addEventListener('keydown', onKey);
         self._onCleanup(function () {
           row.removeEventListener('click', onClick);
           row.removeEventListener('keydown', onKey);
+          if (del) del.removeEventListener('click', onDel);
         });
         frag.appendChild(row);
       });
