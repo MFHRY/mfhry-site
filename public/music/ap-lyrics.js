@@ -214,7 +214,11 @@
       this._onCleanup(function () { inner.removeEventListener('click', onClick); });
 
       /* 位置缓存：容器尺寸变化时重算（不进 timeupdate 路径）[214] */
-      this._ro = new ResizeObserver(function () { self._measure(); });
+      this._ro = new ResizeObserver(function () {
+        self._measure();
+        /* 尺寸变化后按当前播放时间重新对齐，避免滚动目标用的是旧高度 */
+        self._sync(AP.Store.state.time, true);
+      });
       this._ro.observe(box);
       this._onCleanup(function () { self._ro.disconnect(); });
 
