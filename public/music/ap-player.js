@@ -310,6 +310,7 @@
         '</div>' +
         '<button class="ap-btn ap-listbtn ap-focusable" id="listbtn" type="button" ' +
         'aria-label="播放列表" aria-expanded="false" aria-pressed="false">' + AP.ICON.list + '</button>' +
+        '<button class="ap-btn ap-focusable" id="fullscreen" type="button" aria-label="进入全屏">' + AP.ICON.expand + '</button>' +
         '</div>' +
         '<div class="ap-status" id="status" role="status" aria-live="polite"></div>' +
         '<div class="ap-plist" id="plist" hidden aria-label="播放列表"></div>' +
@@ -528,6 +529,15 @@
       var onListToggle = function () { self._toggleList(); };
       listbtn.addEventListener('click', onListToggle);
       this._onCleanup(function () { listbtn.removeEventListener('click', onListToggle); });
+
+      /* 明确的全屏按钮；封面双击仍保留作为快捷入口 */
+      var fsBtn = this._q('fullscreen');
+      var onFs = function () {
+        self.toggleFullscreen(fsBtn);
+        fsBtn.setAttribute('aria-label', document.fullscreenElement === self ? '退出全屏' : '进入全屏');
+      };
+      fsBtn.addEventListener('click', onFs);
+      this._onCleanup(function () { fsBtn.removeEventListener('click', onFs); });
 
       /* --------- 全屏（[136]–[150]） --------- */
       var exitBtn = this._q('exit');

@@ -72,7 +72,8 @@
   @media (max-width:900px){ .pg-grid{ grid-template-columns:minmax(0,1fr); } }  /* 断点 900 */
 
   .pg-col{ min-width:0; display:flex; flex-direction:column; gap:var(--pg-gap); }
-  .pg-sticky{ position:sticky; top:16px; }          /* 滚动时播放器常驻 */
+  /* 播放器不吸顶：避免桌面端滚动时遮挡左侧曲单，保证曲目始终可选 */
+  .pg-sticky{ position:static; }
   @media (max-width:900px){ .pg-sticky{ position:static; } }
 
   /* segmented control：文字色 + 短下划线，不用彩底 [186] */
