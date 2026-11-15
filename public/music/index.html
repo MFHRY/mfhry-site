@@ -623,6 +623,12 @@
     showToast('已从播放列表移除《' + (t.zh || t.label || '') + '》');
   }
 
+  /* 首屏就按当前曲目上色（ap-change 未必触发，例如刷新后恢复同一首） */
+  try {
+    var bootTrack = AP.Store.track();
+    if (bootTrack && bootTrack.cover) setTint(bootTrack.cover);
+  } catch (e) { }
+
   player.addEventListener('ap-queue-remove', function (ev) {
     removeFromQueue(ev.detail && ev.detail.index);
   });
