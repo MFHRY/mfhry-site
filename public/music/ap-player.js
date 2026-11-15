@@ -208,7 +208,17 @@
     :host([fs]) .ap-artist{ font-size:12.5px; }
     :host([fs]) .ap-seekwrap{ margin:0; }
     :host([fs]) .ap-times{ font-size:11px; color:#c7c7cc; }
-    :host([fs]) .ap-controls{ gap:6px; }
+    /* 全屏：上一首 / 播放暂停 / 下一首 独占一排并严格居中，其余按钮排下一行 */
+    :host([fs]) .ap-controls{
+      flex-wrap:wrap; justify-content:center; gap:6px 12px; row-gap:8px;
+    }
+    :host([fs]) .ap-controls .ap-grow{ display:none; }
+    :host([fs]) #prev, :host([fs]) #toggle, :host([fs]) #next{ order:0; }
+    :host([fs]) .ap-controls::after{
+      content:''; flex:0 0 100%; order:1; height:0;     /* 换行分隔 */
+    }
+    :host([fs]) #mode, :host([fs]) .ap-vol,
+    :host([fs]) #mvbtn, :host([fs]) #listbtn, :host([fs]) #fullscreen{ order:2; }
     :host([fs]) .ap-status{ min-height:0; }
     :host([fs]) .ap-status:empty{ display:none; }
 
