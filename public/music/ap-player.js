@@ -138,7 +138,7 @@
     .ap-rowtime{ font-size:11px; color:var(--ap-text-2); }
     /* 从播放列表移除（44px 热区，默认淡显、悬停/聚焦变实） */
     .ap-rowdel{
-      width:32px; height:32px; min-width:32px; min-height:32px; padding:0;
+      width:44px; height:44px; min-width:44px; min-height:44px; padding:0;
       display:inline-flex; align-items:center; justify-content:center;
       border:0; border-radius:50%; background:transparent; color:var(--ap-text-2);
       cursor:pointer; opacity:.55; transition:opacity var(--ap-dur) var(--ap-ease),

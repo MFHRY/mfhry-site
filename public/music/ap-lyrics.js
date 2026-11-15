@@ -70,8 +70,8 @@
       text-align:center; color:var(--ap-text-2); font-size:13px; }
     /* 折叠（[95]） */
     .ap-lybody[hidden]{ display:none; }
-    .ap-collapse{ width:32px; height:32px; min-width:32px; min-height:32px; }
-    .ap-collapse svg{ width:18px; height:18px; transition:transform var(--ap-dur) var(--ap-ease); }
+    .ap-collapse{ width:44px; height:44px; min-width:44px; min-height:44px; }
+    .ap-collapse svg{ width:20px; height:20px; transition:transform var(--ap-dur) var(--ap-ease); }
     .ap-collapse[aria-expanded="true"] svg{ transform:rotate(180deg); }
     @media (prefers-reduced-motion:reduce){
       .ap-lyinner{ transition:none; }
