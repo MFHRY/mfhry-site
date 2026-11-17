@@ -82,10 +82,30 @@ async function main() {
   };
   if (!data.items.length) throw new Error('上游返回空名单，不覆盖旧镜像');
 
+  // 完整名单只给脚本用：放到 tmp/ 下（不进 dist，避免 Cloudflare Pages 单文件 25MiB 上限）
+  const fullOut = join(root, 'tmp/jensen-mirror.full.json');
+  mkdirSync(dirname(fullOut), { recursive: true });
+  const fullTmp = `${fullOut}.tmp`;
+  writeFileSync(fullTmp, JSON.stringify(data), 'utf8');
+  renameSync(fullTmp, fullOut);
+
+  // 部署用的镜像只留页面真正需要的统计字段：standwithjensen 只读 campaign 里的几个数字
+  const slim = {
+    source: data.source,
+    fetchedAt: data.fetchedAt,
+    campaign: data.campaign,
+    publicTotal: data.publicTotal,
+    capturedPublic: data.capturedPublic,
+    pageSize: data.pageSize,
+    items: [],
+  };
   const tmp = `${out}.tmp`;
-  writeFileSync(tmp, JSON.stringify(data), 'utf8');
+  writeFileSync(tmp, JSON.stringify(slim), 'utf8');
   renameSync(tmp, out);
-  console.log(`[jensen] 镜像完成：总签名 ${campaign.total}，公开 ${data.items.length}，文件 ${(await import('node:fs')).statSync(out).size} bytes`);
+  console.log(
+    `[jensen] 镜像完成：总签名 ${campaign.total}，公开 ${data.items.length}，` +
+      `部署文件 ${(await import('node:fs')).statSync(out).size} bytes，完整名单 ${fullOut}`
+  );
 
   if (!process.env.CI && process.env.JENSEN_SKIP_DESKTOP !== '1') {
     const desktop = writeDesktopTxt(data);
