@@ -254,10 +254,12 @@
   }
   /* 最底一排：待播列表（横向滚动，腾出竖向空间给字幕） */
   .pg-fs-queue{
-    order:3; flex:0 0 auto; width:100%;
-    display:flex; align-items:center; gap:8px;
-    padding:4px 0 calc(2px + env(safe-area-inset-bottom,0px));
+    order:3; flex:0 0 auto; width:100%; box-sizing:border-box;
+    display:flex; align-items:center; gap:0;
+    padding:9px 20px calc(4px + env(safe-area-inset-bottom,0px));
+    border-top:1px solid rgba(255,255,255,.07);   /* 与字幕之间的发丝线 */
     overflow-x:auto; overflow-y:hidden; scrollbar-width:none;
+    scroll-snap-type:x proximity; scroll-behavior:smooth;
     -webkit-overflow-scrolling:touch;
   }
   .pg-fs-queue::-webkit-scrollbar{ width:0; height:0; display:none; }
@@ -270,7 +272,7 @@
   /* 无边框切歌条：纯文字 + 细线指示，不再用胶囊卡片 */
   .pg-fsq{
     position:relative; display:inline-flex; align-items:baseline; gap:7px; flex:0 0 auto;
-    padding:8px 16px; margin:0; border:0; background:none;
+    padding:8px 14px; margin:0; border:0; background:none; scroll-snap-align:center;
     color:rgba(255,255,255,.48); font:inherit; font-size:13px; letter-spacing:-0.01em;
     white-space:nowrap; cursor:pointer;
     transition:color .28s cubic-bezier(.4,0,.2,1), opacity .28s;
@@ -282,7 +284,7 @@
   .pg-fsq:hover{ color:rgba(255,255,255,.92); }
   .pg-fsq[aria-current="true"]{ color:#fff; font-weight:500; }
   .pg-fsq[aria-current="true"]::after{
-    content:''; position:absolute; left:16px; right:16px; bottom:3px; height:2px;
+    content:''; position:absolute; left:14px; right:14px; bottom:3px; height:2px;
     border-radius:2px; background:linear-gradient(90deg,#0a84ff,#5e5ce6);
     transform-origin:left center; animation:fsqline .46s cubic-bezier(.22,1,.36,1) both;
   }
@@ -294,11 +296,14 @@
   .pg-fsq[aria-current="true"] .n{ opacity:.9; }
   .pg-fsq .x{
     display:inline-flex; align-items:center; justify-content:center;
-    width:18px; height:18px; margin-left:2px; border-radius:50%;
+    width:0; height:18px; margin-left:0; border-radius:50%; overflow:hidden;
     font-size:13px; line-height:1; opacity:0; transform:scale(.82);
-    transition:opacity .2s, transform .2s, background-color .2s;
+    transition:width .22s cubic-bezier(.22,1,.36,1), margin-left .22s cubic-bezier(.22,1,.36,1),
+               opacity .2s, transform .2s, background-color .2s;
   }
-  .pg-fsq:hover .x, .pg-fsq:focus-visible .x, .pg-fsq[aria-current="true"] .x{ opacity:.55; transform:none; }
+  .pg-fsq:hover .x, .pg-fsq:focus-visible .x, .pg-fsq[aria-current="true"] .x{
+    width:18px; margin-left:6px; opacity:.55; transform:none;
+  }
   .pg-fsq .x:hover{ opacity:1; color:#fff; background:rgba(255,59,48,.34); }
   .pg-fsq:focus-visible{ outline:none; color:#fff; box-shadow:inset 0 -2px 0 0 rgba(10,132,255,.9); }
   .pg-root[data-fs] #col-player > section{ display:none; }   /* 目录曲单让位给待播列表 */
@@ -449,7 +454,7 @@
       </div>
 
       <!-- 全屏时才显示的最底一排：待播列表 -->
-      <div class="pg-fs-queue" id="fsQueue" role="list" aria-label="待播列表" hidden></div>
+      <div class="pg-fs-queue" id="fsQueue" role="group" aria-label="待播列表" hidden></div>
     </div>
   </div>
 
@@ -466,7 +471,7 @@
 <script src="/music/engine.js?v=3"></script>
 <!-- 组件按模块拆分，单文件均 < 1500 行（[216][219]）；ap-core 必须最先加载 -->
 <script src="/music/ap-core.js?v=3"></script>
-<script src="/music/ap-player.js?v=6"></script>
+<script src="/music/ap-player.js?v=7"></script>
 <script src="/music/ap-lyrics.js?v=4"></script>
 <script src="/music/ap-comments.js?v=3"></script>
 <script src="/music/ap-mv.js?v=4"></script>
@@ -973,8 +978,14 @@
       b.setAttribute('aria-label', '播放 ' + (t.zh || t.label || ''));
       b.innerHTML = '<span class="n">' + (i + 1) + '</span><span>' +
         (t.zh || t.label || '') + '</span>' +
-        '<span class="x" role="button" tabindex="-1" aria-label="移除">×</span>';
+        '<span class="x" aria-hidden="true">×</span>';
       b.addEventListener('click', function () { playIndex(i, true); renderFsQueue(); });
+      /* 键盘：Delete/Backspace 从队列移除本条（替代嵌套按钮） */
+      b.addEventListener('keydown', function (ev) {
+        if (ev.key !== 'Delete' && ev.key !== 'Backspace') return;
+        ev.preventDefault();
+        removeFromQueue(i);
+      });
       var x = b.querySelector('.x');
       x.addEventListener('click', function (ev) {
         ev.stopPropagation();

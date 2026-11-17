@@ -227,6 +227,14 @@
     :host([fs]) #mode, :host([fs]) .ap-vol,
     :host([fs]) #mvbtn, :host([fs]) #listbtn, :host([fs]) #fullscreen{ order:2; }
     :host([fs]) .ap-status{ min-height:0; }
+    /* 全屏进度条：更细、渐变强调色，悬停才加粗 */
+    :host([fs]) .ap-trackline{ height:3px; border-radius:3px; }
+    :host([fs]) .ap-seek:hover .ap-trackline,
+    :host([fs]) .ap-seek.ap-dragging .ap-trackline,
+    :host([fs]) .ap-seek:focus-visible .ap-trackline{ height:5px; }
+    :host([fs]) .ap-fill{ background:linear-gradient(90deg,#0a84ff,#5e5ce6); border-radius:3px; }
+    :host([fs]) .ap-times{ color:rgba(245,245,247,.55); }
+
     :host([fs]) .ap-status:empty{ display:none; }
 
     /* 全屏（[136]–[150]） */
@@ -797,8 +805,22 @@
         art.innerHTML = '';
         return;
       }
-      title.textContent = t.zh || t.label || '未知曲目';
+      var prevTitle = title.textContent;
+      var nextTitle = t.zh || t.label || '未知曲目';
+      title.textContent = nextTitle;
       artist.textContent = t.artist || t.label || '';
+      /* 切歌时标题/封面轻微渐入，避免生硬跳变（尊重减弱动效） */
+      var soft = !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+      if (soft && nextTitle && prevTitle !== nextTitle && title.animate) {
+        title.animate(
+          [{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'translateY(0)' }],
+          { duration: 300, easing: 'cubic-bezier(.22,1,.36,1)' }
+        );
+        if (art.animate) art.animate(
+          [{ opacity: .55, transform: 'scale(.965)' }, { opacity: 1, transform: 'scale(1)' }],
+          { duration: 320, easing: 'cubic-bezier(.22,1,.36,1)' }
+        );
+      }
       if (t.cover) {
         if (!art.querySelector('img') || art.querySelector('img').getAttribute('src') !== t.cover) {
           art.innerHTML = '';
