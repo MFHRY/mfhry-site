@@ -27,6 +27,8 @@ const GAMES: Record<string, { asc: boolean; max: number; label: string; unit: st
   puzzle15: { asc: true, max: 9999, label: '数字华容道', unit: '步' },
   // fx-sim：只认交易赚到的钱（客户端已扣掉充值部分），单位是美元
   'fx-sim': { asc: false, max: 1000000000, label: 'FX 模拟器', unit: '美元', fmt: 'money' },
+  // stock-sim：按真实股价炒股，交的是「总资产 − 本金 − 充值」的净盈利，单位是元
+  'stock-sim': { asc: false, max: 1000000000, label: '炒股模拟器', unit: '元', fmt: 'money' },
 };
 
 // 榜单里默认遮掉 IP 最后一段：既看得出是不同的人，又不至于把完整地址公开。

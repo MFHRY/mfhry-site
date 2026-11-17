@@ -173,6 +173,15 @@
     "status": "play"
   },
   {
+    "slug": "stock-sim",
+    "title": "炒股模拟器",
+    "desc": "按真实美股 / A股价格炒股：真实 K 线、买入卖出、虚拟充值，持仓存在服务器上，赚钱能上盈利榜。",
+    "tag": "模拟",
+    "emoji": "📈",
+    "href": "/games/stock-sim/",
+    "status": "play"
+  },
+  {
     "slug": "cs16",
     "title": "CS 1.6",
     "desc": "play-cs.com 的浏览器版反恐精英：直接进服务器开打，不用装客户端。",
