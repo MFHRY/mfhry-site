@@ -35,12 +35,14 @@ jobs:
 
       - name: Fetch GitHub repos
         run: node scripts/pull-github.mjs
+        continue-on-error: true
         env:
           GH_USER: ${{ vars.GH_USER }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Fetch releases (mirror downloads)
         run: node scripts/pull-releases.mjs
+        continue-on-error: true
         env:
           GH_USER: ${{ vars.GH_USER }}
           RELEASE_REPOS: ${{ vars.RELEASE_REPOS != '' && vars.RELEASE_REPOS || 'mcai' }}
@@ -48,18 +50,22 @@ jobs:
 
       - name: Fetch Aiven content
         run: node scripts/pull-content.mjs
+        continue-on-error: true
         env:
           DATABASE_URL: ${{ secrets.AIVEN_PG_URL }}
           PG_CA: ${{ secrets.AIVEN_PG_CA }}
 
       - name: Mirror Stand with Jensen signers
         run: node scripts/pull-jensen.mjs
+        continue-on-error: true
 
       - name: Mirror Stand with Jensen site
         run: node scripts/pull-jensen-site.mjs
+        continue-on-error: true
 
       - name: Record jensen history
         run: node scripts/jensen-history.mjs
+        continue-on-error: true
 
       - name: Build
         run: pnpm build
