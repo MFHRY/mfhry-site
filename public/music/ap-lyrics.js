@@ -42,7 +42,7 @@
       padding:var(--ap-space-5) 0 var(--ap-space-6);
       /* 只用 transform 滚动，不触发重排（[87][92][208]） */
       will-change:transform;
-      transition:transform 260ms var(--ap-ease);        /* ≤300ms [79] */
+      transition:transform 360ms var(--ap-ease);         /* 合成器线程跑动画，主线程忙也不抖 */
     }
     .ap-line{
       font-size:15px; line-height:1.8; letter-spacing:-0.01em;   /* [88][44] */
@@ -323,6 +323,48 @@
     }
 
     /** 按时间找当前行并滚动；force=true 时忽略 3s 平静期（[80][90]） */
+    /* 滚动用 CSS transform 过渡：动画跑在合成器线程上，主线程再忙也不会卡住。
+       真正造成"卡一下"的是反复重新设定目标（每个 ResizeObserver 回调都改一次 transform，
+       每次都会重新起一段 260ms 的动画）。这里做两件事：
+       1) 目标变化小于 3px 时直接忽略，不再重启动画；
+       2) 时长随距离变化，短距离柔和、长距离（选段/跳转）稍长，避免"猛地一跳"。
+    */
+    _animateTo(target, instant) {
+      var inner = this._q('inner');
+      if (!inner) return;
+      var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      if (instant || reduce || typeof this._ty !== 'number') {
+        inner.style.transition = 'none';
+        inner.style.transform = 'translate3d(0,' + (-target) + 'px,0)';
+        /* 下一帧恢复过渡，避免后续滚动变成瞬移 */
+        var self0 = this;
+        requestAnimationFrame(function () {
+          inner.style.transition = '';
+          self0._ty = target;
+          self0._tyTarget = target;
+        });
+        this._ty = target;
+        this._tyTarget = target;
+        return;
+      }
+
+      var prev = this._tyTarget;
+      var dist = Math.abs(target - (typeof prev === 'number' ? prev : this._ty));
+      if (prev !== undefined && dist < 3) return;      /* 目标几乎没变：不重启动画 */
+
+      this._tyTarget = target;
+      inner.style.transitionDuration = dist > 320 ? '520ms' : (dist > 120 ? '440ms' : '360ms');
+      inner.style.transform = 'translate3d(0,' + (-target) + 'px,0)';
+      this._ty = target;
+    }
+
+    disconnectedCallback() {
+      if (this._raf) cancelAnimationFrame(this._raf);
+      this._raf = 0;
+      this._anim = null;
+    }
+
     _sync(time, force) {
       if (!this._lines || !this._lines.length) return;
       var box = this._q('box');
@@ -381,7 +423,10 @@
         ty = clamp(v, 0, max);
         inner.style.transform = 'translate3d(0,' + (-ty) + 'px,0)';  /* [87][208] */
       };
-      apply(target);
+      /* 用 rAF 缓动代替 CSS transition：新的目标值只是改 this._tyTarget，
+         动画不会重启，所以连续同步 / 跳转时不会出现"顿一下" */
+      this._tyMax = max;
+      this._animateTo(target);
 
       /* 对齐校验放在过渡结束之后：260ms 的平滑滚动期间读矩形会读到中间态，
          等动画停下来再量一次偏差，有就补一帧修正（保证当前行真的落在正中） */
@@ -394,7 +439,8 @@
           if (!cur.isConnected) return;
           var hh = box.clientHeight || h;
           var mt = Math.max(0, Math.max(inner.scrollHeight, live.top + live.h) - hh);
-          apply(clamp(live.top + live.h / 2 - hh / 2, 0, mt));
+          self2._tyMax = mt;
+          self2._animateTo(clamp(live.top + live.h / 2 - hh / 2, 0, mt));
         };
         this._realign = [setTimeout(realign, 300), setTimeout(realign, 900)];
       }
