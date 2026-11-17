@@ -38,7 +38,9 @@
 
   window.mfhryScore = function (game, score) {
     const value = Math.round(Number(score));
-    if (!game || !isFinite(value) || value <= 0) return;
+    /* fx-sim 的净盈亏可以是负数——负的进赌狗榜，别的游戏仍然只收正分 */
+    if (!game || !isFinite(value) || value === 0) return;
+    if (value < 0 && game !== 'fx-sim') return;
     rememberGame(game);
     try {
       fetch('/api/score', {
@@ -50,6 +52,13 @@
         .then((d) => {
           if (!d || !d.ok) return;
           if (d.stored) {
+            if (d.board === 'losers') {
+              toast(
+                (d.rank ? '赌狗榜第 ' + d.rank + ' 名 😭' : '已记入赌狗榜 😭') + ' · 点这里看榜单',
+                '/leaderboard/#fx-sim'
+              );
+              return;
+            }
             toast(
               (d.rank ? '上榜第 ' + d.rank + ' 名 🏆' : '成绩已记录 🏆') + ' · 点这里看榜单',
               '/leaderboard/#' + game

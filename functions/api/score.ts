@@ -32,6 +32,10 @@ const GAMES: Record<string, { asc: boolean; max: number; label: string; unit: st
 // 榜单里默认遮掉 IP 最后一段：既看得出是不同的人，又不至于把完整地址公开。
 const MASK_IP = true;
 
+// 赌狗榜的载体：同一个 IP 在 fx-sim 下最多两行，
+// 'fx-sim' = 历史最高净盈利，'fx-sim:worst' = 历史最亏（负数），互不覆盖。
+const LOSER_GAME = 'fx-sim:worst';
+
 const ipOf = (req: Request) =>
   req.headers.get('CF-Connecting-IP') || req.headers.get('x-forwarded-for') || 'unknown';
 
@@ -82,11 +86,18 @@ export const onRequestGet = async (ctx: any) => {
   if (!meta) return json({ error: '没有这个游戏' }, 400);
   const limit = Math.min(Math.max(Number(url.searchParams.get('limit')) || 20, 1), 50);
 
-  const order = meta.asc ? 'ASC' : 'DESC';
+  // 赌狗榜：fx-sim 的亏损记录单独存在 fx-sim:worst 这条「游戏」里，score 是负数
+  const board = String(url.searchParams.get('board') || '');
+  const losers = game === 'fx-sim' && board === 'losers';
+  const tableGame = losers ? LOSER_GAME : game;
+  const asc = losers ? true : meta.asc;
+  const scoreFilter = losers ? ' AND s.score < 0' : game === 'fx-sim' ? ' AND s.score > 0' : '';
+
+  const order = asc ? 'ASC' : 'DESC';
   const rows = await env.DB.prepare(
-    `${SELECT} WHERE s.game = ? ORDER BY s.score ${order}, s.updated_at ASC LIMIT ?`
+    `${SELECT} WHERE s.game = ?${scoreFilter} ORDER BY s.score ${order}, s.updated_at ASC LIMIT ?`
   )
-    .bind(game, limit)
+    .bind(tableGame, limit)
     .all();
 
   const entries = (rows.results || []).map((r: any, i: number) => pack(r, i + 1));
@@ -94,18 +105,19 @@ export const onRequestGet = async (ctx: any) => {
   let me: any = null;
   const ip = ipOf(request);
   if (ip && ip !== 'unknown') {
-    const mine: any = await env.DB.prepare(`${SELECT} WHERE s.game = ? AND s.ip = ?`).bind(game, ip).first();
-    if (mine) me = pack(mine, await rankOf(env, game, meta, mine.score));
+    const mine: any = await env.DB.prepare(`${SELECT} WHERE s.game = ? AND s.ip = ?`).bind(tableGame, ip).first();
+    if (mine) me = pack(mine, await rankOf(env, tableGame, { asc }, mine.score));
   }
 
-  const total = await env.DB.prepare('SELECT COUNT(*) AS c FROM scores WHERE game = ?').bind(game).first();
+  const total = await env.DB.prepare('SELECT COUNT(*) AS c FROM scores WHERE game = ?').bind(tableGame).first();
 
   return json({
     game,
-    label: meta.label,
+    board: losers ? 'losers' : 'best',
+    label: losers ? 'FX 赌狗榜' : meta.label,
     unit: meta.unit,
     fmt: meta.fmt || '',
-    asc: meta.asc,
+    asc,
     total: Number(total?.c || 0),
     entries,
     me,
@@ -134,8 +146,12 @@ export const onRequestPost = async (ctx: any) => {
   if (!meta) return json({ error: '没有这个游戏' }, 400);
 
   const score = Math.round(Number(body?.score));
-  if (!Number.isFinite(score) || score < 0 || score > meta.max) return json({ error: '分数不合适' }, 400);
+  // fx-sim 允许负数：负的净盈亏进赌狗榜（fx-sim:worst），盈利仍走原榜
+  const allowNegative = game === 'fx-sim';
+  const lo = allowNegative ? -meta.max : 0;
+  if (!Number.isFinite(score) || score < lo || score > meta.max) return json({ error: '分数不合适' }, 400);
   if (meta.asc && score === 0) return json({ error: '分数不合适' }, 400);
+  if (allowNegative && score === 0) return json({ ok: true, stored: false, reason: '没亏没赚，不上榜' });
 
   const ip = ipOf(request);
   if (!ip || ip === 'unknown') return json({ error: '拿不到 IP' }, 400);
@@ -144,18 +160,22 @@ export const onRequestPost = async (ctx: any) => {
   const name = cleanName(body?.name) || null;
   const ts = nowSql();
 
-  // 一个 IP 只留一条成绩
+  // 亏损写进独立的赌狗榜行：只记「更亏」，盈利恢复不会抹掉历史最亏
+  const tableGame = allowNegative && score < 0 ? LOSER_GAME : game;
+  const lowerIsBetter = tableGame === LOSER_GAME || meta.asc;
+
+  // 一个 IP 每个榜只留一条成绩
   const row: any = await env.DB.prepare(
     'SELECT id, score, name, updated_at FROM scores WHERE game = ? AND ip = ?'
   )
-    .bind(game, ip)
+    .bind(tableGame, ip)
     .first();
 
   if (row && row.updated_at && Date.now() - Date.parse(row.updated_at.replace(' ', 'T') + 'Z') < 10 * 1000) {
     return json({ ok: true, stored: false, reason: '慢一点，10 秒后再传', best: row.score });
   }
 
-  const isBetter = (v: number) => (meta.asc ? v < row.score : v > row.score);
+  const isBetter = (v: number) => (lowerIsBetter ? v < row.score : v > row.score);
 
   if (row) {
     if (!isBetter(score)) {
@@ -172,7 +192,7 @@ export const onRequestPost = async (ctx: any) => {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
       .bind(
-        game,
+        tableGame,
         ip,
         null,
         name,
@@ -187,5 +207,11 @@ export const onRequestPost = async (ctx: any) => {
       .run();
   }
 
-  return json({ ok: true, stored: true, best: score, rank: await rankOf(env, game, meta, score) });
+  return json({
+    ok: true,
+    stored: true,
+    best: score,
+    board: tableGame === LOSER_GAME ? 'losers' : 'best',
+    rank: await rankOf(env, tableGame, { asc: lowerIsBetter }, score),
+  });
 };

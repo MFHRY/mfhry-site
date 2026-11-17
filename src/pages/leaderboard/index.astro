@@ -5,6 +5,7 @@ import Base from '../../layouts/Base.astro';
   <h1>小游戏排行榜</h1>
   <p class="muted">
     每个 IP 只留一条最好成绩，右边是你的名次。地区由 Cloudflare 边缘节点判断，可能不太准。
+    FX 模拟器另有一张<b>赌狗榜</b>，记的是历史最大亏损，亏得越多排得越靠前。
   </p>
 
   <div class="tabbar">
@@ -69,6 +70,7 @@ import Base from '../../layouts/Base.astro';
     ['memory', '记忆翻牌'],
     ['puzzle15', '数字华容道'],
     ['fx-sim', 'FX 模拟器'],
+    ['fx-loss', 'FX 赌狗榜'],
   ];
 
   const $tabs = document.getElementById('tabs')!;
@@ -120,15 +122,24 @@ import Base from '../../layouts/Base.astro';
     }
   }
 
-  // 金额类成绩（fx-sim）显示成 $12,345，其它还是「分数 + 单位」
+  // 金额类成绩（fx-sim）显示成 $12,345，亏损显示成 -$12,345，其它还是「分数 + 单位」
   function scoreText(v: number, unit: string, fmt?: string) {
-    if (fmt === 'money') return '$' + Number(v).toLocaleString('en-US');
+    if (fmt === 'money') {
+      const n = Number(v);
+      if (n < 0) return '-$' + Math.abs(n).toLocaleString('en-US');
+      return '$' + n.toLocaleString('en-US');
+    }
     return String(v) + (unit || '');
   }
 
-  function rowHtml(e: Entry, unit: string, mine: boolean, fmt?: string) {
+  // 「赌狗榜」的排名含义相反：第 1 名是亏得最惨的，用骷髅代替奖牌
+  const LOSS_MEDALS = ['💀', '🥴', '😵'];
+
+  function rowHtml(e: Entry, unit: string, mine: boolean, fmt?: string, losers = false) {
     const where = [e.flag, e.countryName, e.regionName].filter(Boolean).join(' ');
-    const medal = e.rank === 1 ? '🥇' : e.rank === 2 ? '🥈' : e.rank === 3 ? '🥉' : String(e.rank);
+    const medal = losers
+      ? LOSS_MEDALS[e.rank - 1] || String(e.rank)
+      : e.rank === 1 ? '🥇' : e.rank === 2 ? '🥈' : e.rank === 3 ? '🥉' : String(e.rank);
     const who = `${esc(e.ip)}${e.name ? ` <em class="nm">${esc(e.name)}</em>` : ''}`;
     return `<tr class="${mine ? 'mine' : ''}${e.rank <= 3 ? ' top' : ''}">
       <td class="rank">${medal}</td>
@@ -150,7 +161,12 @@ import Base from '../../layouts/Base.astro';
     }
     try {
       // 加时间戳：避免任何一层缓存把旧榜单喂回来
-      const url = `/api/score?game=${encodeURIComponent(current)}&limit=20&t=${Date.now()}`;
+      // fx-loss 是 fx-sim 的赌狗榜视图：同一个接口，换成 board=losers
+      const q =
+        current === 'fx-loss'
+          ? `game=fx-sim&board=losers&limit=20&t=${Date.now()}`
+          : `game=${encodeURIComponent(current)}&limit=20&t=${Date.now()}`;
+      const url = `/api/score?${q}`;
       const res = await fetch(url, { headers: { accept: 'application/json' }, cache: 'no-store' });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || '加载失败');
@@ -166,6 +182,7 @@ import Base from '../../layouts/Base.astro';
     const entries: Entry[] = data.entries || [];
     const unit = data.unit || '';
     const fmt = data.fmt || '';
+    const losers = data.board === 'losers';
 
     // 按（打码后的）IP 认自己
     const isMine = (e: Entry) => !!data.me?.ip && e.ip === data.me.ip;
@@ -173,13 +190,15 @@ import Base from '../../layouts/Base.astro';
 
     let html = '';
     if (!entries.length) {
-      html = '<tr><td colspan="5" class="empty">还没有人上榜，去玩一局吧</td></tr>';
+      html = losers
+        ? '<tr><td colspan="5" class="empty">还没人亏钱，大家都在装高手 🐔</td></tr>'
+        : '<tr><td colspan="5" class="empty">还没有人上榜，去玩一局吧</td></tr>';
     } else {
-      html = entries.map((e) => rowHtml(e, unit, isMine(e), fmt)).join('');
+      html = entries.map((e) => rowHtml(e, unit, isMine(e), fmt, losers)).join('');
       // 名次掉出前 20 时，把你自己那行也贴出来，不然看着就像「没上榜」
       if (data.me && !mineInList) {
         html += '<tr class="gap"><td colspan="5">⋯ 你的名次在前 20 之外 ⋯</td></tr>';
-        html += rowHtml(data.me, unit, true, fmt);
+        html += rowHtml(data.me, unit, true, fmt, losers);
       }
     }
     $rows.innerHTML = html;
@@ -187,12 +206,14 @@ import Base from '../../layouts/Base.astro';
     if (data.me) {
       $me.hidden = false;
       const outside = mineInList ? '' : '（不在前 20，已单列在下面）';
-      $me.innerHTML = `这个 IP 在 <b>${esc(data.label)}</b> 排第 <b>${data.me.rank}</b> 名，成绩 ${esc(
-        scoreText(data.me.score, unit, fmt)
-      )}，共 ${data.total} 人上榜${outside}`;
+      $me.innerHTML = `这个 IP 在 <b>${esc(data.label)}</b> 排第 <b>${data.me.rank}</b> 名，${
+        losers ? '累计亏损' : '成绩'
+      } ${esc(scoreText(data.me.score, unit, fmt))}，共 ${data.total} 人上榜${outside}`;
     } else if (data.total) {
       $me.hidden = false;
-      $me.textContent = `共 ${data.total} 人上榜，这个 IP 还没交过成绩`;
+      $me.textContent = losers
+        ? `共 ${data.total} 人上过赌狗榜，这个 IP 还没亏到上榜`
+        : `共 ${data.total} 人上榜，这个 IP 还没交过成绩`;
     } else {
       $me.hidden = true;
     }

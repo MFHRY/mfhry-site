@@ -1150,9 +1150,11 @@
 
   function submitScore(force = false) {
     const earned = earnedTotal();
-    if (earned <= 0) return;
+    if (earned === 0) return;                                  /* 没亏没赚不用上榜 */
     const now = Date.now();
-    if (!force && (now - lastSentAt < 12000 || earned <= lastSentScore)) return;
+    /* 盈亏两个方向都要上报：赚了进盈利榜，亏了进赌狗榜 */
+    const moved = Math.abs(earned - lastSentScore) >= 1;
+    if (!force && (now - lastSentAt < 12000 || !moved)) return;
     lastSentScore = earned;
     lastSentAt = now;
     if (typeof window.mfhryScore === 'function') {
@@ -1166,7 +1168,9 @@
     })
       .then((r) => r.json())
       .then((d) => {
-        if (d && d.stored) showToast('已上榜 · 累计盈利 ' + fmtUsd(earned), 'win', 1800);
+        if (!d || !d.stored) return;
+        if (d.board === 'losers') showToast('已记入赌狗榜 · 累计亏损 ' + fmtUsd(-earned), 'lose', 1800);
+        else showToast('已上榜 · 累计盈利 ' + fmtUsd(earned), 'win', 1800);
       })
       .catch(() => {});
   }
