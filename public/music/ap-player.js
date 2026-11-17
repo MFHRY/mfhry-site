@@ -180,17 +180,18 @@
       .ap-volbar{ width:64px; }
     }
     /* ---- 页面级全屏（data-fs）里的播放卡片：玻璃材质 + 紧凑排版 ---- */
+    /* 全屏：无边框沉浸形态——不要卡片底衬，控件直接浮在封面虚化层上 */
     :host([fs]) .ap-card{
-      max-width:880px;                            /* 全屏卡片加宽，与字幕列同宽 */
+      max-width:880px;                            /* 与字幕列同宽 */
       margin:0 auto;                              /* 影子树内同样居中 */
-      background:rgba(28,28,30,.46);
-      -webkit-backdrop-filter:blur(30px) saturate(180%);
-              backdrop-filter:blur(30px) saturate(180%);
-      border:1px solid rgba(255,255,255,.13);
-      border-radius:22px;
-      box-shadow:0 22px 56px rgba(0,0,0,.42), 0 1px 0 rgba(255,255,255,.10) inset;
+      background:none;
+      -webkit-backdrop-filter:none;
+              backdrop-filter:none;
+      border:0;
+      border-radius:0;
+      box-shadow:none;
       color:#f5f5f7;
-      padding:16px 18px 14px;
+      padding:6px 6px 0;
     }
     :host([fs]) .ap-body{ gap:10px; }
     /* 全屏卡片：封面在上、歌名与歌手居中，不再靠左 */
@@ -203,8 +204,14 @@
     }
     :host([fs]) .ap-title, :host([fs]) .ap-artist{ text-align:center; }
     :host([fs]) .ap-status{ text-align:center; }
-    :host([fs]) .ap-art{ width:58px; height:58px; border-radius:14px; }
-    :host([fs]) .ap-title{ font-size:17px; letter-spacing:-0.02em; }
+    :host([fs]) .ap-art{
+      width:78px; height:78px; border-radius:19px;
+      box-shadow:0 20px 50px rgba(0,0,0,.52), 0 0 0 1px rgba(255,255,255,.10) inset;
+    }
+    :host([fs]) .ap-title{
+      font-size:17px; letter-spacing:-0.02em;
+      text-shadow:0 1px 20px rgba(0,0,0,.45);
+    }
     :host([fs]) .ap-artist{ font-size:12.5px; }
     :host([fs]) .ap-seekwrap{ margin:0; }
     :host([fs]) .ap-times{ font-size:11px; color:#c7c7cc; }
