@@ -72,6 +72,7 @@ import Base from '../../layouts/Base.astro';
     ['fx-sim', 'FX 模拟器'],
     ['fx-loss', 'FX 赌狗榜'],
     ['stock-sim', '炒股模拟器'],
+    ['stock-loss', '炒股赌狗榜'],
   ];
 
   const $tabs = document.getElementById('tabs')!;
@@ -163,10 +164,12 @@ import Base from '../../layouts/Base.astro';
     try {
       // 加时间戳：避免任何一层缓存把旧榜单喂回来
       // fx-loss 是 fx-sim 的赌狗榜视图：同一个接口，换成 board=losers
-      const q =
-        current === 'fx-loss'
-          ? `game=fx-sim&board=losers&limit=20&t=${Date.now()}`
-          : `game=${encodeURIComponent(current)}&limit=20&t=${Date.now()}`;
+      // 赌狗榜视图：fx-loss / stock-loss 都走 board=losers
+      const LOSER_GAMES: Record<string, string> = { 'fx-loss': 'fx-sim', 'stock-loss': 'stock-sim' };
+      const loserOf = LOSER_GAMES[current];
+      const q = loserOf
+        ? `game=${loserOf}&board=losers&limit=20&t=${Date.now()}`
+        : `game=${encodeURIComponent(current)}&limit=20&t=${Date.now()}`;
       const url = `/api/score?${q}`;
       const res = await fetch(url, { headers: { accept: 'application/json' }, cache: 'no-store' });
       const data = await res.json();
@@ -280,6 +283,18 @@ import Base from '../../layouts/Base.astro';
     border-color: var(--accent);
     color: var(--accent);
     background: var(--accent-soft);
+  }
+  /* 手机：18 个榜单标签不换行成 8 排，改成单行横滑（右侧渐隐提示可滑） */
+  @media (max-width: 620px) {
+    .tabs {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 22px), transparent 100%);
+              mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 22px), transparent 100%);
+    }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab { flex: 0 0 auto; }
   }
   .myrow {
     margin: 0 0 14px;

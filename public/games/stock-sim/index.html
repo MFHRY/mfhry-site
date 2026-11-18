@@ -307,6 +307,11 @@
     <h3>🏆 盈利榜 <span style="font-size:11px;color:var(--dim2);font-weight:400" id="rankHint"></span><button data-close>✕</button></h3>
     <div id="rankBody"><div class="loading">加载中…</div></div>
     <div class="meline" id="rankMe" hidden></div>
+    <div style="margin-top:12px;text-align:center">
+      <a href="/leaderboard/#stock-loss" style="font-size:12.5px;color:var(--dim2);text-decoration:none">
+        😭 亏得最惨的都在这 · 炒股赌狗榜 →
+      </a>
+    </div>
   </div>
 </div>
 
@@ -707,9 +712,10 @@
   function submitScore(force) {
     const a = state.account;
     if (!a) return;
+    /* 净盈亏可能是负数：盈利进盈利榜，亏损进赌狗榜（-stock-sim:worst），互不覆盖 */
     const earned = Math.round(a.profit);
-    if (!force && (earned <= 0 || Math.abs(earned - lastSent.score) < 1 || Date.now() - lastSent.at < 12000)) return;
-    if (earned <= 0) return;
+    if (earned === 0) return;
+    if (!force && (Math.abs(earned - lastSent.score) < 1 || Date.now() - lastSent.at < 12000)) return;
     lastSent = { score: earned, at: Date.now() };
     fetch('/api/score', {
       method: 'POST',

@@ -34,9 +34,11 @@ const GAMES: Record<string, { asc: boolean; max: number; label: string; unit: st
 // 榜单里默认遮掉 IP 最后一段：既看得出是不同的人，又不至于把完整地址公开。
 const MASK_IP = true;
 
-// 赌狗榜的载体：同一个 IP 在 fx-sim 下最多两行，
-// 'fx-sim' = 历史最高净盈利，'fx-sim:worst' = 历史最亏（负数），互不覆盖。
-const LOSER_GAME = 'fx-sim:worst';
+// 赌狗榜（历史最亏）：同一个 IP 在模拟器里最多两行，
+// '<game>' = 历史最高净盈利，'<game>:worst' = 历史最亏（负数），互不覆盖。
+const NEGATIVE_GAMES = new Set(['fx-sim', 'stock-sim']);   // 净盈亏可能是负数的游戏
+const loserGameOf = (game: string) => game + ':worst';
+const isLoserGame = (game: string) => game.endsWith(':worst');
 
 const ipOf = (req: Request) =>
   req.headers.get('CF-Connecting-IP') || req.headers.get('x-forwarded-for') || 'unknown';
@@ -88,12 +90,16 @@ export const onRequestGet = async (ctx: any) => {
   if (!meta) return json({ error: '没有这个游戏' }, 400);
   const limit = Math.min(Math.max(Number(url.searchParams.get('limit')) || 20, 1), 50);
 
-  // 赌狗榜：fx-sim 的亏损记录单独存在 fx-sim:worst 这条「游戏」里，score 是负数
+  // 赌狗榜：亏损记录单独存在 '<game>:worst' 这条「游戏」里，score 是负数
   const board = String(url.searchParams.get('board') || '');
-  const losers = game === 'fx-sim' && board === 'losers';
-  const tableGame = losers ? LOSER_GAME : game;
+  const losers = NEGATIVE_GAMES.has(game) && board === 'losers';
+  const tableGame = losers ? loserGameOf(game) : game;
   const asc = losers ? true : meta.asc;
-  const scoreFilter = losers ? ' AND s.score < 0' : game === 'fx-sim' ? ' AND s.score > 0' : '';
+  const scoreFilter = losers
+    ? ' AND s.score < 0'
+    : NEGATIVE_GAMES.has(game)
+      ? ' AND s.score > 0'
+      : '';
 
   const order = asc ? 'ASC' : 'DESC';
   const rows = await env.DB.prepare(
@@ -116,7 +122,7 @@ export const onRequestGet = async (ctx: any) => {
   return json({
     game,
     board: losers ? 'losers' : 'best',
-    label: losers ? 'FX 赌狗榜' : meta.label,
+    label: losers ? (game === 'fx-sim' ? 'FX 赌狗榜' : '炒股赌狗榜') : meta.label,
     unit: meta.unit,
     fmt: meta.fmt || '',
     asc,
@@ -149,7 +155,7 @@ export const onRequestPost = async (ctx: any) => {
 
   const score = Math.round(Number(body?.score));
   // fx-sim 允许负数：负的净盈亏进赌狗榜（fx-sim:worst），盈利仍走原榜
-  const allowNegative = game === 'fx-sim';
+  const allowNegative = NEGATIVE_GAMES.has(game);
   const lo = allowNegative ? -meta.max : 0;
   if (!Number.isFinite(score) || score < lo || score > meta.max) return json({ error: '分数不合适' }, 400);
   if (meta.asc && score === 0) return json({ error: '分数不合适' }, 400);
@@ -163,8 +169,8 @@ export const onRequestPost = async (ctx: any) => {
   const ts = nowSql();
 
   // 亏损写进独立的赌狗榜行：只记「更亏」，盈利恢复不会抹掉历史最亏
-  const tableGame = allowNegative && score < 0 ? LOSER_GAME : game;
-  const lowerIsBetter = tableGame === LOSER_GAME || meta.asc;
+  const tableGame = allowNegative && score < 0 ? loserGameOf(game) : game;
+  const lowerIsBetter = isLoserGame(tableGame) || meta.asc;
 
   // 一个 IP 每个榜只留一条成绩
   const row: any = await env.DB.prepare(
@@ -213,7 +219,7 @@ export const onRequestPost = async (ctx: any) => {
     ok: true,
     stored: true,
     best: score,
-    board: tableGame === LOSER_GAME ? 'losers' : 'best',
+    board: isLoserGame(tableGame) ? 'losers' : 'best',
     rank: await rankOf(env, tableGame, { asc: lowerIsBetter }, score),
   });
 };
