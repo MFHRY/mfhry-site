@@ -1,0 +1,517 @@
+{
+ "song": "Tokyo Drift",
+ "artist": "Teriyaki Boyz",
+ "source": "lrclib #7023353",
+ "lines": [
+  {
+   "t": 11.88,
+   "ja": "I wonder if you know",
+   "zh": "你有没有想过"
+  },
+  {
+   "t": 14.0,
+   "ja": "How they live in Tokyo (はい!)",
+   "zh": "东京的人是怎么活的（嗨！）"
+  },
+  {
+   "t": 15.19,
+   "ja": "If you seen it, then you mean it",
+   "zh": "你要是亲眼见过，那就是真的"
+  },
+  {
+   "t": 17.06,
+   "ja": "Then you know you have to go",
+   "zh": "那你就知道非去不可"
+  },
+  {
+   "t": 18.74,
+   "ja": "Fast and furious (drift, drift, drift)",
+   "zh": "速度与激情（甩尾、甩尾、甩尾）"
+  },
+  {
+   "t": 22.69,
+   "ja": "Fast and furious (drift, drift, drift)",
+   "zh": "速度与激情（甩尾、甩尾、甩尾）"
+  },
+  {
+   "t": 26.99,
+   "ja": "Wonder if you know",
+   "zh": "你有没有想过"
+  },
+  {
+   "t": 28.63,
+   "ja": "How they live in Tokyo (はい!)",
+   "zh": "东京的人是怎么活的（嗨！）"
+  },
+  {
+   "t": 30.3,
+   "ja": "If you seen it, then you mean it",
+   "zh": "你要是亲眼见过，那就是真的"
+  },
+  {
+   "t": 32.26,
+   "ja": "Then you know you have to go",
+   "zh": "那你就知道非去不可"
+  },
+  {
+   "t": 33.79,
+   "ja": "Fast and furious (drift, drift, drift)",
+   "zh": "速度与激情（甩尾、甩尾、甩尾）"
+  },
+  {
+   "t": 37.77,
+   "ja": "Fast and furious (drift, drift, drift)",
+   "zh": "速度与激情（甩尾、甩尾、甩尾）"
+  },
+  {
+   "t": 41.89,
+   "ja": "へいらっしゃい おまちどうさま",
+   "zh": "欢迎光临 让您久等了"
+  },
+  {
+   "t": 43.64,
+   "ja": "喧騒まみれ この街の演奏",
+   "zh": "满街喧嚣 这就是这座城的演奏"
+  },
+  {
+   "t": 45.8,
+   "ja": "黙ったまま一度ついておいで",
+   "zh": "别出声 先跟上我一次"
+  },
+  {
+   "t": 47.51,
+   "ja": "世界中魅了するほどに豪華な",
+   "zh": "华丽到让全世界着迷"
+  },
+  {
+   "t": 49.39,
+   "ja": "Japan (what?) 一番 (what?)",
+   "zh": "日本（什么？）第一（什么？）"
+  },
+  {
+   "t": 51.41,
+   "ja": "Jump around さぁうちらの出番 (what?)",
+   "zh": "跳起来 该我们上场了（什么？）"
+  },
+  {
+   "t": 53.52,
+   "ja": "テリヤキ・ボーイズ in the place to be",
+   "zh": "照烧男孩 就在现场"
+  },
+  {
+   "t": 55.4,
+   "ja": "見せてやる (はい!) オリジナル in the VIP (はい!)",
+   "zh": "让你们看看（嗨！）原版人马在 VIP（嗨！）"
+  },
+  {
+   "t": 57.03,
+   "ja": "Many-many diamonds dangling",
+   "zh": "一颗颗钻石晃荡"
+  },
+  {
+   "t": 58.85,
+   "ja": "Bag full of money, we strangling",
+   "zh": "满袋子钞票 我们掐着"
+  },
+  {
+   "t": 60.7,
+   "ja": "Hate me, fry me, bake me, try me",
+   "zh": "恨我、炸我、烤我、试我"
+  },
+  {
+   "t": 62.72,
+   "ja": "All the above 'cause you can't get in",
+   "zh": "全都来啊 反正你进不来"
+  },
+  {
+   "t": 64.62,
+   "ja": "I don't want no problem",
+   "zh": "我不想惹麻烦"
+  },
+  {
+   "t": 66.35,
+   "ja": "Because me professional",
+   "zh": "因为我是专业的"
+  },
+  {
+   "t": 68.12,
+   "ja": "Make you, shake your ケツ, thank you",
+   "zh": "让你扭起来你的屁股，谢了"
+  },
+  {
+   "t": 70.26,
+   "ja": "Haters take it パーソナル",
+   "zh": "黑子们的酸话自己收着"
+  },
+  {
+   "t": 72.0,
+   "ja": "Like a 金田 対 鉄夫",
+   "zh": "就像金田对铁雄"
+  },
+  {
+   "t": 73.19,
+   "ja": "Neo Tokyo 滅亡 無くなっちまう前に",
+   "zh": "新东京 在灭亡消失之前"
+  },
+  {
+   "t": 75.75,
+   "ja": "熱を発散しきっちまおうぜ let's go 熱望",
+   "zh": "把热量全散发出来 走吧 渴望"
+  },
+  {
+   "t": 78.28,
+   "ja": "ズヒル木六本ラボからエスコート (ええ すごい)",
+   "zh": "由六本木实验室一路护送（哎 厉害）"
+  },
+  {
+   "t": 80.09,
+   "ja": "26 号じゃない Nigo",
+   "zh": "不是 26 号 是 Nigo"
+  },
+  {
+   "t": 83.85,
+   "ja": "入力「SOL!」 私のピンポイント",
+   "zh": "输入「SOL!」 我的精准定位"
+  },
+  {
+   "t": 86.94,
+   "ja": "I wonder if you know",
+   "zh": "你有没有想过"
+  },
+  {
+   "t": 88.54,
+   "ja": "How they live in Tokyo (はい!)",
+   "zh": "东京的人是怎么活的（嗨！）"
+  },
+  {
+   "t": 90.44,
+   "ja": "If you seen it, then you mean it",
+   "zh": "你要是亲眼见过，那就是真的"
+  },
+  {
+   "t": 92.64,
+   "ja": "Then you know you have to go",
+   "zh": "那你就知道非去不可"
+  },
+  {
+   "t": 94.28,
+   "ja": "Fast and furious (drift, drift, drift)",
+   "zh": "速度与激情（甩尾、甩尾、甩尾）"
+  },
+  {
+   "t": 98.24,
+   "ja": "Fast and furious (drift, drift, drift)",
+   "zh": "速度与激情（甩尾、甩尾、甩尾）"
+  },
+  {
+   "t": 102.21,
+   "ja": "はい わたし テリヤキボーイズ",
+   "zh": "嗨 我们是照烧男孩"
+  },
+  {
+   "t": 104.17,
+   "ja": "あっという間吹き飛ばすノイズ",
+   "zh": "一眨眼就把噪音吹飞"
+  },
+  {
+   "t": 106.22,
+   "ja": "邁進してますんでゲとる!",
+   "zh": "一直在猛冲 稳赚！"
+  },
+  {
+   "t": 108.02,
+   "ja": "ファンの数も増えてます",
+   "zh": "粉丝数也在涨"
+  },
+  {
+   "t": 110.04,
+   "ja": "ベーシックはサプライズで",
+   "zh": "基本操作就是给惊喜"
+  },
+  {
+   "t": 111.86,
+   "ja": "マジ毎日が危ないぜ",
+   "zh": "真的每天都很悬"
+  },
+  {
+   "t": 113.67,
+   "ja": "忍者風 賢者風だけど芸者",
+   "zh": "忍者范儿 贤者范儿 其实是艺者"
+  },
+  {
+   "t": 115.19,
+   "ja": "BAPEの惑星からの使者",
+   "zh": "来自 BAPE 星球的使者"
+  },
+  {
+   "t": 120.48,
+   "ja": "You should see me in the parking lot",
+   "zh": "你该在停车场见到我"
+  },
+  {
+   "t": 121.02,
+   "ja": "7-11 is the spot",
+   "zh": "7-11 才是据点"
+  },
+  {
+   "t": 121.62,
+   "ja": "Fights with wings and shiny things",
+   "zh": "带着翅膀和闪亮玩意儿的干架"
+  },
+  {
+   "t": 123.28,
+   "ja": "And lions, tigers, bears, oh my god!",
+   "zh": "还有狮子、老虎、熊，我的天！"
+  },
+  {
+   "t": 125.88,
+   "ja": "We're furious and fast",
+   "zh": "我们又凶又快"
+  },
+  {
+   "t": 127.0,
+   "ja": "Supersonic like JJ Phat",
+   "zh": "超音速 像 JJ Phat"
+  },
+  {
+   "t": 128.7,
+   "ja": "And we rock 'cause the wheels are fly",
+   "zh": "我们摇滚 因为轮子会飞"
+  },
+  {
+   "t": 130.96,
+   "ja": "Can't beat that with a baseball bat",
+   "zh": "拿棒球棒都打不过"
+  },
+  {
+   "t": 132.13,
+   "ja": "Like a 公安九課 トグサ",
+   "zh": "像公安九课 德古沙"
+  },
+  {
+   "t": 134.36,
+   "ja": "マテバ 良い是非即採用",
+   "zh": "马特巴 好的话当场录用"
+  },
+  {
+   "t": 136.32,
+   "ja": "インターセプターして",
+   "zh": "先来一发拦截"
+  },
+  {
+   "t": 138.15,
+   "ja": "国際的犯罪は万歳",
+   "zh": "国际犯罪 万岁"
+  },
+  {
+   "t": 140.85,
+   "ja": "ホラ hands up",
+   "zh": "喂 举起手来"
+  },
+  {
+   "t": 141.48,
+   "ja": "ファイルが Bomb 落とすと",
+   "zh": "档案一投下炸弹"
+  },
+  {
+   "t": 142.27,
+   "ja": "踊りだす今夜の 4-Boyz",
+   "zh": "今晚的 4-Boyz 就跳起来"
+  },
+  {
+   "t": 143.86,
+   "ja": "From ファーイーストコースト どうささやく (私のゴーストは？)",
+   "zh": "从远东海岸 怎么低语（我的幽灵呢？）"
+  },
+  {
+   "t": 147.57,
+   "ja": "I wonder if you know",
+   "zh": "你有没有想过"
+  },
+  {
+   "t": 148.96,
+   "ja": "How they live in Tokyo (はい!)",
+   "zh": "东京的人是怎么活的（嗨！）"
+  },
+  {
+   "t": 150.82,
+   "ja": "If you seen it, then you mean it",
+   "zh": "你要是亲眼见过，那就是真的"
+  },
+  {
+   "t": 152.81,
+   "ja": "Then you know you have to go",
+   "zh": "那你就知道非去不可"
+  },
+  {
+   "t": 154.65,
+   "ja": "Fast and furious (drift, drift, drift)",
+   "zh": "速度与激情（甩尾、甩尾、甩尾）"
+  },
+  {
+   "t": 158.74,
+   "ja": "Fast and furious (drift, drift, drift)",
+   "zh": "速度与激情（甩尾、甩尾、甩尾）"
+  },
+  {
+   "t": 166.48,
+   "ja": "Yeah, Japan毎日 ドキドキです",
+   "zh": "耶 日本每天都心跳加速"
+  },
+  {
+   "t": 168.75,
+   "ja": "ヒートアイランド とびとびで",
+   "zh": "热岛效应 一跳一跳的"
+  },
+  {
+   "t": 170.69,
+   "ja": "萌える容姿で ぼちぼちね",
+   "zh": "用萌到爆的样子 慢慢来"
+  },
+  {
+   "t": 172.42,
+   "ja": "手招きで誘う こっちこっちへ",
+   "zh": "招招手引你 来这边来这边"
+  },
+  {
+   "t": 174.38,
+   "ja": "ヒートアップで踊りそう",
+   "zh": "热度升温 快要跳起来"
+  },
+  {
+   "t": 176.13,
+   "ja": "街中すべってのりこむ",
+   "zh": "在街上滑行着挤进去"
+  },
+  {
+   "t": 177.98,
+   "ja": "めっちゃ変わり者だってシャッフル",
+   "zh": "就算是个怪咖也 shuffle"
+  },
+  {
+   "t": 179.35,
+   "ja": "ごちゃごちゃの fast and furious",
+   "zh": "乱成一团的 fast and furious"
+  },
+  {
+   "t": 184.43,
+   "ja": "It's gotta be the shoes, gotta be the furs",
+   "zh": "一定是鞋 一定是皮草"
+  },
+  {
+   "t": 185.27,
+   "ja": "That's why ladies choose me",
+   "zh": "所以姑娘们都选我"
+  },
+  {
+   "t": 185.87,
+   "ja": "All up in the news 'cause we so cute",
+   "zh": "全上了新闻 因为我们太可爱"
+  },
+  {
+   "t": 187.25,
+   "ja": "That's why we so huge-e",
+   "zh": "所以我们才这么大牌"
+  },
+  {
+   "t": 188.96,
+   "ja": "Harajuku girls know how I feel",
+   "zh": "原宿的姑娘懂我的感觉"
+  },
+  {
+   "t": 191.06,
+   "ja": "They respect, I keeps it real",
+   "zh": "她们尊重我 我一直够真实"
+  },
+  {
+   "t": 192.95,
+   "ja": "Not a China-man 'cause I ain't from China, man",
+   "zh": "不是中国人 因为我不是中国来的"
+  },
+  {
+   "t": 195.46,
+   "ja": "I am Japan-man",
+   "zh": "我是日本仔"
+  },
+  {
+   "t": 197.12,
+   "ja": "私は東京好き (you see me go)",
+   "zh": "我喜欢东京（你看我走）"
+  },
+  {
+   "t": 200.09,
+   "ja": "私の車すてき (coming out of the black Benz SLR)",
+   "zh": "我的车很正（从黑色奔驰 SLR 里出来）"
+  },
+  {
+   "t": 203.43,
+   "ja": "あなたも東京好き (I wonder where he get that kind of money?)",
+   "zh": "你也喜欢东京（他哪来这么多钱？）"
+  },
+  {
+   "t": 208.05,
+   "ja": "(Don't worry about it) あなたの車すてき (let's go)",
+   "zh": "（别管了）你的车也很正（走吧）"
+  },
+  {
+   "t": 212.14,
+   "ja": "I wonder if you know",
+   "zh": "你有没有想过"
+  },
+  {
+   "t": 213.28,
+   "ja": "How they live in Tokyo (はい!)",
+   "zh": "东京的人是怎么活的（嗨！）"
+  },
+  {
+   "t": 215.13,
+   "ja": "If you seen it, then you mean it",
+   "zh": "你要是亲眼见过，那就是真的"
+  },
+  {
+   "t": 217.12,
+   "ja": "Then you know you have to go",
+   "zh": "那你就知道非去不可"
+  },
+  {
+   "t": 218.84,
+   "ja": "Fast and furious (drift, drift, drift)",
+   "zh": "速度与激情（甩尾、甩尾、甩尾）"
+  },
+  {
+   "t": 223.0,
+   "ja": "Fast and furious (drift, drift, drift)",
+   "zh": "速度与激情（甩尾、甩尾、甩尾）"
+  },
+  {
+   "t": 226.88,
+   "ja": "Wonder if you know",
+   "zh": "你有没有想过"
+  },
+  {
+   "t": 228.37,
+   "ja": "How they live in Tokyo (はい!)",
+   "zh": "东京的人是怎么活的（嗨！）"
+  },
+  {
+   "t": 230.22,
+   "ja": "If you seen it, then you mean it",
+   "zh": "你要是亲眼见过，那就是真的"
+  },
+  {
+   "t": 232.53,
+   "ja": "Then you know you have to go",
+   "zh": "那你就知道非去不可"
+  },
+  {
+   "t": 233.92,
+   "ja": "Fast and furious (drift, drift, drift)",
+   "zh": "速度与激情（甩尾、甩尾、甩尾）"
+  },
+  {
+   "t": 238.11,
+   "ja": "Fast and furious (drift, drift, drift)",
+   "zh": "速度与激情（甩尾、甩尾、甩尾）"
+  }
+ ]
+}

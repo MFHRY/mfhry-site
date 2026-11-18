@@ -1,6 +1,7 @@
 // 小游戏排行榜
 // GET    /api/score?game=tetris&limit=20     榜单（含国家/地区/你的名次）
 // POST   /api/score  {game, score, name?}   交成绩（按 IP 去重）
+// DELETE /api/score?id=123 | ?game=fx-sim   管理员删榜（x-admin-key）
 import { flagOf, regionName, countryName } from '../lib/geo';
 
 const json = (data: any, status = 200) =>
@@ -26,9 +27,9 @@ const GAMES: Record<string, { asc: boolean; max: number; label: string; unit: st
   memory: { asc: true, max: 999, label: '记忆翻牌', unit: '步' },
   puzzle15: { asc: true, max: 9999, label: '数字华容道', unit: '步' },
   // fx-sim：只认交易赚到的钱（客户端已扣掉充值部分），单位是美元
-  'fx-sim': { asc: false, max: 1000000000, label: 'FX 模拟器', unit: '美元', fmt: 'money' },
+  'fx-sim': { asc: false, max: 1000000000, label: 'FX', unit: '美元', fmt: 'money' },
   // stock-sim：按真实股价炒股，交的是「总资产 − 本金 − 充值」的净盈利，单位是元
-  'stock-sim': { asc: false, max: 1000000000, label: '炒股模拟器', unit: '元', fmt: 'money' },
+  'stock-sim': { asc: false, max: 1000000000, label: '炒股', unit: '元', fmt: 'money' },
 };
 
 // 榜单里默认遮掉 IP 最后一段：既看得出是不同的人，又不至于把完整地址公开。
@@ -222,4 +223,22 @@ export const onRequestPost = async (ctx: any) => {
     board: isLoserGame(tableGame) ? 'losers' : 'best',
     rank: await rankOf(env, tableGame, { asc: lowerIsBetter }, score),
   });
+};
+
+// 管理员删榜：DELETE /api/score?id=123  或  ?game=fx-sim:worst（清空某个榜）
+export const onRequestDelete = async ({ env, request }: any) => {
+  if (!env.ADMIN_KEY || request.headers.get('x-admin-key') !== env.ADMIN_KEY)
+    return json({ error: '没权限' }, 401);
+  const url = new URL(request.url);
+  const id = Number(url.searchParams.get('id'));
+  const game = String(url.searchParams.get('game') || '');
+  if (Number.isInteger(id) && id > 0) {
+    const r = await env.DB.prepare('DELETE FROM scores WHERE id = ?').bind(id).run();
+    return json({ ok: true, deleted: r.meta?.changes ?? 0, id });
+  }
+  if (game) {
+    const r = await env.DB.prepare('DELETE FROM scores WHERE game = ?').bind(game).run();
+    return json({ ok: true, deleted: r.meta?.changes ?? 0, game });
+  }
+  return json({ error: '给 id 或 game' }, 400);
 };
