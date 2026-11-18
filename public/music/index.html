@@ -1047,35 +1047,52 @@
   function renderFsQueue() {
     var bar = $('fsQueue');
     if (!bar) return;
-    bar.innerHTML = '';
-    if (!queue.length) { bar.hidden = true; return; }
+    if (!queue.length) { bar.hidden = true; bar.innerHTML = ''; bar.dataset.sig = ''; return; }
     bar.hidden = false;
     var idx = player.currentIndex;
-    queue.forEach(function (t, i) {
-      var b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'pg-fsq ap-focusable';
-      b.setAttribute('aria-current', i === idx ? 'true' : 'false');
-      b.setAttribute('aria-label', '播放 ' + (t.zh || t.label || ''));
-      b.innerHTML = '<span class="n">' + (i + 1) + '</span><span>' +
-        (t.zh || t.label || '') + '</span>' +
-        '<span class="x" aria-hidden="true">×</span>';
-      b.addEventListener('click', function () { playIndex(i, true); renderFsQueue(); });
-      /* 键盘：Delete/Backspace 从队列移除本条（替代嵌套按钮） */
-      b.addEventListener('keydown', function (ev) {
-        if (ev.key !== 'Delete' && ev.key !== 'Backspace') return;
-        ev.preventDefault();
-        removeFromQueue(i);
+
+    /* 队列内容签名：没变就只移动高亮，不重建 DOM。
+       重建会让下划线动画重播、焦点丢失、横向滚动位置被打断。 */
+    var sig = queue.map(function (t) { return tid(t); }).join('|');
+    if (bar.dataset.sig === sig && bar.children.length === queue.length) {
+      for (var j = 0; j < bar.children.length; j++) {
+        bar.children[j].setAttribute('aria-current', j === idx ? 'true' : 'false');
+      }
+    } else {
+      bar.innerHTML = '';
+      bar.dataset.sig = sig;
+      queue.forEach(function (t, i) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'pg-fsq ap-focusable';
+        b.setAttribute('aria-current', i === idx ? 'true' : 'false');
+        b.setAttribute('aria-label', '播放 ' + (t.zh || t.label || ''));
+        b.innerHTML = '<span class="n">' + (i + 1) + '</span><span class="t"></span>' +
+          '<span class="x" aria-hidden="true">×</span>';
+        b.querySelector('.t').textContent = t.zh || t.label || '';
+        b.addEventListener('click', function () { playIndex(i, true); renderFsQueue(); });
+        /* 键盘：Delete/Backspace 从队列移除本条（替代嵌套按钮） */
+        b.addEventListener('keydown', function (ev) {
+          if (ev.key !== 'Delete' && ev.key !== 'Backspace') return;
+          ev.preventDefault();
+          removeFromQueue(i);
+        });
+        b.querySelector('.x').addEventListener('click', function (ev) {
+          ev.stopPropagation();
+          removeFromQueue(i);
+        });
+        bar.appendChild(b);
       });
-      var x = b.querySelector('.x');
-      x.addEventListener('click', function (ev) {
-        ev.stopPropagation();
-        removeFromQueue(i);
-      });
-      bar.appendChild(b);
-    });
-    var act = bar.querySelector('[aria-current="true"]');
-    if (act && act.scrollIntoView) act.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+    }
+
+    /* 只有当前曲目不在可视区时才滚动，避免每次切歌都把整条拉回中间 */
+    var act = bar.children[idx];
+    if (act && act.scrollIntoView) {
+      var br = bar.getBoundingClientRect(), ar = act.getBoundingClientRect();
+      if (ar.left < br.left + 24 || ar.right > br.right - 24) {
+        act.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+      }
+    }
   }
   window.__apFsQueue = renderFsQueue;
 
@@ -1302,6 +1319,11 @@
     else if (k === 'f' || k === 'F') {
       var art = player.shadowRoot && player.shadowRoot.querySelector('#art');
       player.toggleFullscreen(art);
+    }
+    else if (k === 'Escape' && (fsOn || rootEl.hasAttribute('data-fs'))) {
+      /* 兜底全屏（无原生 Fullscreen API）时浏览器不会自动退出，这里补上 */
+      ev.preventDefault();
+      exitFs();
     }
   });
 
