@@ -294,7 +294,21 @@
     content:''; position:absolute; left:5px; top:50%; width:3px; height:3px; margin-top:-1.5px;
     border-radius:50%; background:rgba(255,255,255,.22);
   }
+  .pg-fsq{ min-height:44px; }                    /* 触控热区 ≥44px */
   .pg-fsq:hover{ color:rgba(255,255,255,.92); }
+  /* 当前项正在播放时的微型均衡器（3 根跳动条） */
+  .pg-fsq .eq{ display:none; align-items:flex-end; gap:2px; width:10px; height:12px; flex:0 0 auto; }
+  .pg-fsq[aria-current="true"] .eq{ display:inline-flex; }
+  .pg-fsq .eq i{
+    width:2px; border-radius:1px; background:currentColor; height:100%;
+    transform-origin:bottom center; animation:fsq-eq 1.05s ease-in-out infinite;
+  }
+  .pg-fsq .eq i:nth-child(1){ animation-delay:0s; }
+  .pg-fsq .eq i:nth-child(2){ animation-delay:.18s; }
+  .pg-fsq .eq i:nth-child(3){ animation-delay:.36s; }
+  @keyframes fsq-eq{ 0%,100%{ transform:scaleY(.35) } 50%{ transform:scaleY(1) } }
+  .pg-fs-queue:not(.is-playing) .eq i{ animation-play-state:paused; transform:scaleY(.35); }
+  @media (prefers-reduced-motion:reduce){ .pg-fsq .eq i{ animation:none; } }
   .pg-fsq[aria-current="true"]{ color:#fff; font-weight:500; }
   .pg-fsq[aria-current="true"]::after{
     content:''; position:absolute; left:14px; right:14px; bottom:3px; height:2px;
@@ -1067,8 +1081,9 @@
         b.className = 'pg-fsq ap-focusable';
         b.setAttribute('aria-current', i === idx ? 'true' : 'false');
         b.setAttribute('aria-label', '播放 ' + (t.zh || t.label || ''));
-        b.innerHTML = '<span class="n">' + (i + 1) + '</span><span class="t"></span>' +
-          '<span class="x" aria-hidden="true">×</span>';
+        b.innerHTML = '<span class="n">' + (i + 1) + '</span>' +
+          '<span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>' +
+          '<span class="t"></span><span class="x" aria-hidden="true">×</span>';
         b.querySelector('.t').textContent = t.zh || t.label || '';
         b.addEventListener('click', function () { playIndex(i, true); renderFsQueue(); });
         /* 键盘：Delete/Backspace 从队列移除本条（替代嵌套按钮） */
@@ -1084,6 +1099,8 @@
         bar.appendChild(b);
       });
     }
+
+    bar.classList.toggle('is-playing', !!AP.Store.state.playing);
 
     /* 只有当前曲目不在可视区时才滚动，避免每次切歌都把整条拉回中间 */
     var act = bar.children[idx];
@@ -1108,6 +1125,8 @@
   /* 全屏中切歌或队列变化 → 重绘底部待播栏 */
   AP.Store.on(function (st) {
     if (!fsOn) return;
+    var qb = $('fsQueue');
+    if (qb) qb.classList.toggle('is-playing', !!st.playing);   /* 播放/暂停立刻反映到均衡器 */
     if (st.index !== renderFsQueue._last || st.playing === undefined) {
       renderFsQueue._last = st.index;
       renderFsQueue();
@@ -1356,6 +1375,16 @@
     else if (k === 'f' || k === 'F') {
       var art = player.shadowRoot && player.shadowRoot.querySelector('#art');
       player.toggleFullscreen(art);
+    }
+    else if ((k === 'n' || k === 'N') && fsOn) {
+      ev.preventDefault();
+      var pn = player._tracks.length;
+      if (pn) playIndex((player.currentIndex + 1) % pn, true);
+    }
+    else if ((k === 'p' || k === 'P') && fsOn) {
+      ev.preventDefault();
+      var pn2 = player._tracks.length;
+      if (pn2) playIndex((player.currentIndex - 1 + pn2) % pn2, true);
     }
     else if (k === 'Escape' && (fsOn || rootEl.hasAttribute('data-fs'))) {
       /* 兜底全屏（无原生 Fullscreen API）时浏览器不会自动退出，这里补上 */
