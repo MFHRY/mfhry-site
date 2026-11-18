@@ -553,7 +553,7 @@
   }
   var toast = $('toast'), live = $('live'), root = $('root');
 
-  var LSQ = 'ap:queue', LSI = 'ap:idx', LSV = 'ap:vol', LSH = 'ap:lastTrack';
+  var LSQ = 'ap:queue', LSI = 'ap:idx', LSV = 'ap:vol', LSH = 'ap:lastTrack', LSSET = 'ap:setids';
 
   /* ---------------------------------------------------------------- toast */
   var toastTimer = 0;
@@ -1225,14 +1225,8 @@
             var i = addTrack(t);
             playIndex(i, true);
             showToast('正在播放《' + (h.zh || h.label) + '》');
-          } else {                                        /* 无直链：走镜像搜索 */
-            var q = search.shadowRoot && search.shadowRoot.querySelector('#q');
-            if (q) {
-              q.value = h.q || h.label;
-              q.dispatchEvent(new Event('input', { bubbles: true }));
-            }
-            setMod('comments');
-            showToast('正在镜像里搜《' + (h.zh || h.label) + '》');
+          } else {                                        /* 无直链：自动挑镜像里最合适的一份直接播 */
+            autoResolve(h);
           }
         };
         chip.addEventListener('click', onPick);
@@ -1246,6 +1240,49 @@
     if (!groups.length) {
       wrap.innerHTML = '<div class="pg-gtitle">曲单还没有内容</div>';
     }
+  }
+
+  /* 自动取音频：先试上次命中的谱面包（本机缓存命中就秒开），否则搜镜像按相关度取前几名逐个试。
+     目的是点歌即播，不再把关键词塞进 osu 搜索框等人手点。 */
+  var autoMap = loadJSON(LSSET, {});
+  /* 站内预解析表：每首曲子已挑好的谱面包 id，点歌直接命中，不用再搜 */
+  fetch('/music/setids.json', { cache: 'no-cache' }).then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (m) {
+      if (!m) return;
+      Object.keys(m).forEach(function (k) {
+        if (!autoMap[k] && m[k] && m[k].id) autoMap[k] = m[k].id;
+      });
+    }).catch(function () { });
+  function autoResolve(h) {
+    var t = trackFromChip(h);
+    var idx = addTrack(t);
+    player.currentIndex = idx;
+    persist();
+    showToast('正在取《' + (h.zh || h.label) + '》…');
+    (async function () {
+      var cands = [];
+      if (autoMap[h.label]) cands.push({ setId: autoMap[h.label], title: h.q || h.label, artist: h.artist || '' });
+      try {
+        var list = await APEngine.search(h.q || h.label, { limit: 10 });
+        list.slice(0, 4).forEach(function (x) { cands.push({ setId: x.SetID, title: x.Title, artist: x.Artist }); });
+      } catch (e) { }
+      for (var k = 0; k < cands.length; k++) {
+        try {
+          var got = await APEngine.loadTrack(Object.assign({}, t, cands[k]), showToast);
+          autoMap[h.label] = got.item.setId;
+          saveJSON(LSSET, autoMap);
+          queue[idx] = Object.assign({}, queue[idx], got.item, { src: got.url, setId: got.item.setId });
+          if (got.bgUrl) queue[idx].cover = got.bgUrl;
+          player.tracks = queue;
+          persist();
+          playIndex(idx, true);
+          showToast(got.fromCache ? '已从本机缓存播放' : '已缓存到本机');
+          return;
+        } catch (e) { }
+      }
+      showToast('镜像里没取到，换个关键词试试');
+      setMod('search');
+    })();
   }
 
   /* 内嵌官方播放器：在本站页面里播，不跳转 */
