@@ -2269,8 +2269,15 @@
   }
 
   document.getElementById('btnStart').addEventListener('click', async function () {
+    const btn = this;
+    if (btn.disabled) return;
+    btn.disabled = true;
+    const old = btn.textContent;
+    btn.textContent = '读取存档…';
     audioInit();
     const d = await loadWallet();
+    btn.disabled = false;
+    btn.textContent = old;
     if (d && d.missions && d.missions.length) {
       game.money = d.cash;
       game.chapter = d.chapter;
