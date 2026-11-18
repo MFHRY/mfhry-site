@@ -303,6 +303,13 @@
         frag.appendChild(el);
       });
       this._q('inner').appendChild(frag);
+      /* 切歌时歌词整体淡入，避免整块文字瞬间替换的硬跳（只动 opacity，不碰 transform，
+         否则会和滚动用的 transform 过渡打架） */
+      var innerEl = this._q('inner');
+      var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (!reduce && innerEl.animate) {
+        innerEl.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 360, easing: 'cubic-bezier(.22,1,.36,1)' });
+      }
       this._measure();
       this._sync(AP.Store.state.time, true);
     }

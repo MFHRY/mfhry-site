@@ -204,6 +204,14 @@
     }
     :host([fs]) .ap-title, :host([fs]) .ap-artist{ text-align:center; }
     :host([fs]) .ap-status{ text-align:center; }
+    /* 滑动达到切歌阈值时，封面边缘亮起（提示"松手就切"） */
+    .ap-art.sw-hit{
+      box-shadow:0 0 0 1px rgba(122,180,255,.62), 0 0 26px rgba(10,132,255,.42), var(--ap-art-inset);
+    }
+    :host([fs]) .ap-art.sw-hit{
+      box-shadow:0 0 0 1px rgba(122,180,255,.62), 0 0 30px rgba(10,132,255,.45),
+                 0 20px 50px rgba(0,0,0,.52), 0 0 0 1px rgba(255,255,255,.10) inset;
+    }
     :host([fs]) .ap-art{
       width:78px; height:78px; border-radius:19px;
       box-shadow:0 20px 50px rgba(0,0,0,.52), 0 0 0 1px rgba(255,255,255,.10) inset;
@@ -545,6 +553,7 @@
         var dx = ev.clientX - sw.x, dy = ev.clientY - sw.y;
         if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 12) {  /* 竖滑交给页面滚动 */
           sw.dragging = false;
+          artEl.classList.remove('sw-hit');
           artEl.style.transition = '';
           artEl.style.transform = '';
           return;
@@ -554,8 +563,10 @@
         try { artEl.setPointerCapture(ev.pointerId); } catch (e) { }
         var damped = Math.max(-44, Math.min(44, dx * 0.42));
         artEl.style.transform = 'translateX(' + damped.toFixed(1) + 'px) scale(.985)';
+        artEl.classList.toggle('sw-hit', Math.abs(dx) >= SWITCH_AT);
       };
       var settle = function (toNext) {
+        artEl.classList.remove('sw-hit');
         artEl.style.transition = 'transform .32s cubic-bezier(.22,1,.36,1)';
         artEl.style.transform = '';
         if (toNext) {
