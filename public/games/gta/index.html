@@ -1,0 +1,2362 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="description" content="罪恶都市：GTA 风格俯视开放世界小游戏。超大还原城市地图、八章剧情、抢车枪战，还能进城里的证券交易所和地下钱庄，和炒股 / 外汇小游戏互通。">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<title>罪恶都市 · GTA 风格开放世界（超大地图 + 剧情）</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{width:100%;height:100%;overflow:hidden;background:#0b0d11;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
+    color:#fff;user-select:none}
+  #game{position:fixed;inset:0;display:block;touch-action:none}
+
+  .hud{position:fixed;inset:0;pointer-events:none;z-index:10;font-variant-numeric:tabular-nums}
+  .tl{position:absolute;left:12px;top:10px;display:flex;flex-direction:column;gap:6px}
+  .money{font-size:25px;font-weight:900;color:#42d77d;text-shadow:0 2px 10px rgba(0,0,0,.85);letter-spacing:-.5px}
+  .stars{display:flex;gap:3px;height:18px}
+  .star{width:18px;height:18px;opacity:.2}
+  .star.on{opacity:1;filter:drop-shadow(0 0 6px rgba(255,190,40,.9))}
+  .obj{max-width:330px;background:rgba(12,16,22,.78);border-left:3px solid #ffd84d;border-radius:0 8px 8px 0;
+    padding:7px 11px;backdrop-filter:blur(8px)}
+  .obj .t{font-size:12.5px;font-weight:800;color:#ffd84d}
+  .obj .s{font-size:11px;color:#9aa4b8;margin-top:2px;line-height:1.4}
+  .obj .pb{height:3px;background:rgba(255,255,255,.14);border-radius:2px;margin-top:5px;overflow:hidden}
+  .obj .pb i{display:block;height:100%;background:#ffd84d;width:0;transition:width .2s}
+
+  .tr{position:absolute;right:12px;top:10px;display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;justify-content:flex-end;max-width:70vw}
+  .btn3d{pointer-events:auto;background:rgba(18,22,30,.82);border:1px solid rgba(255,255,255,.16);color:#dfe4ee;
+    border-radius:10px;padding:6px 11px;font-size:12px;font-weight:800;backdrop-filter:blur(8px);cursor:pointer;transition:.15s;
+    text-decoration:none;display:inline-block;white-space:nowrap}
+  .btn3d:hover{background:rgba(40,48,64,.92);border-color:rgba(255,255,255,.3)}
+
+  .bl{position:absolute;left:12px;bottom:12px;width:186px;display:flex;flex-direction:column;gap:5px}
+  .where{font-size:11px;font-weight:900;color:#0b0e12;background:rgba(255,216,77,.9);border-radius:6px;
+    padding:2px 8px;align-self:flex-start;letter-spacing:1px}
+  .bar{height:14px;background:rgba(10,12,16,.8);border:1px solid rgba(255,255,255,.18);border-radius:7px;overflow:hidden;position:relative}
+  .bar>i{display:block;height:100%;transition:width .2s;border-radius:5px}
+  .bar>span{position:absolute;inset:0;display:grid;place-items:center;font-size:10px;font-weight:800;text-shadow:0 1px 3px #000}
+  .hp>i{background:linear-gradient(90deg,#e8324f,#ff6b6b)}
+  .carh>i{background:linear-gradient(90deg,#3a86ff,#7fd1ff)}
+  .weapon{font-size:12px;font-weight:800;color:#ffd84d;text-shadow:0 1px 4px #000}
+
+  .br{position:absolute;right:12px;bottom:12px;width:146px;height:146px;border-radius:12px;overflow:hidden;
+    border:1px solid rgba(255,255,255,.22);background:rgba(8,10,14,.85)}
+  #mini{width:100%;height:100%;display:block}
+  @media(max-width:760px){ .br{width:96px;height:96px} .bl{width:140px} .obj{max-width:190px} }
+
+  .hint{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);font-size:12.5px;font-weight:700;
+    color:#cfd6e4;background:rgba(10,13,18,.8);border:1px solid rgba(255,255,255,.14);border-radius:999px;
+    padding:7px 16px;white-space:nowrap;backdrop-filter:blur(8px);max-width:calc(100vw - 380px);overflow:hidden;text-overflow:ellipsis}
+  @media(max-width:760px){ .hint{display:none} }
+
+  .chap{position:fixed;left:0;right:0;top:32%;z-index:14;text-align:center;pointer-events:none;opacity:0;transition:opacity .5s}
+  .chap.on{opacity:1}
+  .chap b{display:block;font-size:30px;font-weight:900;letter-spacing:4px;color:#fff;text-shadow:0 4px 30px rgba(255,46,136,.8)}
+  .chap i{display:block;font-style:normal;font-size:12px;letter-spacing:6px;color:#ff2e88;margin-top:8px;font-weight:800}
+
+  .dlg{position:fixed;left:50%;bottom:56px;transform:translateX(-50%) translateY(20px);z-index:16;width:min(680px,calc(100vw - 32px));
+    background:linear-gradient(180deg,rgba(16,20,28,.96),rgba(10,13,18,.98));border:1px solid rgba(255,255,255,.16);
+    border-radius:14px;padding:16px 18px 14px;opacity:0;pointer-events:none;transition:.25s;box-shadow:0 20px 60px rgba(0,0,0,.7)}
+  .dlg.on{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0)}
+  .dlg .who{font-size:12px;font-weight:900;color:#ff2e88;letter-spacing:1px;margin-bottom:7px}
+  .dlg .txt{font-size:14.5px;line-height:1.75;color:#e6ebf4;min-height:52px}
+  .dlg .nx{margin-top:10px;text-align:right;font-size:11.5px;color:#7c8698;font-weight:700}
+  .dlg .nx b{color:#42d77d}
+
+  .touch{position:fixed;inset:0;z-index:12;pointer-events:none;display:none}
+  .touch.on{display:block}
+  .stick{position:absolute;left:20px;bottom:24px;width:116px;height:116px;border-radius:50%;
+    background:rgba(22,26,34,.42);border:2px solid rgba(255,255,255,.22);pointer-events:auto}
+  .stick>i{position:absolute;left:50%;top:50%;width:50px;height:50px;margin:-25px 0 0 -25px;border-radius:50%;
+    background:rgba(255,255,255,.5)}
+  .tbtns{position:absolute;right:18px;bottom:28px;display:flex;gap:10px;align-items:flex-end;pointer-events:auto}
+  .tb{width:62px;height:62px;border-radius:50%;border:2px solid rgba(255,255,255,.28);background:rgba(22,26,34,.55);
+    color:#fff;font-size:12px;font-weight:900;backdrop-filter:blur(6px);display:grid;place-items:center}
+  .tb.fire{background:rgba(255,46,136,.45);border-color:rgba(255,120,170,.7);width:70px;height:70px}
+  .tb:active{transform:scale(.94)}
+
+  .veil{position:fixed;inset:0;z-index:20;display:none;place-items:center;background:rgba(6,8,12,.86);backdrop-filter:blur(6px);padding:16px}
+  .veil.on{display:grid}
+  .panel{width:100%;max-width:440px;background:linear-gradient(160deg,#171b23,#101319);border:1px solid rgba(255,255,255,.14);
+    border-radius:16px;padding:20px;text-align:center;box-shadow:0 30px 80px rgba(0,0,0,.7);max-height:90vh;overflow:auto}
+  .panel h1{font-size:21px;font-weight:900;letter-spacing:-.5px;
+    background:linear-gradient(90deg,#ff2e88,#ffb02e);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .panel h1 em{display:block;font-style:normal;font-size:11px;font-weight:800;letter-spacing:3px;color:#7c8698;margin-top:6px;
+    -webkit-text-fill-color:#7c8698}
+  .panel p{font-size:12.5px;color:#9aa4b8;line-height:1.85;margin:12px 0;text-align:left}
+  .panel p b{color:#dfe4ee}
+  .keys{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:12px 0;font-size:11.5px;color:#a8b2c4}
+  .keys div{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:7px;padding:6px 8px;
+    display:flex;justify-content:space-between}
+  .keys k{color:#fff;font-weight:800;font-family:inherit}
+  .legend{font-size:10.5px;color:#8b94a6;display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:center;margin:2px 0 6px}
+  .legend .dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-left:6px}
+  .legend .dot.me{background:#ff2e88}
+  .legend .dot.ped{background:#c8ccd6}
+  .legend .dot.cop{background:#5b8bff}
+  .legend .dot.dr{background:#ffd84d;border-radius:2px}
+  .go{width:100%;padding:12px;border:0;border-radius:11px;font-size:15px;font-weight:900;color:#12060c;cursor:pointer;
+    background:linear-gradient(90deg,#ff2e88,#ffb02e);transition:.15s;margin-top:8px}
+  .go:hover{filter:brightness(1.08)}
+  .go.ghost{background:#2a303c;color:#dfe4ee}
+  .stats{display:flex;justify-content:center;gap:22px;margin:14px 0}
+  .stats div{font-size:11px;color:#7c8698}
+  .stats b{display:block;font-size:18px;font-weight:900;color:#42d77d;margin-top:3px}
+  .rank{max-height:180px;overflow:auto;margin:12px 0;text-align:left}
+  .rank .r{display:grid;grid-template-columns:24px 1fr auto;gap:8px;padding:6px 8px;font-size:12px;align-items:center;
+    border-bottom:1px solid rgba(255,255,255,.06)}
+  .rank .r b{color:#ffd84d}
+  .rank .r small{color:#7c8698;font-size:10px}
+
+  .trade-panel{width:100%;max-width:520px;text-align:left;padding:0}
+  .trade-panel .th{display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.1)}
+  .trade-panel .th h2{font-size:15px;font-weight:900}
+  .trade-panel .th .sub{font-size:11px;color:#7c8698;margin-left:auto;text-align:right;line-height:1.5}
+  .trade-panel .th .x{background:transparent;border:0;color:#7c8698;font-size:19px;cursor:pointer;line-height:1;padding:0 2px}
+  .tp-body{padding:13px 16px 16px}
+  .sum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px}
+  .sum div{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07);border-radius:9px;padding:8px 10px}
+  .sum span{font-size:10px;color:#7c8698;display:block}
+  .sum b{font-size:14px;font-weight:900;display:block;margin-top:3px}
+  .lab{font-size:11px;color:#7c8698;font-weight:700;margin:12px 0 6px;letter-spacing:.5px}
+  .slist{max-height:178px;overflow:auto;border:1px solid rgba(255,255,255,.08);border-radius:9px}
+  .srow{display:grid;grid-template-columns:1fr auto auto;gap:8px;padding:7px 10px;font-size:12px;cursor:pointer;
+    border-bottom:1px solid rgba(255,255,255,.05);align-items:center}
+  .srow:hover{background:rgba(255,255,255,.05)}
+  .srow.on{background:rgba(255,216,77,.1);box-shadow:inset 2px 0 0 #ffd84d}
+  .srow .nm{font-weight:700}
+  .srow .cd{font-size:10px;color:#6b7484}
+  .srow .px{font-weight:800;text-align:right;font-variant-numeric:tabular-nums}
+  .srow .pc{font-size:10.5px;text-align:right;font-variant-numeric:tabular-nums}
+  .up{color:#f6465d}.down{color:#0ecb81}.flat{color:#8b94a6}
+  .row2{display:flex;gap:8px;align-items:center;margin-top:8px}
+  input.f{flex:1;min-width:0;background:#0e1218;border:1px solid #2b3139;border-radius:8px;padding:9px 11px;
+    color:#fff;font-size:14px;font-weight:800;outline:none;font-family:inherit;text-align:center}
+  input.f:focus{border-color:#43505f}
+  .btn{border:1px solid rgba(255,255,255,.14);background:#1d232c;color:#dfe4ee;border-radius:8px;padding:9px 12px;
+    font-size:12.5px;font-weight:800;cursor:pointer;transition:.14s;white-space:nowrap}
+  .btn:hover{background:#252d38}
+  .btn.green{background:rgba(66,215,125,.16);border-color:rgba(66,215,125,.5);color:#42d77d}
+  .btn.red{background:rgba(246,70,93,.14);border-color:rgba(246,70,93,.5);color:#ff7b8f}
+  .btn.gold{background:rgba(255,216,77,.14);border-color:rgba(255,216,77,.45);color:#ffd84d}
+  .pos{display:flex;justify-content:space-between;font-size:12px;padding:6px 2px;border-bottom:1px solid rgba(255,255,255,.06)}
+  .tip{font-size:10.5px;color:#6b7484;line-height:1.6;margin-top:10px}
+  .tip a{color:#7f9cff;text-decoration:none}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div class="hud">
+  <div class="tl">
+    <div class="money" id="money">¥0</div>
+    <div class="stars" id="stars"></div>
+    <div class="obj" id="objBox">
+      <div class="t" id="objTitle">熟悉一下街区</div>
+      <div class="s" id="objSub">抢辆车兜风去</div>
+      <div class="pb" id="objPbWrap" hidden><i id="objPb"></i></div>
+    </div>
+  </div>
+  <div class="tr">
+    <a class="btn3d" href="/games/">← 返回</a>
+    <button class="btn3d" id="btnBank">🏦 财经</button>
+    <button class="btn3d" id="btnRank">排行榜</button>
+    <button class="btn3d" id="btnSound">🔊</button>
+  </div>
+  <div class="bl">
+    <div class="where" id="where">住宅区</div>
+    <div class="bar hp"><i id="hpBar" style="width:100%"></i><span id="hpTxt">100</span></div>
+    <div class="bar carh" id="carBarWrap" style="display:none"><i id="carBar" style="width:100%"></i><span id="carTxt">车况</span></div>
+    <div class="weapon" id="weaponTxt">🔫 手枪 · 子弹 12</div>
+  </div>
+  <div class="br"><canvas id="mini" width="292" height="292"></canvas></div>
+  <div class="hint" id="hint">WASD 移动 · E 上车 / 进店 · 左键开火 · Shift 手刹</div>
+</div>
+
+<div class="touch" id="touch">
+  <div class="stick" id="stick"><i></i></div>
+  <div class="tbtns">
+    <button class="tb" id="tEnter">E</button>
+    <button class="tb fire" id="tFire">开火</button>
+  </div>
+</div>
+
+<div class="chap" id="chapCard"><b id="chapName">第 1 章</b><i id="chapSub">出狱</i></div>
+
+<div class="dlg" id="dlg">
+  <div class="who" id="dlgWho">老麦</div>
+  <div class="txt" id="dlgTxt"></div>
+  <div class="nx">按 <b>空格</b> 或点这里继续 ▸</div>
+</div>
+
+<div class="veil on" id="veil">
+  <div class="panel" id="panelStart">
+    <h1>罪恶都市<em>LOS SANTOS · 超大地图</em></h1>
+    <p>30×30 街区的大都会：<b>海滩、山丘、市中心、机场、港口、贫民区</b>。八章剧情从出狱一路做到抢银行，城里的<b>证券交易所</b>和<b>地下钱庄</b>直接连着网站上的炒股 / 外汇小游戏（同一个账户、同一份真实现价）。</p>
+    <div class="keys">
+      <div><span>移动</span><k>WASD</k></div>
+      <div><span>上车 / 进门 / 进店</span><k>E</k></div>
+      <div><span>开火</span><k>左键 / J</k></div>
+      <div><span>手刹漂移</span><k>Shift</k></div>
+    </div>
+    <div class="legend"><span class="dot me"></span>你<span class="dot ped"></span>行人<span class="dot cop"></span>警察<span class="dot dr"></span>黄色门牌 / 门口黄条 = 可以进</div>
+    <button class="go" id="btnStart">进入罪恶都市</button>
+    <button class="go ghost" id="btnReset" style="margin-top:6px;font-size:12px;padding:9px">清空存档重新开始</button>
+  </div>
+
+  <div class="panel" id="panelDead" style="display:none">
+    <h1>Wasted<em>你被抬走了</em></h1>
+    <div class="stats">
+      <div>这局身家<b id="deadMoney">¥0</b></div>
+      <div>干掉<b id="deadKills">0</b></div>
+      <div>撑了<b id="deadTime">0s</b></div>
+    </div>
+    <p style="text-align:center;font-size:12px;color:#8b94a6">医院把你救了回来，钱和剧情进度都还在。</p>
+    <button class="go" id="btnRetry">继续混</button>
+  </div>
+
+  <div class="panel" id="panelRank" style="display:none">
+    <h1 style="font-size:18px">🏆 富豪榜</h1>
+    <div class="rank" id="rankList"><div style="padding:16px;text-align:center;color:#7c8698;font-size:12px">加载中…</div></div>
+    <button class="go ghost" id="btnRankClose">关闭</button>
+  </div>
+</div>
+
+<div class="veil" id="exVeil">
+  <div class="panel trade-panel">
+    <div class="th">
+      <h2>🏦 洛圣都证券交易所</h2>
+      <div class="sub" id="exSub">真实现价 · 和炒股小游戏同一个账户</div>
+      <button class="x" data-close="exVeil">✕</button>
+    </div>
+    <div class="tp-body">
+      <div class="sum">
+        <div><span>账户现金</span><b id="exCash">—</b></div>
+        <div><span>持仓市值</span><b id="exMv">—</b></div>
+        <div><span>净盈利</span><b id="exPnl">—</b></div>
+      </div>
+      <div class="lab">城市现金 ⇄ 股票账户</div>
+      <div class="row2">
+        <input class="f" id="exAmt" inputmode="numeric" placeholder="金额，如 50000" value="50000">
+        <button class="btn green" id="exToStock">转入</button>
+        <button class="btn" id="exFromStock">转出</button>
+      </div>
+      <div class="lab">选股（真实现价，A股 / 美股）</div>
+      <div class="slist" id="exList"><div style="padding:14px;text-align:center;color:#6b7484;font-size:12px">加载行情…</div></div>
+      <div class="row2">
+        <input class="f" id="exQty" inputmode="numeric" value="100" placeholder="股数">
+        <button class="btn red" id="exBuy">买入</button>
+        <button class="btn green" id="exSell">卖出</button>
+      </div>
+      <div class="lab">我的持仓</div>
+      <div id="exPos" style="max-height:120px;overflow:auto"><div style="font-size:11.5px;color:#6b7484;padding:6px 2px">空仓</div></div>
+      <div class="tip">这里的买卖跟你网站上的「炒股模拟器」是<b>同一个服务器账户</b>：城市里赚的钱能转进来炒股，炒股赚的钱也能取出来在这座城市里花。A股按 100 股一手。 <a href="/games/stock-sim/" target="_blank">去完整版炒股 →</a></div>
+    </div>
+  </div>
+</div>
+
+<div class="veil" id="fxVeil">
+  <div class="panel trade-panel" style="max-width:460px">
+    <div class="th">
+      <h2>💱 地下钱庄</h2>
+      <div class="sub" id="fxSub">真实 USD/CNH 汇率</div>
+      <button class="x" data-close="fxVeil">✕</button>
+    </div>
+    <div class="tp-body">
+      <div class="sum">
+        <div><span>现价 USD/CNH</span><b id="fxRate">—</b></div>
+        <div><span>持有美元</span><b id="fxUsd">$0</b></div>
+        <div><span>浮动盈亏</span><b id="fxPnl">—</b></div>
+      </div>
+      <div class="lab">人民币换美元</div>
+      <div class="row2">
+        <input class="f" id="fxAmt" inputmode="numeric" placeholder="人民币金额" value="30000">
+        <button class="btn gold" id="fxToUsd">换入</button>
+      </div>
+      <div class="lab">美元换人民币</div>
+      <div class="row2">
+        <input class="f" id="fxUsdAmt" inputmode="numeric" placeholder="美元金额">
+        <button class="btn green" id="fxToCny">换出</button>
+        <button class="btn" id="fxAll">全部</button>
+      </div>
+      <div class="tip">钱庄的汇率就是外汇小游戏用的那份真实行情，低买高卖能赚差价。 <a href="/games/fx-sim/" target="_blank">去玩完整版 FX →</a></div>
+    </div>
+  </div>
+</div>
+
+<script src="/games/score.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  const cv = document.getElementById('game');
+  const ctx = cv.getContext('2d');
+  const mini = document.getElementById('mini');
+  const mctx = mini.getContext('2d');
+
+  const CELL = 420;
+  const ROAD = 100;
+  const GRID = 30;
+  const WORLD = CELL * GRID;
+
+  let W = 0, H = 0, DPR = 1;
+  function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth; H = window.innerHeight;
+    cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+    cv.style.width = W + 'px'; cv.style.height = H + 'px';
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+  const dist = (ax, ay, bx, by) => Math.hypot(ax - bx, ay - by);
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const pick = (a) => a[(Math.random() * a.length) | 0];
+  const angleLerp = (a, b, t) => {
+    let d = ((b - a + Math.PI) % (Math.PI * 2)) - Math.PI;
+    if (d < -Math.PI) d += Math.PI * 2;
+    return a + d * t;
+  };
+  const money = (n) => '¥' + Math.round(n).toLocaleString('en-US');
+
+  // ===== 分区（照着洛圣都格局手写：西海滩 北山丘 中市区 东机场 南港口） =====
+  const DIST = {
+    beach:      { name: '海滩',   ground: '#c9b183', wall: ['#e3d4b4', '#d8c8a4'], roof: ['#b9a480'], prop: 'palm' },
+    hills:      { name: '山丘',   ground: '#243a2b', wall: ['#41503f', '#37452f'], roof: ['#26331f'], prop: 'tree' },
+    downtown:   { name: '市中心', ground: '#1f222a', wall: ['#3d4a66', '#4a4a70', '#334060', '#464a5e'], roof: ['#28304a'], tall: true },
+    commercial: { name: '商业区', ground: '#23262e', wall: ['#5a4a52', '#47584f', '#5c5347', '#4a4a5a'], roof: ['#3a3038'] },
+    residential:{ name: '住宅区', ground: '#262a32', wall: ['#6b5a4d', '#5d6a5d', '#6a4d5d', '#5c5a6b'], roof: ['#4a3a30'], prop: 'tree' },
+    hood:       { name: '贫民区', ground: '#25282e', wall: ['#4d4438', '#3f4a42', '#4a3f3f'], roof: ['#332e28'] },
+    airport:    { name: '机场',   ground: '#2e323a', wall: ['#4a5058', '#575d66'], roof: ['#3a4048'] },
+    port:       { name: '港口',   ground: '#2b2f36', wall: ['#3f4a55', '#4a5560'], roof: ['#2f3842'] },
+    industry:   { name: '工业区', ground: '#282b31', wall: ['#4a4a42', '#55554a'], roof: ['#33332d'] },
+    park:       { name: '公园',   ground: '#26402e', wall: [], roof: [] },
+  };
+
+  function districtAt(bx, by) {
+    if (bx <= 2) return 'beach';
+    if (by <= 4) return 'hills';
+    if (by >= 26 && bx >= 3 && bx <= 21) return 'port';
+    if (bx >= 24 && by >= 12 && by <= 22) return 'airport';
+    if (bx <= 5 && by >= 16) return 'industry';
+    if (bx >= 10 && bx <= 18 && by >= 6 && by <= 15) return 'downtown';
+    if (bx >= 19 && by >= 3 && by <= 12) return 'commercial';
+    if (bx >= 13 && bx <= 21 && by >= 17 && by <= 24) return 'hood';
+    if ((bx === 8 && by === 17) || (bx === 22 && by === 24) || (bx === 3 && by === 9)) return 'park';
+    return 'residential';
+  }
+
+  const LANDMARKS = [
+    { id: 'exchange', name: '证券交易所', icon: '🏦', bx: 14, by: 10, color: '#ffd84d' },
+    { id: 'bankfx', name: '地下钱庄', icon: '💱', bx: 17, by: 20, color: '#42d77d' },
+    { id: 'hospital', name: '医院', icon: '🏥', bx: 6, by: 8, color: '#ff6b8a' },
+  ];
+  for (const L of LANDMARKS) {
+    L.x = L.bx * CELL + CELL / 2;
+    L.y = L.by * CELL + CELL / 2;
+    L.doorX = L.bx * CELL + CELL / 2;
+    L.doorY = (L.by + 1) * CELL - ROAD / 2 - 16;
+  }
+
+  const buildings = [];
+  const props = [];
+  const gridB = new Map();
+  const groundMap = [];
+
+  function addBuilding(x, y, w, h, dk, rng, tall) {
+    const d = DIST[dk] || DIST.residential;
+    const wall = d.wall.length ? d.wall : ['#5a5a5a'];
+    const roof = d.roof.length ? d.roof : ['#3a3a3a'];
+    const b = {
+      x, y, w, h,
+      c: wall[(rng() * wall.length) | 0],
+      roof: roof[(rng() * roof.length) | 0],
+      h3d: tall ? 16 + rng() * 26 : 5 + rng() * 9,
+      dk,
+    };
+    buildings.push(b);
+    const bx0 = Math.floor(x / CELL), bx1 = Math.floor((x + w) / CELL);
+    const by0 = Math.floor(y / CELL), by1 = Math.floor((y + h) / CELL);
+    for (let i = bx0; i <= bx1; i++) for (let j = by0; j <= by1; j++) {
+      const k = i + ',' + j;
+      if (!gridB.has(k)) gridB.set(k, []);
+      gridB.get(k).push(b);
+    }
+    return b;
+  }
+
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = (a + 0x6d2b79f5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function genCity() {
+    const rng = mulberry32(20261118);
+    for (let i = 0; i < GRID; i++) {
+      for (let j = 0; j < GRID; j++) {
+        const dk = districtAt(i, j);
+        groundMap[i * GRID + j] = dk;
+        const d = DIST[dk];
+
+        if (dk === 'park') {
+          for (let t = 0; t < 14; t++) props.push({ kind: 'tree', x: i * CELL + rnd(ROAD, CELL - ROAD), y: j * CELL + rnd(ROAD, CELL - ROAD), r: rnd(9, 17) });
+          continue;
+        }
+        if (dk === 'airport') {
+          if (i % 3 === 0) props.push({ kind: 'runway', x: i * CELL + ROAD / 2 + 10, y: j * CELL + ROAD / 2 + 10, w: CELL - ROAD - 20, h: CELL - ROAD - 20 });
+          continue;
+        }
+        if (dk === 'port') {
+          const n = 2 + ((rng() * 3) | 0);
+          for (let c = 0; c < n; c++) {
+            props.push({
+              kind: 'container',
+              x: i * CELL + ROAD / 2 + 16 + (c % 2) * 92,
+              y: j * CELL + ROAD / 2 + 16 + ((c / 2) | 0) * 70,
+              w: 80, h: 56,
+              c: pick(['#b5482f', '#2f6bb5', '#3f8f52', '#b58e2f', '#7a4fa8']),
+            });
+          }
+          continue;
+        }
+        if (dk === 'beach') {
+          for (let t = 0; t < 3; t++) props.push({ kind: 'palm', x: i * CELL + rnd(ROAD, CELL - ROAD), y: j * CELL + rnd(ROAD, CELL - ROAD), r: rnd(7, 12) });
+          continue;
+        }
+
+        const x0 = i * CELL + ROAD / 2 + 12;
+        const y0 = j * CELL + ROAD / 2 + 12;
+        const x1 = (i + 1) * CELL - ROAD / 2 - 12;
+        const y1 = (j + 1) * CELL - ROAD / 2 - 12;
+        const bw = x1 - x0, bh = y1 - y0;
+
+        const mode = rng();
+        if (mode < 0.40) {
+          addBuilding(x0, y0, bw, bh, dk, rng, d.tall);
+        } else if (mode < 0.72) {
+          const cut = 0.35 + rng() * 0.3;
+          if (rng() < 0.5) {
+            addBuilding(x0, y0, bw, bh * cut - 8, dk, rng, d.tall);
+            addBuilding(x0, y0 + bh * cut, bw, bh * (1 - cut), dk, rng, d.tall);
+          } else {
+            addBuilding(x0, y0, bw * cut - 8, bh, dk, rng, d.tall);
+            addBuilding(x0 + bw * cut, y0, bw * (1 - cut), bh, dk, rng, d.tall);
+          }
+        } else {
+          const gx = 0.4 + rng() * 0.2, gy = 0.4 + rng() * 0.2;
+          addBuilding(x0, y0, bw * gx - 10, bh * gy - 10, dk, rng, d.tall);
+          addBuilding(x0 + bw * gx, y0, bw * (1 - gx), bh * gy - 10, dk, rng, d.tall);
+          addBuilding(x0, y0 + bh * gy, bw * 0.45, bh * (1 - gy), dk, rng, d.tall);
+        }
+        if (dk === 'residential' && rng() < 0.5) {
+          props.push({ kind: 'tree', x: x0 + rnd(4, bw - 4), y: y0 + rnd(4, bh - 4), r: rnd(7, 12) });
+        }
+      }
+    }
+
+    for (const L of LANDMARKS) {
+      const cx = L.bx * CELL + CELL / 2, cy = L.by * CELL + CELL / 2;
+      const w = CELL - ROAD - 40, h = CELL - ROAD - 40;
+      buildings.push({
+        x: cx - w / 2, y: cy - h / 2, w, h,
+        c: L.id === 'exchange' ? '#3c4a6b' : L.id === 'bankfx' ? '#2f4a3c' : '#5a3040',
+        roof: L.id === 'exchange' ? '#26304a' : L.id === 'bankfx' ? '#22382c' : '#3d2030',
+        h3d: 26, dk: 'downtown', landmark: L.id,
+      });
+    }
+
+    // 一部分建筑挂上"可以进"的门牌（南侧墙上开门，门口有人行道）
+    const rng2 = mulberry32(990331);
+    const KIND = {
+      residential: [['home', '公寓'], ['shop', '便利店'], ['home', '公寓']],
+      commercial: [['shop', '便利店'], ['office', '写字楼'], ['bar', '酒吧']],
+      downtown: [['office', '写字楼'], ['shop', '便利店'], ['garage', '修车行']],
+      hood: [['bar', '酒吧'], ['pawn', '当铺'], ['home', '公寓']],
+      industry: [['warehouse', '仓库']],
+      port: [['warehouse', '仓库']],
+      beach: [['bar', '酒吧'], ['shop', '便利店']],
+      hills: [['home', '山间别墅']],
+      airport: [['office', '机场办公']],
+      park: [],
+    };
+    for (const b of buildings) {
+      if (b.landmark) continue;
+      if (b.w < 104 || b.h < 78) continue;
+      const pool = KIND[b.dk] || KIND.residential;
+      if (!pool.length || rng2() > 0.5) continue;
+      const k = pool[(rng2() * pool.length) | 0];
+      b.int = k[0];
+      b.intName = k[1];
+      b.door = { x: b.x + b.w / 2, y: b.y + b.h + 7 };
+    }
+  }
+  genCity();
+
+  function nearbyBuildings(x, y) {
+    const out = [];
+    const bx = Math.floor(x / CELL), by = Math.floor(y / CELL);
+    for (let i = bx - 1; i <= bx + 1; i++) for (let j = by - 1; j <= by + 1; j++) {
+      const a = gridB.get(i + ',' + j);
+      if (a) for (const b of a) if (out.indexOf(b) < 0) out.push(b);
+    }
+    return out;
+  }
+
+  function resolveCircle(x, y, r) {
+    let px = 0, py = 0, hit = false;
+    for (const b of nearbyBuildings(x, y)) {
+      const nx = clamp(x, b.x, b.x + b.w);
+      const ny = clamp(y, b.y, b.y + b.h);
+      const dx = x - nx, dy = y - ny;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < r * r) {
+        hit = true;
+        const d = Math.sqrt(d2) || 0.001;
+        const push = r - d;
+        if (d2 > 0.0001) { px += (dx / d) * push; py += (dy / d) * push; }
+        else {
+          const l = x - b.x, rr = b.x + b.w - x, t = y - b.y, bb = b.y + b.h - y;
+          const m = Math.min(l, rr, t, bb);
+          if (m === l) px -= l + r; else if (m === rr) px += rr + r;
+          else if (m === t) py -= t + r; else py += bb + r;
+        }
+      }
+    }
+    return hit ? { x: px, y: py } : null;
+  }
+
+  function roadPoint() {
+    const i = 1 + ((Math.random() * (GRID - 2)) | 0);
+    if (Math.random() < 0.5) return { x: i * CELL, y: rnd(ROAD, WORLD - ROAD) };
+    return { x: rnd(ROAD, WORLD - ROAD), y: i * CELL };
+  }
+
+  // ===== 室内场景 =====
+  const ROOMLOOK = {
+    shop:      { floor: '#3b4048', wall: '#1e2229' },
+    bar:       { floor: '#3b302a', wall: '#211a17' },
+    home:      { floor: '#3a362f', wall: '#231f1b' },
+    office:    { floor: '#32373f', wall: '#1b1f26' },
+    warehouse: { floor: '#35393d', wall: '#1c2023' },
+    garage:    { floor: '#30343a', wall: '#1a1e22' },
+    pawn:      { floor: '#3a3327', wall: '#231d15' },
+  };
+  const OBJICON = { ammo: '🔫', ammo2: '🔧', heal: '💊', drink: '🍺', sleep: '🛏', tv: '📺', computer: '🖥', safe: '🔐', crate: '📦', pawn: '💰', chat: '🧑' };
+
+  function buildRoom(b) {
+    const look = ROOMLOOK[b.int] || ROOMLOOK.shop;
+    const objs = [];
+    const add = function (x, y, kind, label) { objs.push({ x: x, y: y, kind: kind, label: label, used: false }); };
+    if (b.int === 'shop') {
+      add(-185, -108, 'ammo', '货架 · 子弹 10 发 ¥100');
+      add(-15, -118, 'heal', '药柜 · 医疗包 ¥300');
+      add(170, -70, 'chat', '柜台 · 老板');
+    } else if (b.int === 'bar') {
+      add(-150, -96, 'drink', '吧台 · 来一杯 ¥50');
+      add(155, -80, 'chat', '角落 · 酒客');
+    } else if (b.int === 'home') {
+      add(-150, -104, 'sleep', '床 · 睡一觉');
+      add(125, -96, 'tv', '电视');
+    } else if (b.int === 'office') {
+      add(-175, -104, 'computer', '电脑 · 看盘 / 炒股');
+      add(115, -104, 'safe', '保险柜 · 撬开');
+      add(20, 118, 'chat', '前台');
+    } else if (b.int === 'warehouse') {
+      add(-170, -104, 'crate', '木箱 · 搜刮');
+      add(-15, -110, 'crate', '木箱 · 搜刮');
+      add(175, 92, 'crate', '木箱 · 搜刮');
+    } else if (b.int === 'garage') {
+      add(-150, -100, 'ammo2', '工具台 · 补子弹 ¥80');
+      add(120, -88, 'chat', '修车师傅');
+    } else if (b.int === 'pawn') {
+      add(-150, -104, 'pawn', '柜台 · 当点东西');
+      add(130, -92, 'chat', '老板');
+    } else {
+      add(0, -100, 'chat', '老板');
+    }
+    return { w: 660, h: 470, floor: look.floor, wall: look.wall, name: b.intName || '室内', objs: objs, b: b };
+  }
+
+  function enterBuilding(b) {
+    game.inside = b;
+    game.saved = { x: player.x, y: player.y, ang: player.ang };
+    if (!b.room) b.room = buildRoom(b);
+    game.room = b.room;
+    player.inCar = null;
+    player.x = 0; player.y = game.room.h / 2 - 70; player.ang = -Math.PI / 2;
+    game.shake = 0;
+    game.nearObj = null;
+    beep(520, 0.08, 'triangle', 0.04);
+    toast('进入 ' + game.room.name + ' · 走向门口或按 E 出去');
+    updateHud();
+  }
+
+  function leaveBuilding() {
+    const b = game.inside;
+    if (!b) return;
+    game.inside = null; game.room = null; game.nearObj = null;
+    player.x = b.door.x;
+    player.y = b.door.y + 26;
+    player.ang = Math.PI / 2;
+    beep(380, 0.08, 'triangle', 0.04);
+    updateHud();
+  }
+
+  function useObject(o) {
+    const b = game.inside;
+    const pay = function (cost) {
+      if (game.money < cost) { toast('钱不够，要 ¥' + cost); return false; }
+      addMoney(-cost);
+      return true;
+    };
+    if (o.kind === 'ammo') {
+      if (!pay(100)) return;
+      player.ammo += 10; player.weapon = 'gun'; updateWeaponHud();
+      toast('补给子弹 +10，共 ' + player.ammo);
+    } else if (o.kind === 'ammo2') {
+      if (!pay(80)) return;
+      player.ammo += 12; player.weapon = 'gun'; updateWeaponHud();
+      toast('工具台翻了翻，子弹 +12');
+    } else if (o.kind === 'heal') {
+      if (!pay(300)) return;
+      player.hp = clamp(player.hp + 50, 0, 100); updateBars();
+      toast('医疗包用掉，血量 ' + Math.ceil(player.hp));
+    } else if (o.kind === 'drink') {
+      if (!pay(50)) return;
+      player.hp = clamp(player.hp + 20, 0, 100); updateBars();
+      toast('喝了一杯，血 +20');
+    } else if (o.kind === 'sleep') {
+      player.hp = 100; updateBars();
+      toast('睡了一觉，血回满');
+    } else if (o.kind === 'tv') {
+      toast(pick(['电视里在播你的通缉令。', '新闻：股市又涨了。', '电视剧台词："这座城市会吃掉你。"', '广告：地下钱庄，汇率公道。']));
+    } else if (o.kind === 'computer') {
+      openExchange();
+    } else if (o.kind === 'safe') {
+      if (o.used) { toast('保险柜已经空了'); return; }
+      o.used = true;
+      const got = 1200 + ((Math.random() * 1400) | 0);
+      addMoney(got); addWanted(1);
+      toast('撬开保险柜 +' + money(got) + '，通缉 +1');
+    } else if (o.kind === 'crate') {
+      if (o.used) { toast('箱子已经翻空了'); return; }
+      o.used = true;
+      const got = 300 + ((Math.random() * 1200) | 0);
+      addMoney(got);
+      toast('搜出 ' + money(got));
+    } else if (o.kind === 'pawn') {
+      if (o.used) { toast('今天没东西可当了'); return; }
+      o.used = true;
+      const got = 400 + ((Math.random() * 600) | 0);
+      addMoney(got);
+      toast('当了块表 +' + money(got));
+    } else {
+      toast(pick([
+        '老板："最近警察多，小心点。"',
+        '老板："交易所就在市中心，去看看吧。"',
+        '老板："听说有人在港口赚了大钱。"',
+        '老板："钱庄的汇率，比银行划算。"',
+      ]));
+    }
+  }
+
+  function updateInterior(dt) {
+    const R = game.room;
+    let ix = 0, iy = 0;
+    if (keys['w'] || keys['arrowup'] || (joy.active && joy.dy < -0.3)) iy -= 1;
+    if (keys['s'] || keys['arrowdown'] || (joy.active && joy.dy > 0.3)) iy += 1;
+    if (keys['a'] || keys['arrowleft'] || (joy.active && joy.dx < -0.3)) ix -= 1;
+    if (keys['d'] || keys['arrowright'] || (joy.active && joy.dx > 0.3)) ix += 1;
+    if (joy.active) { ix += joy.dx * 0.8; iy += joy.dy * 0.8; }
+    const m = Math.hypot(ix, iy);
+    if (m > 0.1) {
+      ix /= m; iy /= m;
+      player.x += ix * 2.6;
+      player.y += iy * 2.6;
+      player.ang = Math.atan2(iy, ix);
+      player.walk += dt * 9;
+    }
+    player.x = clamp(player.x, -R.w / 2 + 28, R.w / 2 - 28);
+    player.y = clamp(player.y, -R.h / 2 + 28, R.h / 2 - 20);
+
+    if (player.y > R.h / 2 - 40 && Math.abs(player.x) < 66) { leaveBuilding(); return; }
+
+    game.nearObj = null;
+    let bd = 60;
+    for (const o of R.objs) {
+      const d = dist(player.x, player.y, o.x, o.y);
+      if (d < bd) { bd = d; game.nearObj = o; }
+    }
+    const hintEl = document.getElementById('hint');
+    hintEl.textContent = game.nearObj
+      ? '按 E　' + game.nearObj.label
+      : 'WASD 走动 · 走到门口（下方）或按 E 出去';
+    renderStars();
+    updateBars();
+    drawMini();
+  }
+
+  function drawInterior() {
+    const R = game.room;
+    ctx.fillStyle = '#08090c';
+    ctx.fillRect(0, 0, W, H);
+    ctx.save();
+    ctx.translate(W / 2, H / 2);
+
+    ctx.fillStyle = R.floor;
+    ctx.fillRect(-R.w / 2, -R.h / 2, R.w, R.h);
+
+    ctx.strokeStyle = 'rgba(255,255,255,.04)';
+    ctx.lineWidth = 1;
+    for (let x = -R.w / 2 + 40; x < R.w / 2; x += 40) { ctx.beginPath(); ctx.moveTo(x, -R.h / 2); ctx.lineTo(x, R.h / 2); ctx.stroke(); }
+    for (let y = -R.h / 2 + 40; y < R.h / 2; y += 40) { ctx.beginPath(); ctx.moveTo(-R.w / 2, y); ctx.lineTo(R.w / 2, y); ctx.stroke(); }
+
+    // 出口
+    ctx.fillStyle = 'rgba(255,216,77,.12)';
+    ctx.fillRect(-66, R.h / 2 - 30, 132, 30);
+    ctx.strokeStyle = '#ffd84d';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(-66, R.h / 2 - 30, 132, 30);
+    ctx.fillStyle = '#ffd84d';
+    ctx.font = 'bold 11px -apple-system,system-ui,sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('出口', 0, R.h / 2 - 15);
+
+    // 墙
+    ctx.strokeStyle = R.wall;
+    ctx.lineWidth = 20;
+    ctx.strokeRect(-R.w / 2, -R.h / 2, R.w, R.h);
+    ctx.strokeStyle = R.floor;
+    ctx.lineWidth = 24;
+    ctx.beginPath(); ctx.moveTo(-66, R.h / 2); ctx.lineTo(66, R.h / 2); ctx.stroke();
+
+    // 陈设
+    for (const o of R.objs) {
+      const near = o === game.nearObj;
+      if (near) {
+        ctx.save();
+        ctx.globalAlpha = 0.28 + Math.sin(game.time * 5) * 0.12;
+        ctx.fillStyle = '#ffd84d';
+        ctx.beginPath(); ctx.arc(o.x, o.y, 38, 0, 6.2832); ctx.fill();
+        ctx.restore();
+      }
+      ctx.fillStyle = '#171b21';
+      roundRect(o.x - 30, o.y - 22, 60, 44, 8); ctx.fill();
+      ctx.strokeStyle = near ? '#ffd84d' : 'rgba(255,255,255,.14)';
+      ctx.lineWidth = near ? 2 : 1;
+      roundRect(o.x - 30, o.y - 22, 60, 44, 8); ctx.stroke();
+      ctx.globalAlpha = o.used ? 0.4 : 1;
+      ctx.font = '20px sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(OBJICON[o.kind] || '❓', o.x, o.y - 1);
+      ctx.globalAlpha = 1;
+      ctx.font = 'bold 10.5px -apple-system,system-ui,sans-serif';
+      ctx.fillStyle = o.used ? '#6b7484' : '#c8d0dc';
+      ctx.fillText(o.label, o.x, o.y + 32);
+    }
+
+    // 玩家
+    ctx.save();
+    ctx.translate(player.x, player.y);
+    ctx.fillStyle = 'rgba(0,0,0,.45)';
+    ctx.beginPath(); ctx.ellipse(2, 3, 11, 8, 0, 0, 6.2832); ctx.fill();
+    ctx.rotate(player.ang + Math.PI / 2);
+    ctx.fillStyle = '#ff2e88';
+    ctx.beginPath(); ctx.arc(0, 0, 9, 0, 6.2832); ctx.fill();
+    ctx.fillStyle = '#ffd1e4';
+    ctx.beginPath(); ctx.arc(0, -3, 4.4, 0, 6.2832); ctx.fill();
+    ctx.fillStyle = '#ff2e88';
+    ctx.beginPath(); ctx.moveTo(0, -13); ctx.lineTo(-4, -7); ctx.lineTo(4, -7); ctx.closePath(); ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = 'rgba(8,10,14,.75)';
+    roundRect(player.x - 12, player.y - 34, 24, 13, 3); ctx.fill();
+    ctx.fillStyle = '#ff8fb8';
+    ctx.font = 'bold 9px -apple-system,system-ui,sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('你', player.x, player.y - 27.5);
+
+    ctx.restore();
+
+    // 顶部标题
+    ctx.fillStyle = 'rgba(10,13,18,.82)';
+    ctx.fillRect(W / 2 - 150, 12, 300, 26);
+    ctx.fillStyle = '#ffd84d';
+    ctx.font = 'bold 12px -apple-system,system-ui,sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('室内 · ' + R.name, W / 2, 26);
+  }
+
+
+  // ===== 状态 =====
+  const game = {
+    running: false, over: false, paused: false, time: 0, money: 0, kills: 0,
+    wanted: 0, wantedTimer: 0, spawnTimer: 0, hitFlash: 0, shake: 0,
+    chapter: 1, missions: [], surviveT: 0, nearLandmark: null, nearDoor: null,
+    dlgQueue: [], dlgOn: false, dlgDone: null,
+    inside: null, room: null, saved: null,
+  };
+
+  const player = {
+    x: CELL * 5, y: CELL * 6, ang: -Math.PI / 2, hp: 100, r: 11,
+    inCar: null, ammo: 12, weapon: 'gun', cool: 0, walk: 0,
+  };
+
+  let cars = [], peds = [], bullets = [], parts = [], pickups = [], cops = [];
+  const cam = { x: player.x, y: player.y };
+  const flags = { bought: false, sold: false, transferred: 0, fxBought: 0 };
+
+  // ===== 剧情 =====
+  const STORY = [
+    {
+      id: 'ch1', title: '出狱', lines: [
+        ['老麦', '你终于出来了。五年，够长了。'],
+        ['你', '这破地方还是老样子。'],
+        ['老麦', '别急着感慨。街口有辆车，抢了它，开去市中心等我。'],
+        ['你', '就这么简单？'],
+        ['老麦', '简单的事才最容易搞砸。'],
+      ],
+      goal: { type: 'steal', text: '抢一辆车' },
+      done: [['老麦', '不错，至少你还没把方向盘忘了。']],
+      reward: 300,
+    },
+    {
+      id: 'ch2', title: '送货', lines: [
+        ['老麦', '仓库里有个箱子，送到市中心的证券交易所门口。'],
+        ['你', '交易所？我这种人进去不会被赶出来？'],
+        ['老麦', '你现在是"投资者"，记住这个词。'],
+      ],
+      goal: { type: 'goto', x: LANDMARKS[0].doorX, y: LANDMARKS[0].doorY, text: '把箱子送到证券交易所门口' },
+      done: [['老麦', '箱子里的东西，够你在股市里玩一阵了。']],
+      reward: 2500,
+    },
+    {
+      id: 'ch3', title: '洗钱', lines: [
+        ['老麦', '现金太脏。进门，转 5 万进你的股票账户。'],
+        ['你', '这钱洗得也太明目张胆。'],
+        ['老麦', '谁说是洗？这叫投资。'],
+      ],
+      goal: { type: 'to-stock', amount: 50000, text: '在交易所把 5 万城市现金转入股票账户' },
+      done: [['老麦', '账户干净了。现在，买点什么。']],
+      reward: 0,
+    },
+    {
+      id: 'ch4', title: '选股', lines: [
+        ['老麦', '挑一只，随便哪只。真金白银买进去，你才会真的盯着盘。'],
+        ['你', '要是亏了呢？'],
+        ['老麦', '那你就知道什么叫心疼了。'],
+      ],
+      goal: { type: 'stock-buy', text: '在交易所买入任意一只股票' },
+      done: [['老麦', '持有。等它涨，然后卖掉。']],
+      reward: 0,
+    },
+    {
+      id: 'ch5', title: '出货', lines: [
+        ['老麦', '赚了还是亏了？不重要，重要的是你学会了看那个数字。'],
+        ['你', '下一票是什么？'],
+        ['老麦', '汇市。地下钱庄，把人民币换成美元。'],
+      ],
+      goal: { type: 'stock-sell', text: '卖出你持有的股票' },
+      done: [['老麦', '钱从股市出来了，接下来让它出国转一圈。']],
+      reward: 0,
+    },
+    {
+      id: 'ch6', title: '美元', lines: [
+        ['老麦', '钱庄在贫民区，门口有个绿色招牌。换 5000 块人民币的美元。'],
+        ['你', '汇率还能赚差价？'],
+        ['老麦', '低买高卖，跟股票一个道理，只是快一点。'],
+      ],
+      goal: { type: 'fx-buy', amount: 5000, text: '在地下钱庄兑换 5000 元人民币的美元' },
+      done: [['老麦', '行，你现在有点金融流氓的样子了。']],
+      reward: 1000,
+    },
+    {
+      id: 'ch7', title: '抢银行', lines: [
+        ['老麦', '最后一票。市中心的联邦银行，金库在二楼。'],
+        ['你', '这次会有多少警察？'],
+        ['老麦', '全部。撑住 45 秒，接应的车就到。'],
+        ['你', '……你最好别放我鸽子。'],
+      ],
+      goal: { type: 'survive', sec: 45, text: '抢银行后被全城通缉，撑住 45 秒' },
+      trigger: function () { addWanted(4); toast('🚨 全城警力通缉！撑住 45 秒'); },
+      done: [['老麦', '上车！走！'], ['你', '这票干完我就退休。']],
+      reward: 80000,
+    },
+    {
+      id: 'ch8', title: '上岸', lines: [
+        ['老麦', '你现在有钱了。150 万，你就算上岸了。'],
+        ['你', '然后呢？'],
+        ['老麦', '然后你就可以像我一样，坐在海边看别人拼命。'],
+      ],
+      goal: { type: 'networth', target: 1500000, text: '总资产达到 150 万（现金 + 美元 + 股票）' },
+      done: [['老麦', '恭喜，你上岸了。这座城市归你了。']],
+      reward: 0,
+      final: true,
+    },
+  ];
+
+  function currentChapter() { return STORY[Math.min(game.chapter - 1, STORY.length - 1)]; }
+
+  function setObjective() {
+    const ch = currentChapter();
+    const g = ch.goal;
+    document.getElementById('objTitle').textContent = '第 ' + game.chapter + ' 章 · ' + ch.title;
+    let sub = g.text;
+    if (g.type === 'goto' && !game.inside) sub += '　' + Math.round(dist(player.x, player.y, g.x, g.y) / 10) + ' 米';
+    else if (g.type === 'survive') sub += '　' + Math.max(0, g.sec - Math.round(game.surviveT)) + ' 秒';
+    else if (g.type === 'networth') sub += '　当前 ' + money(state.netWorth);
+    document.getElementById('objSub').textContent = sub;
+    const wrap = document.getElementById('objPbWrap');
+    if (g.type === 'survive') {
+      wrap.hidden = false;
+      document.getElementById('objPb').style.width = clamp((game.surviveT / g.sec) * 100, 0, 100) + '%';
+    } else wrap.hidden = true;
+  }
+
+  function playDialogue(lines, onEnd) {
+    game.dlgQueue = lines.slice();
+    game.dlgOn = true;
+    game.paused = true;
+    game.dlgDone = onEnd || null;
+    showLine();
+  }
+  function showLine() {
+    const l = game.dlgQueue.shift();
+    const el = document.getElementById('dlg');
+    if (!l) {
+      el.classList.remove('on');
+      game.dlgOn = false;
+      game.paused = false;
+      const f = game.dlgDone;
+      game.dlgDone = null;
+      if (f) f();
+      return;
+    }
+    document.getElementById('dlgWho').textContent = l[0];
+    document.getElementById('dlgTxt').textContent = l[1];
+    el.classList.add('on');
+  }
+  function nextLine() { if (game.dlgOn) showLine(); }
+  document.getElementById('dlg').addEventListener('click', nextLine);
+  window.addEventListener('keydown', function (e) {
+    if (game.dlgOn && (e.key === ' ' || e.key === 'Enter')) { e.preventDefault(); nextLine(); }
+  });
+
+  let chapTimer = 0;
+  function chapterCard(title, sub) {
+    document.getElementById('chapName').textContent = title;
+    document.getElementById('chapSub').textContent = sub;
+    const el = document.getElementById('chapCard');
+    el.classList.add('on');
+    clearTimeout(chapTimer);
+    chapTimer = setTimeout(() => el.classList.remove('on'), 2600);
+  }
+
+  function startChapter(n) {
+    game.chapter = clamp(n, 1, STORY.length);
+    game.surviveT = 0;
+    const ch = currentChapter();
+    chapterCard('第 ' + game.chapter + ' 章', ch.title);
+    setObjective();
+    saveStory();
+    setTimeout(() => playDialogue(ch.lines), 700);
+    if (ch.trigger) setTimeout(ch.trigger, 1400);
+  }
+
+  function completeGoal() {
+    const ch = currentChapter();
+    if (game.missions.indexOf(ch.id) >= 0) return;
+    if (ch.done) playDialogue(ch.done, () => finishChapter(ch));
+    else finishChapter(ch);
+  }
+
+  function finishChapter(ch) {
+    if (game.missions.indexOf(ch.id) < 0) game.missions.push(ch.id);
+    if (ch.reward) { addMoney(ch.reward); toast('任务奖励 +' + money(ch.reward)); }
+    saveStory();
+    if (ch.final) {
+      toast('🎬 全剧终 · 你已经上岸了');
+      setObjectiveDone();
+      submitScore(game.money);
+      return;
+    }
+    startChapter(game.chapter + 1);
+  }
+
+  function setObjectiveDone() {
+    document.getElementById('objTitle').textContent = '剧情已通关';
+    document.getElementById('objSub').textContent = '城市归你了，随便玩';
+    document.getElementById('objPbWrap').hidden = true;
+  }
+
+  function checkGoal(dt) {
+    const ch = currentChapter();
+    const g = ch.goal;
+    if (!g || game.missions.indexOf(ch.id) >= 0) return;
+    if (g.type === 'steal') { if (player.inCar) completeGoal(); }
+    else if (g.type === 'goto') { if (dist(player.x, player.y, g.x, g.y) < 66) completeGoal(); }
+    else if (g.type === 'stock-buy') { if (flags.bought) completeGoal(); }
+    else if (g.type === 'stock-sell') { if (flags.sold) completeGoal(); }
+    else if (g.type === 'to-stock') { if (flags.transferred >= g.amount) completeGoal(); }
+    else if (g.type === 'fx-buy') { if (flags.fxBought >= g.amount) completeGoal(); }
+    else if (g.type === 'survive') {
+      if (game.wanted >= 3) { game.surviveT += dt; if (game.surviveT >= g.sec) completeGoal(); }
+    } else if (g.type === 'networth') { if (state.netWorth >= g.target) completeGoal(); }
+  }
+
+  function storyEvent(kind, amount) {
+    if (kind === 'bought') flags.bought = true;
+    if (kind === 'sold') flags.sold = true;
+    if (kind === 'to-stock') flags.transferred += amount || 0;
+    if (kind === 'fx-buy') flags.fxBought += amount || 0;
+  }
+
+  // ===== 服务端联动 =====
+  const state = { netWorth: 0, fxUsd: 0, fxCost: 0, rate: 7.1, loaded: false };
+
+  async function api(url, opt) {
+    const res = await fetch(url, opt);
+    let d = null;
+    try { d = await res.json(); } catch (e) {}
+    if (!res.ok || (d && d.error)) throw new Error((d && (d.error + (d.detail ? ' · ' + d.detail : ''))) || ('HTTP ' + res.status));
+    return d;
+  }
+
+  async function loadWallet() {
+    try {
+      const d = await api('/api/gta');
+      state.fxUsd = d.fxUsd || 0;
+      state.fxCost = d.fxCost || 0;
+      state.rate = d.rate || 7.1;
+      state.netWorth = (d.cash || 0) + state.fxUsd * state.rate;
+      return d;
+    } catch (e) { return null; }
+  }
+
+  let bankTimer = 0;
+  function bankSync(force) {
+    if (!game.running) return Promise.resolve();
+    if (!force && Date.now() - bankTimer < 6000) return Promise.resolve();
+    bankTimer = Date.now();
+    return fetch('/api/gta', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ action: 'bank', cash: Math.round(game.money) }),
+    }).catch(() => {});
+  }
+
+  function saveStory() {
+    fetch('/api/gta', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ action: 'story', chapter: game.chapter, missions: game.missions }),
+    }).catch(() => {});
+  }
+
+  // ===== 交易所 =====
+  let exStocks = [], exQuotes = new Map(), exSel = '', exAccount = null;
+  const fmt = (n) => (Number(n) || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const cls = (n) => (n > 0 ? 'up' : n < 0 ? 'down' : 'flat');
+
+  async function openExchange() {
+    game.paused = true;
+    document.getElementById('exVeil').classList.add('on');
+    document.getElementById('exList').innerHTML = '<div style="padding:14px;text-align:center;color:#6b7484;font-size:12px">加载行情…</div>';
+    try {
+      await bankSync(true);
+      const r = await Promise.all([api('/api/stock-quote'), api('/api/stock')]);
+      const q = r[0], acc = r[1];
+      exStocks = q.stocks || [];
+      exQuotes = new Map();
+      for (const it of q.quotes) exQuotes.set(it.symbol, it);
+      if (q.fx) state.rate = q.fx;
+      exAccount = acc;
+      renderExchange();
+    } catch (e) {
+      document.getElementById('exList').innerHTML = '<div style="padding:14px;text-align:center;color:#ff7b8f;font-size:12px">行情加载失败：' + esc(e.message) + '</div>';
+    }
+  }
+
+  function renderExchange() {
+    const acc = exAccount || { cash: 0, marketValue: 0, profit: 0, positions: [] };
+    document.getElementById('exCash').textContent = money(acc.cash);
+    document.getElementById('exMv').textContent = money(acc.marketValue || 0);
+    const pnl = document.getElementById('exPnl');
+    pnl.textContent = (acc.profit >= 0 ? '+' : '') + money(acc.profit || 0);
+    pnl.className = cls(acc.profit);
+
+    document.getElementById('exList').innerHTML = exStocks.map(function (s) {
+      const q = exQuotes.get(s.symbol);
+      const isA = s.market === 'sh' || s.market === 'sz';
+      const chg = q ? q.changePct : 0;
+      return '<div class="srow' + (s.symbol === exSel ? ' on' : '') + '" data-sym="' + s.symbol + '">' +
+        '<div><div class="nm">' + esc(s.name) + '</div><div class="cd">' + s.symbol + (isA ? ' · A股' : ' · 美股') + '</div></div>' +
+        '<div class="px">' + (q ? (s.market === 'us' ? '$' : '¥') + fmt(q.price) : '—') + '</div>' +
+        '<div class="pc ' + cls(chg) + '">' + (q ? (chg > 0 ? '+' : '') + fmt(chg) + '%' : '') + '</div></div>';
+    }).join('');
+
+    const ps = acc.positions || [];
+    document.getElementById('exPos').innerHTML = ps.length ? ps.map(function (p) {
+      return '<div class="pos"><span>' + esc(p.name) + ' <span style="color:#6b7484">' + p.qty + '股 @' + fmt(p.avgCost) + '</span></span>' +
+        '<span class="' + cls(p.pnl) + '">' + (p.pnl >= 0 ? '+' : '') + fmt(p.pnl) + '</span></div>';
+    }).join('') : '<div style="font-size:11.5px;color:#6b7484;padding:6px 2px">空仓</div>';
+  }
+
+  document.getElementById('exList').addEventListener('click', function (e) {
+    const r = e.target.closest('.srow');
+    if (!r) return;
+    exSel = r.dataset.sym;
+    const s = exStocks.find((x) => x.symbol === exSel);
+    const q = exQuotes.get(exSel);
+    if (s && (s.market === 'sh' || s.market === 'sz')) document.getElementById('exQty').value = '100';
+    else if (q) document.getElementById('exQty').value = String(Math.max(1, Math.floor(10000 / (q.price * state.rate))));
+    renderExchange();
+  });
+
+  async function stockTrade(side) {
+    if (!exSel) { toast('先选一只股票'); return; }
+    let qty = Math.round(Number(document.getElementById('exQty').value) || 0);
+    if (!qty) { toast('数量不对'); return; }
+    const s = exStocks.find((x) => x.symbol === exSel);
+    if (s && (s.market === 'sh' || s.market === 'sz')) qty = Math.floor(qty / 100) * 100;
+    if (!qty) { toast('A股最少 1 手（100 股）'); return; }
+    try {
+      const d = await api('/api/stock', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: side, symbol: exSel, qty: qty }),
+      });
+      exAccount = d;
+      renderExchange();
+      toast(d.message || '成交');
+      storyEvent(side === 'buy' ? 'bought' : 'sold');
+      state.netWorth = game.money + state.fxUsd * state.rate;
+    } catch (e) { toast(e.message); }
+  }
+  document.getElementById('exBuy').addEventListener('click', function () { stockTrade('buy'); });
+  document.getElementById('exSell').addEventListener('click', function () { stockTrade('sell'); });
+
+  document.getElementById('exToStock').addEventListener('click', async function () {
+    const amount = Math.round(Number(document.getElementById('exAmt').value) || 0);
+    if (amount <= 0) { toast('先填金额'); return; }
+    await bankSync(true);
+    try {
+      const d = await api('/api/gta', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'to-stock', amount: amount }) });
+      game.money = d.cash;
+      moneyEl.textContent = money(game.money);
+      state.netWorth = game.money + state.fxUsd * state.rate;
+      storyEvent('to-stock', amount);
+      toast(d.message);
+      exAccount = await api('/api/stock');
+      renderExchange();
+    } catch (e) { toast(e.message); }
+  });
+
+  document.getElementById('exFromStock').addEventListener('click', async function () {
+    const amount = Math.round(Number(document.getElementById('exAmt').value) || 0);
+    if (amount <= 0) { toast('先填金额'); return; }
+    try {
+      const d = await api('/api/gta', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'from-stock', amount: amount }) });
+      game.money = d.cash;
+      moneyEl.textContent = money(game.money);
+      state.netWorth = game.money + state.fxUsd * state.rate;
+      toast(d.message);
+      exAccount = await api('/api/stock');
+      renderExchange();
+    } catch (e) { toast(e.message); }
+  });
+
+  // ===== 钱庄 =====
+  async function openFx() {
+    game.paused = true;
+    document.getElementById('fxVeil').classList.add('on');
+    await bankSync(true);
+    const d = await loadWallet();
+    if (d) { game.money = d.cash; moneyEl.textContent = money(game.money); }
+    renderFx();
+  }
+
+  function renderFx() {
+    document.getElementById('fxRate').textContent = state.rate.toFixed(4);
+    document.getElementById('fxUsd').textContent = '$' + fmt(state.fxUsd);
+    const value = state.fxUsd * state.rate;
+    const pnl = value - state.fxCost;
+    const el = document.getElementById('fxPnl');
+    el.textContent = (pnl >= 0 ? '+' : '') + money(pnl);
+    el.className = pnl > 0 ? 'up' : pnl < 0 ? 'down' : '';
+  }
+
+  document.getElementById('fxToUsd').addEventListener('click', async function () {
+    const cny = Math.round(Number(document.getElementById('fxAmt').value) || 0);
+    if (cny <= 0) { toast('先填金额'); return; }
+    await bankSync(true);
+    try {
+      const d = await api('/api/gta', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'to-fx', amount: cny }) });
+      game.money = d.cash;
+      moneyEl.textContent = money(game.money);
+      state.fxUsd = d.fxUsd; state.fxCost = d.fxCost; state.rate = d.rate;
+      state.netWorth = game.money + state.fxUsd * state.rate;
+      storyEvent('fx-buy', cny);
+      toast(d.message);
+      renderFx();
+    } catch (e) { toast(e.message); }
+  });
+
+  document.getElementById('fxAll').addEventListener('click', function () {
+    document.getElementById('fxUsdAmt').value = state.fxUsd.toFixed(2);
+  });
+
+  document.getElementById('fxToCny').addEventListener('click', async function () {
+    const usd = Number(document.getElementById('fxUsdAmt').value) || 0;
+    if (usd <= 0) { toast('先填美元数量'); return; }
+    try {
+      const d = await api('/api/gta', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'from-fx', usd: usd }) });
+      game.money = d.cash;
+      moneyEl.textContent = money(game.money);
+      state.fxUsd = d.fxUsd; state.fxCost = d.fxCost; state.rate = d.rate;
+      state.netWorth = game.money + state.fxUsd * state.rate;
+      toast(d.message);
+      renderFx();
+    } catch (e) { toast(e.message); }
+  });
+
+  document.querySelectorAll('[data-close]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.getElementById(b.dataset.close).classList.remove('on');
+      if (!document.querySelector('.veil.on') && game.running && !game.over) game.paused = false;
+    });
+  });
+
+  // ===== 车 / 行人 =====
+  const CAR_COLORS = ['#c0392b', '#2980b9', '#27ae60', '#f1c40f', '#8e44ad', '#e67e22', '#ecf0f1', '#16a085', '#34495e', '#d35400'];
+
+  function makeCar(x, y, ang, kind) {
+    return {
+      x, y, ang, v: 0, kind: kind || 'car',
+      color: kind === 'police' ? '#1b2a4a' : pick(CAR_COLORS),
+      w: 34, h: 18, hp: 100,
+      driver: kind === 'police' ? 'cop' : (Math.random() < 0.25 ? null : 'npc'),
+      siren: Math.random() * 10, dead: false,
+    };
+  }
+
+  function spawnTraffic() {
+    cars = [];
+    for (let k = 0; k < 58; k++) {
+      const p = roadPoint();
+      const ang = Math.random() < 0.5 ? (Math.random() < 0.5 ? 0 : Math.PI) : (Math.random() < 0.5 ? Math.PI / 2 : -Math.PI / 2);
+      cars.push(makeCar(p.x, p.y, ang, 'car'));
+    }
+    for (let k = 0; k < 10; k++) {
+      const p = roadPoint();
+      const c = makeCar(p.x + rnd(-26, 26), p.y + rnd(-26, 26), rnd(0, 6.28), 'car');
+      c.driver = null;
+      cars.push(c);
+    }
+  }
+
+  function spawnPeds() {
+    peds = [];
+    for (let k = 0; k < 80; k++) {
+      const p = roadPoint();
+      peds.push({
+        x: p.x + rnd(-ROAD / 2, ROAD / 2), y: p.y + rnd(-ROAD / 2, ROAD / 2),
+        ang: rnd(0, 6.28), hp: 20, r: 7, walk: rnd(0.6, 1.4), flee: 0, dead: false, t: rnd(0, 3),
+      });
+    }
+  }
+
+  // ===== 输入 =====
+  const keys = {};
+  const mouse = { x: 0, y: 0, down: false, moved: false };
+  const touchMode = matchMedia('(pointer: coarse)').matches;
+  const joy = { active: false, dx: 0, dy: 0, id: -1 };
+
+  window.addEventListener('keydown', function (e) {
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].indexOf(e.key) >= 0) {
+      if (e.target === document.body) e.preventDefault();
+    }
+    keys[e.key.toLowerCase()] = true;
+    if (e.key.toLowerCase() === 'e') interact();
+  });
+  window.addEventListener('keyup', function (e) { keys[e.key.toLowerCase()] = false; });
+  cv.addEventListener('mousemove', function (e) { mouse.x = e.clientX; mouse.y = e.clientY; mouse.moved = true; });
+  cv.addEventListener('mousedown', function (e) { if (e.button === 0) { mouse.down = true; audioInit(); } });
+  window.addEventListener('mouseup', function () { mouse.down = false; });
+  cv.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+
+  const stickEl = document.getElementById('stick');
+  const knob = stickEl.querySelector('i');
+  function stickStart(e) {
+    const t = e.changedTouches[0];
+    const r = stickEl.getBoundingClientRect();
+    joy.active = true; joy.id = t.identifier;
+    joy.cx = r.left + r.width / 2; joy.cy = r.top + r.height / 2;
+    stickMove(e);
+  }
+  function stickMove(e) {
+    if (!joy.active) return;
+    for (const t of e.changedTouches) {
+      if (t.identifier !== joy.id) continue;
+      let dx = t.clientX - joy.cx, dy = t.clientY - joy.cy;
+      const m = Math.hypot(dx, dy), max = 44;
+      if (m > max) { dx = dx / m * max; dy = dy / m * max; }
+      joy.dx = dx / max; joy.dy = dy / max;
+      knob.style.transform = 'translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) + 'px)';
+    }
+    e.preventDefault();
+  }
+  function stickEnd(e) {
+    for (const t of e.changedTouches) if (t.identifier === joy.id) {
+      joy.active = false; joy.dx = joy.dy = 0; joy.id = -1;
+      knob.style.transform = 'translate(0,0)';
+    }
+  }
+  if (touchMode) {
+    document.getElementById('touch').classList.add('on');
+    stickEl.addEventListener('touchstart', stickStart, { passive: false });
+    stickEl.addEventListener('touchmove', stickMove, { passive: false });
+    stickEl.addEventListener('touchend', stickEnd);
+    document.getElementById('tEnter').addEventListener('touchstart', function (e) { e.preventDefault(); interact(); });
+    document.getElementById('tFire').addEventListener('touchstart', function (e) { e.preventDefault(); mouse.down = true; audioInit(); });
+    document.getElementById('tFire').addEventListener('touchend', function (e) { e.preventDefault(); mouse.down = false; });
+  }
+
+  // ===== 音效 =====
+  let AC = null, soundOn = true;
+  function audioInit() {
+    if (AC || !soundOn) return;
+    try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { AC = null; }
+  }
+  function beep(f, dur, type, vol) {
+    if (!AC || !soundOn) return;
+    try {
+      const o = AC.createOscillator(), g = AC.createGain();
+      o.type = type || 'square'; o.frequency.value = f;
+      g.gain.value = vol || 0.045;
+      g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + dur);
+      o.connect(g); g.connect(AC.destination);
+      o.start(); o.stop(AC.currentTime + dur);
+    } catch (e) {}
+  }
+  const sfxShot = function () { beep(320, 0.07, 'square', 0.04); };
+  const sfxHit = function () { beep(140, 0.1, 'sawtooth', 0.05); };
+  const sfxCash = function () { beep(880, 0.09, 'triangle', 0.05); };
+  const sfxBoom = function () { beep(70, 0.3, 'sawtooth', 0.08); };
+
+  // ===== 交互 =====
+  function interact() {
+    if (!game.running || game.over || game.dlgOn || game.paused) return;
+    if (game.inside) {
+      if (game.nearObj) useObject(game.nearObj);
+      else leaveBuilding();
+      return;
+    }
+    if (game.nearLandmark) {
+      const L = game.nearLandmark;
+      if (L.id === 'exchange') openExchange();
+      else if (L.id === 'bankfx') openFx();
+      else if (L.id === 'hospital') { player.hp = 100; updateBars(); toast('医院给你包扎了一下'); }
+      return;
+    }
+    if (game.nearDoor && !player.inCar) { enterBuilding(game.nearDoor); return; }
+    toggleCar();
+  }
+
+  function nearestCar(x, y, maxD) {
+    let best = null, bd = maxD || 60;
+    for (const c of cars) {
+      if (c.dead) continue;
+      const d = dist(x, y, c.x, c.y);
+      if (d < bd) { bd = d; best = c; }
+    }
+    return best;
+  }
+
+  function toggleCar() {
+    if (player.inCar) {
+      const c = player.inCar;
+      const off = 28;
+      let nx = c.x + Math.cos(c.ang + Math.PI / 2) * off;
+      let ny = c.y + Math.sin(c.ang + Math.PI / 2) * off;
+      const fix = resolveCircle(nx, ny, player.r);
+      if (fix) { nx += fix.x * 2; ny += fix.y * 2; }
+      player.x = nx; player.y = ny;
+      player.inCar = null; c.driver = null; c.v = 0;
+      sfxHit();
+      return;
+    }
+    const c = nearestCar(player.x, player.y, 66);
+    if (!c) return;
+    if (c.driver === 'npc' || c.driver === 'cop') {
+      c.driver = 'player'; player.inCar = c;
+      addWanted(c.kind === 'police' ? 2 : 1);
+      toast('抢车成功，通缉 +1');
+      sfxHit();
+    } else {
+      c.driver = 'player'; player.inCar = c;
+      sfxCash();
+    }
+  }
+
+  // ===== 通缉 =====
+  function addWanted(n) {
+    game.wanted = clamp(game.wanted + n, 0, 5);
+    game.wantedTimer = 0;
+    game.crimeAt = game.time;
+  }
+
+  function spawnCop() {
+    const a = rnd(0, 6.28), d = rnd(760, 1100);
+    let x = clamp(player.x + Math.cos(a) * d, 60, WORLD - 60);
+    let y = clamp(player.y + Math.sin(a) * d, 60, WORLD - 60);
+    const cx = Math.round(x / CELL) * CELL, cy = Math.round(y / CELL) * CELL;
+    if (Math.abs(x - cx) < Math.abs(y - cy)) x = cx; else y = cy;
+    if (game.wanted >= 3 && Math.random() < 0.35) {
+      cops.push({ x: x, y: y, ang: rnd(0, 6.28), hp: 50, r: 10, cool: rnd(0.5, 1.5) });
+    } else {
+      const c = makeCar(x, y, rnd(0, 6.28), 'police');
+      c.driver = 'cop';
+      cars.push(c);
+    }
+  }
+
+  function updateCops(dt) {
+    if (game.wanted > 0) {
+      const near = cars.some(function (c) { return c.kind === 'police' && !c.dead && dist(c.x, c.y, player.x, player.y) < 760; });
+      if (!near && game.time - (game.crimeAt || 0) > 6) {
+        game.wantedTimer += dt;
+        if (game.wantedTimer > 5) { game.wantedTimer = 0; game.wanted--; }
+      } else game.wantedTimer = 0;
+      game.spawnTimer -= dt;
+      const live = cars.filter(function (c) { return c.kind === 'police' && !c.dead; }).length + cops.length;
+      if (game.spawnTimer <= 0 && live < game.wanted * 2) {
+        spawnCop();
+        game.spawnTimer = 2.4 - game.wanted * 0.22;
+      }
+    }
+    for (const cop of cops) {
+      const d = dist(cop.x, cop.y, player.x, player.y);
+      if (d > 10) {
+        cop.ang = angleLerp(cop.ang, Math.atan2(player.y - cop.y, player.x - cop.x), 0.12);
+        const nx = cop.x + Math.cos(cop.ang) * 2.5, ny = cop.y + Math.sin(cop.ang) * 2.5;
+        if (!resolveCircle(nx, ny, cop.r)) { cop.x = nx; cop.y = ny; }
+      }
+      cop.cool -= dt;
+      if (d < 360 && cop.cool <= 0) { cop.cool = 1.15; shoot(cop.x, cop.y, Math.atan2(player.y - cop.y, player.x - cop.x), 'cop'); }
+    }
+    cops = cops.filter(function (c) { return c.hp > 0; });
+  }
+
+  // ===== 射击 =====
+  function shoot(x, y, ang, owner) {
+    const sp = owner === 'player' ? 17 : 11;
+    bullets.push({ x: x, y: y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, life: 1.1, owner: owner });
+    if (owner === 'player') sfxShot();
+  }
+
+  function playerAim() {
+    if (mouse.moved && !touchMode) {
+      const sx = player.x - cam.x + W / 2, sy = player.y - cam.y + H / 2;
+      return Math.atan2(mouse.y - sy, mouse.x - sx);
+    }
+    let best = null, bd = 480;
+    for (const p of peds) if (!p.dead) { const d = dist(p.x, p.y, player.x, player.y); if (d < bd) { bd = d; best = p; } }
+    for (const c of cops) { const d = dist(c.x, c.y, player.x, player.y); if (d < bd) { bd = d; best = c; } }
+    if (best) return Math.atan2(best.y - player.y, best.x - player.x);
+    return player.ang;
+  }
+
+  function playerShoot() {
+    if (player.cool > 0 || player.inCar) return;
+    const a = playerAim();
+    if (player.weapon === 'gun') {
+      if (player.ammo <= 0) { player.weapon = 'punch'; updateWeaponHud(); toast('没子弹了，用拳头'); return; }
+      shoot(player.x + Math.cos(a) * 14, player.y + Math.sin(a) * 14, a, 'player');
+      player.ammo--; updateWeaponHud();
+      player.cool = 0.16;
+      if (game.wanted === 0) addWanted(1);
+    } else {
+      const hx = player.x + Math.cos(a) * 20, hy = player.y + Math.sin(a) * 20;
+      let victim = null, bd = 34;
+      for (const p of peds) if (!p.dead) { const d = dist(hx, hy, p.x, p.y); if (d < bd) { bd = d; victim = p; } }
+      for (const c of cops) { const d = dist(hx, hy, c.x, c.y); if (d < bd) { bd = d; victim = c; } }
+      if (victim) {
+        victim.hp -= 45; sfxHit();
+        for (let i = 0; i < 5; i++) parts.push({ x: victim.x, y: victim.y, vx: rnd(-3, 3), vy: rnd(-3, 3), life: 0.3, c: '#ff6b6b', r: 2 });
+        if (victim.walk !== undefined) { if (victim.hp <= 0) killPed(victim, true); }
+        else if (victim.hp <= 0) { game.kills++; addMoney(60); player.ammo += 8; player.weapon = 'gun'; updateWeaponHud(); addWanted(2); boom(victim.x, victim.y, false); }
+      }
+      player.cool = 0.32;
+      if (game.wanted === 0) addWanted(1);
+    }
+  }
+
+  function updateWeaponHud() {
+    document.getElementById('weaponTxt').textContent = player.weapon === 'gun' ? '🔫 手枪 · 子弹 ' + player.ammo : '👊 拳头';
+  }
+
+  // ===== 钱 / 死亡 =====
+  function addMoney(n) {
+    game.money += n;
+    moneyEl.textContent = money(game.money);
+    state.netWorth = game.money + state.fxUsd * state.rate;
+    if (n) sfxCash();
+  }
+  function dropCash(x, y, amount) { pickups.push({ x: x, y: y, amount: amount, t: 0, vy: -2 }); }
+  function killPed(p, byPlayer) {
+    if (p.dead) return;
+    p.dead = true; game.kills += byPlayer ? 1 : 0;
+    for (let i = 0; i < 8; i++) parts.push({ x: p.x, y: p.y, vx: rnd(-3, 3), vy: rnd(-3, 3), life: 0.5, c: '#b3261e', r: 3 });
+    dropCash(p.x, p.y, 5 + ((Math.random() * 25) | 0));
+    if (byPlayer) addWanted(1);
+    sfxHit();
+  }
+  function boom(x, y, big) {
+    const n = big ? 24 : 10;
+    for (let i = 0; i < n; i++) parts.push({
+      x: x, y: y, vx: rnd(-6, 6), vy: rnd(-6, 6), life: rnd(0.3, 0.9),
+      c: pick(['#ff9d00', '#ff4d00', '#ffd93d', '#7a7a7a']), r: rnd(2, 6),
+    });
+    sfxBoom(); game.shake = big ? 13 : 7;
+    if (dist(x, y, player.x, player.y) < 95) damagePlayer(big ? 32 : 14);
+  }
+  function damagePlayer(n) {
+    if (player.inCar) {
+      player.inCar.hp -= n;
+      if (player.inCar.hp <= 0) {
+        const c = player.inCar;
+        player.inCar = null; c.dead = true; c.driver = null;
+        boom(c.x, c.y, true); player.hp -= 26;
+      }
+    } else player.hp -= n;
+    game.hitFlash = 0.35; game.shake = Math.max(game.shake, 6);
+    sfxHit();
+    if (player.hp <= 0) die();
+    updateBars();
+  }
+  function die() {
+    if (game.over) return;
+    game.over = true; game.paused = true;
+    document.getElementById('deadMoney').textContent = money(game.money);
+    document.getElementById('deadKills').textContent = game.kills;
+    document.getElementById('deadTime').textContent = Math.floor(game.time) + 's';
+    submitScore(game.money);
+    bankSync(true);
+    setTimeout(function () {
+      document.getElementById('panelStart').style.display = 'none';
+      document.getElementById('panelDead').style.display = 'block';
+      document.getElementById('panelRank').style.display = 'none';
+      document.getElementById('veil').classList.add('on');
+    }, 1600);
+  }
+
+  // ===== 更新 =====
+  function update(dt) {
+    if (!game.running || game.over || game.paused) return;
+    game.time += dt;
+    player.cool = Math.max(0, player.cool - dt);
+    game.shake *= 0.88;
+    game.hitFlash = Math.max(0, game.hitFlash - dt);
+
+    if (game.inside) { updateInterior(dt); return; }
+
+    game.nearLandmark = null;
+    for (const L of LANDMARKS) {
+      if (dist(player.x, player.y, L.doorX, L.doorY) < 74) { game.nearLandmark = L; break; }
+    }
+    game.nearDoor = null;
+    if (!player.inCar && !game.nearLandmark) {
+      for (const b of nearbyBuildings(player.x, player.y)) {
+        if (!b.door) continue;
+        if (dist(player.x, player.y, b.door.x, b.door.y) < 42) { game.nearDoor = b; break; }
+      }
+    }
+
+    if (player.inCar) {
+      const c = player.inCar;
+      let th = 0, st = 0;
+      if (keys['w'] || keys['arrowup'] || (joy.active && joy.dy < -0.3)) th += 1;
+      if (keys['s'] || keys['arrowdown'] || (joy.active && joy.dy > 0.3)) th -= 1;
+      if (keys['a'] || keys['arrowleft'] || (joy.active && joy.dx < -0.3)) st -= 1;
+      if (keys['d'] || keys['arrowright'] || (joy.active && joy.dx > 0.3)) st += 1;
+      driveCar(c, th, st, keys['shift']);
+      player.x = c.x; player.y = c.y; player.ang = c.ang;
+      if (c.hp <= 0 && !c.dead) { c.dead = true; player.inCar = null; boom(c.x, c.y, true); damagePlayer(20); }
+    } else {
+      let ix = 0, iy = 0;
+      if (keys['w'] || keys['arrowup']) iy -= 1;
+      if (keys['s'] || keys['arrowdown']) iy += 1;
+      if (keys['a'] || keys['arrowleft']) ix -= 1;
+      if (keys['d'] || keys['arrowright']) ix += 1;
+      if (joy.active) { ix += joy.dx; iy += joy.dy; }
+      const m = Math.hypot(ix, iy);
+      if (m > 0.1) {
+        ix /= m; iy /= m;
+        const sp = 3.1;
+        const nx = player.x + ix * sp, ny = player.y + iy * sp;
+        const fix = resolveCircle(nx, ny, player.r);
+        if (!fix) { player.x = nx; player.y = ny; }
+        else { player.x += fix.x * 0.5; player.y += fix.y * 0.5; }
+        player.ang = Math.atan2(iy, ix);
+        player.walk += dt * 9;
+      } else player.walk *= 0.9;
+      player.x = clamp(player.x, 20, WORLD - 20);
+      player.y = clamp(player.y, 20, WORLD - 20);
+    }
+
+    if ((mouse.down || keys['j']) && !player.inCar) playerShoot();
+
+    for (const c of cars) {
+      if (c.dead || c.driver === 'player') continue;
+      if (c.kind === 'police' && c.driver === 'cop') aiPoliceCar(c, dt);
+      else if (c.driver === 'npc') aiTrafficCar(c);
+      else c.v *= 0.9;
+      moveCar(c);
+      if (Math.abs(c.v) > 1.6) {
+        for (const p of peds) {
+          if (p.dead) continue;
+          if (Math.abs(p.x - c.x) < 26 && Math.abs(p.y - c.y) < 26) {
+            if (c.kind === 'car' && c.driver === 'player') {
+              p.hp -= 30;
+              if (p.hp <= 0) killPed(p, true);
+              c.v *= 0.8;
+            } else {
+              // NPC 车不会"替你"长通缉，最多把人吓跑
+              p.flee = 2.2;
+            }
+          }
+        }
+        if (!player.inCar && dist(c.x, c.y, player.x, player.y) < 24) { damagePlayer(12); c.v *= 0.6; }
+      }
+    }
+
+    for (const p of peds) {
+      if (p.dead) continue;
+      p.t -= dt;
+      const dP = dist(p.x, p.y, player.x, player.y);
+      if ((player.inCar && Math.abs(player.inCar.v) > 2 && dP < 190) || (mouse.down && dP < 250)) p.flee = 2.5;
+      p.flee = Math.max(0, p.flee - dt);
+      if (p.flee > 0) {
+        p.ang = angleLerp(p.ang, Math.atan2(p.y - player.y, p.x - player.x), 0.2);
+        const nx = p.x + Math.cos(p.ang) * 2.6, ny = p.y + Math.sin(p.ang) * 2.6;
+        if (!resolveCircle(nx, ny, p.r)) { p.x = nx; p.y = ny; }
+      } else {
+        if (p.t <= 0) { p.t = rnd(1.5, 4); p.ang += rnd(-2, 2); }
+        const nx = p.x + Math.cos(p.ang) * p.walk * 0.6, ny = p.y + Math.sin(p.ang) * p.walk * 0.6;
+        if (resolveCircle(nx, ny, p.r)) p.ang += Math.PI;
+        else { p.x = nx; p.y = ny; }
+        p.x = clamp(p.x, 20, WORLD - 20); p.y = clamp(p.y, 20, WORLD - 20);
+      }
+    }
+
+    for (const b of bullets) {
+      b.life -= dt; b.x += b.vx; b.y += b.vy;
+      if (resolveCircle(b.x, b.y, 2)) {
+        b.life = 0;
+        for (let i = 0; i < 3; i++) parts.push({ x: b.x, y: b.y, vx: rnd(-2, 2), vy: rnd(-2, 2), life: 0.25, c: '#ffe58a', r: 1.6 });
+        continue;
+      }
+      if (b.owner === 'player') {
+        let hit = false;
+        for (const p of peds) {
+          if (p.dead) continue;
+          if (dist(b.x, b.y, p.x, p.y) < p.r + 3) { p.hp -= 34; if (p.hp <= 0) killPed(p, true); hit = true; break; }
+        }
+        if (!hit) for (const c of cops) {
+          if (dist(b.x, b.y, c.x, c.y) < c.r + 3) {
+            c.hp -= 34; hit = true;
+            if (c.hp <= 0) { game.kills++; addMoney(60); player.ammo += 8; player.weapon = 'gun'; updateWeaponHud(); addWanted(2); boom(c.x, c.y, false); }
+            break;
+          }
+        }
+        if (!hit) for (const c of cars) {
+          if (c.dead || c.driver === 'player') continue;
+          if (Math.abs(b.x - c.x) < c.w / 2 && Math.abs(b.y - c.y) < c.h / 2) {
+            c.hp -= 26; c.v *= 0.9;
+            if (c.hp <= 0) { c.dead = true; boom(c.x, c.y, true); if (c.kind === 'police') { addWanted(1); addMoney(30); } }
+            hit = true; break;
+          }
+        }
+        if (hit) b.life = 0;
+      } else {
+        if (!player.inCar && dist(b.x, b.y, player.x, player.y) < player.r + 3) { damagePlayer(9); b.life = 0; }
+        else if (player.inCar && Math.abs(b.x - player.inCar.x) < 20 && Math.abs(b.y - player.inCar.y) < 13) { damagePlayer(8); b.life = 0; }
+      }
+    }
+    bullets = bullets.filter(function (b) { return b.life > 0; });
+
+    for (const p of parts) { p.life -= dt; p.x += p.vx; p.y += p.vy; p.vx *= 0.94; p.vy *= 0.94; }
+    parts = parts.filter(function (p) { return p.life > 0; });
+
+    for (const p of pickups) {
+      p.t += dt; p.y += p.vy; p.vy *= 0.9;
+      if (dist(p.x, p.y, player.x, player.y) < 32) { p.t = 99; addMoney(p.amount); }
+    }
+    pickups = pickups.filter(function (p) { return p.t < 1.2; });
+
+    updateCops(dt);
+    checkGoal(dt);
+    setObjective();
+
+    const tx = player.x + (player.inCar ? Math.cos(player.ang) * player.inCar.v * 7 : 0);
+    const ty = player.y + (player.inCar ? Math.sin(player.ang) * player.inCar.v * 7 : 0);
+    cam.x += (tx - cam.x) * Math.min(1, dt * 6);
+    cam.y += (ty - cam.y) * Math.min(1, dt * 6);
+
+    bankSync(false);
+    updateHud();
+  }
+
+  function driveCar(c, th, st, hb) {
+    const accel = 0.32, maxV = 8.8;
+    c.v += th * accel;
+    c.v *= hb ? 0.93 : 0.985;
+    c.v = clamp(c.v, -maxV * 0.45, maxV);
+    c.ang += st * 0.055 * (hb ? 0.62 : 1) * clamp(Math.abs(c.v) / 3.2, 0, 1) * (c.v < 0 ? -1 : 1);
+    c.x += Math.cos(c.ang) * c.v;
+    c.y += Math.sin(c.ang) * c.v;
+    const fix = resolveCircle(c.x, c.y, 16);
+    if (fix) {
+      c.x += fix.x; c.y += fix.y;
+      if (Math.abs(c.v) > 4.5) { c.hp -= Math.abs(c.v) * 1.6; game.shake = Math.max(game.shake, Math.min(10, Math.abs(c.v))); sfxHit(); }
+      c.v *= -0.28;
+    }
+    c.x = clamp(c.x, 24, WORLD - 24); c.y = clamp(c.y, 24, WORLD - 24);
+  }
+
+  function moveCar(c) {
+    c.x += Math.cos(c.ang) * c.v;
+    c.y += Math.sin(c.ang) * c.v;
+    const fix = resolveCircle(c.x, c.y, 16);
+    if (fix) { c.x += fix.x; c.y += fix.y; c.v *= -0.3; if (c.kind === 'police') c.hp -= 2; }
+  }
+
+  function aiTrafficCar(c) {
+    const horizontal = Math.abs(Math.cos(c.ang)) > Math.abs(Math.sin(c.ang));
+    if (horizontal) {
+      const dir = Math.cos(c.ang) > 0 ? 1 : -1;
+      c.v = Math.min(3.4, c.v + 0.12);
+      c.x += dir * c.v;
+      const lane = Math.round(c.y / CELL) * CELL;
+      c.y += (lane + (dir > 0 ? 22 : -22) - c.y) * 0.06;
+      if (Math.abs(((c.x % CELL) + CELL) % CELL - CELL / 2) < 6 && Math.random() < 0.03) c.ang = Math.random() < 0.5 ? Math.PI / 2 : -Math.PI / 2;
+    } else {
+      const dir = Math.sin(c.ang) > 0 ? 1 : -1;
+      c.v = Math.min(3.4, c.v + 0.12);
+      c.y += dir * c.v;
+      const lane = Math.round(c.x / CELL) * CELL;
+      c.x += (lane + (dir > 0 ? 22 : -22) - c.x) * 0.06;
+      if (Math.abs(((c.y % CELL) + CELL) % CELL - CELL / 2) < 6 && Math.random() < 0.03) c.ang = Math.random() < 0.5 ? 0 : Math.PI;
+    }
+    const fix = resolveCircle(c.x, c.y, 15);
+    if (fix) { c.x += fix.x; c.y += fix.y; c.ang += Math.PI; c.v = 0; }
+    if (c.x < 60 || c.x > WORLD - 60) c.ang = Math.PI - c.ang;
+    if (c.y < 60 || c.y > WORLD - 60) c.ang = -c.ang;
+  }
+
+  function aiPoliceCar(c, dt) {
+    if (c.hp <= 0 && !c.dead) { c.dead = true; boom(c.x, c.y, true); return; }
+    const dx = player.x - c.x, dy = player.y - c.y;
+    const d = Math.hypot(dx, dy);
+    c.ang = angleLerp(c.ang, Math.atan2(dy, dx), 0.06);
+    c.v = Math.min(7.6, c.v + 0.16);
+    if (d < 260) c.v = Math.min(c.v, 4.2);
+    c.siren += dt * 8;
+  }
+
+  // ===== 渲染 =====
+  function draw() {
+    if (game.inside) { drawInterior(); return; }
+    const sk = game.shake;
+    const ox = sk ? rnd(-sk, sk) * 0.5 : 0, oy = sk ? rnd(-sk, sk) * 0.5 : 0;
+    ctx.fillStyle = '#0f1116';
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.save();
+    ctx.translate(W / 2 - cam.x + ox, H / 2 - cam.y + oy);
+
+    const L = cam.x - W / 2 - 100, R = cam.x + W / 2 + 100;
+    const T = cam.y - H / 2 - 100, B = cam.y + H / 2 + 100;
+    const bx0 = Math.max(0, Math.floor(L / CELL)), bx1 = Math.min(GRID - 1, Math.floor(R / CELL));
+    const by0 = Math.max(0, Math.floor(T / CELL)), by1 = Math.min(GRID - 1, Math.floor(B / CELL));
+
+    // 沥青路面
+    const rx0 = Math.max(L, 0), ry0 = Math.max(T, 0);
+    const rx1 = Math.min(R, WORLD), ry1 = Math.min(B, WORLD);
+    ctx.fillStyle = '#22252c';
+    ctx.fillRect(rx0, ry0, rx1 - rx0, ry1 - ry0);
+
+    // 街区地面 + 一圈人行道压边
+    for (let i = bx0; i <= bx1; i++) {
+      for (let j = by0; j <= by1; j++) {
+        const dk = groundMap[i * GRID + j] || 'residential';
+        ctx.fillStyle = DIST[dk].ground;
+        ctx.fillRect(i * CELL + ROAD / 2, j * CELL + ROAD / 2, CELL - ROAD, CELL - ROAD);
+        ctx.strokeStyle = 'rgba(0,0,0,.38)';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(i * CELL + ROAD / 2 + 1.5, j * CELL + ROAD / 2 + 1.5, CELL - ROAD - 3, CELL - ROAD - 3);
+      }
+    }
+
+    // 车道线：压得很淡，只留一点方向感，别扎眼
+    ctx.strokeStyle = 'rgba(176,184,196,.075)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([10, 36]);
+    for (let i = bx0; i <= bx1 + 1; i++) {
+      const x = i * CELL;
+      if (x > L && x < R) { ctx.beginPath(); ctx.moveTo(x, Math.max(T, 0)); ctx.lineTo(x, Math.min(B, WORLD)); ctx.stroke(); }
+    }
+    for (let j = by0; j <= by1 + 1; j++) {
+      const y = j * CELL;
+      if (y > T && y < B) { ctx.beginPath(); ctx.moveTo(Math.max(L, 0), y); ctx.lineTo(Math.min(R, WORLD), y); ctx.stroke(); }
+    }
+    ctx.setLineDash([]);
+
+    ctx.strokeStyle = '#3a4150';
+    ctx.lineWidth = 8;
+    ctx.strokeRect(0, 0, WORLD, WORLD);
+
+    for (const b of buildings) {
+      if (b.x > R || b.x + b.w < L || b.y > B || b.y + b.h < T) continue;
+      ctx.fillStyle = 'rgba(0,0,0,.45)';
+      ctx.fillRect(b.x + b.h3d * 0.65, b.y + b.h3d * 0.65, b.w, b.h);
+      ctx.fillStyle = b.c;
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+      ctx.fillStyle = b.roof;
+      ctx.fillRect(b.x, b.y, b.w, Math.min(10, b.h * 0.18));
+      ctx.strokeStyle = 'rgba(0,0,0,.35)';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(b.x + 0.5, b.y + 0.5, b.w - 1, b.h - 1);
+      if (b.w > 70 && b.h > 46) {
+        ctx.fillStyle = 'rgba(255,220,150,.15)';
+        for (let wx = b.x + 12; wx < b.x + b.w - 10; wx += 20) {
+          for (let wy = b.y + 16; wy < b.y + b.h - 10; wy += 22) {
+            if (((wx * 7 + wy * 13) | 0) % 5 === 0) ctx.fillRect(wx, wy, 7, 8);
+          }
+        }
+      }
+      if (b.door) {
+        const near = game.nearDoor === b;
+        const gl = near ? 0.95 : 0.45 + Math.sin(game.time * 3 + b.door.x * 0.05) * 0.18;
+        ctx.fillStyle = 'rgba(255,216,77,' + gl.toFixed(2) + ')';
+        ctx.fillRect(b.door.x - 16, b.y + b.h - 4, 32, 6);
+        if (near) {
+          ctx.fillStyle = '#ffd84d';
+          ctx.font = 'bold 11px -apple-system,system-ui,sans-serif';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText('E · ' + b.intName, b.door.x, b.y + b.h + 20);
+        }
+      }
+    }
+
+    for (const p of props) {
+      if (p.x > R || p.x < L - 120 || p.y > B || p.y < T - 120) continue;
+      if (p.kind === 'tree') {
+        ctx.fillStyle = 'rgba(0,0,0,.35)';
+        ctx.beginPath(); ctx.arc(p.x + 4, p.y + 5, p.r, 0, 6.2832); ctx.fill();
+        ctx.fillStyle = '#2f5c3a';
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.2832); ctx.fill();
+        ctx.fillStyle = '#3d7449';
+        ctx.beginPath(); ctx.arc(p.x - p.r * 0.3, p.y - p.r * 0.3, p.r * 0.55, 0, 6.2832); ctx.fill();
+      } else if (p.kind === 'palm') {
+        ctx.strokeStyle = '#6b5a3a'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(p.x, p.y + p.r); ctx.lineTo(p.x, p.y - p.r * 0.4); ctx.stroke();
+        ctx.fillStyle = '#3f7a4a';
+        for (let a = 0; a < 6; a++) {
+          const ang = (a / 6) * 6.2832;
+          ctx.beginPath();
+          ctx.ellipse(p.x + Math.cos(ang) * p.r * 0.8, p.y - p.r * 0.4 + Math.sin(ang) * p.r * 0.5, p.r * 0.6, p.r * 0.28, ang, 0, 6.2832);
+          ctx.fill();
+        }
+      } else if (p.kind === 'container') {
+        ctx.fillStyle = 'rgba(0,0,0,.4)';
+        ctx.fillRect(p.x + 5, p.y + 5, p.w, p.h);
+        ctx.fillStyle = p.c;
+        ctx.fillRect(p.x, p.y, p.w, p.h);
+        ctx.strokeStyle = 'rgba(0,0,0,.3)'; ctx.lineWidth = 1;
+        for (let k = 1; k < 4; k++) {
+          ctx.beginPath(); ctx.moveTo(p.x + (p.w / 4) * k, p.y); ctx.lineTo(p.x + (p.w / 4) * k, p.y + p.h); ctx.stroke();
+        }
+      } else if (p.kind === 'runway') {
+        ctx.fillStyle = '#3a3e46';
+        ctx.fillRect(p.x, p.y, p.w, p.h);
+        ctx.strokeStyle = 'rgba(255,255,255,.32)'; ctx.lineWidth = 3;
+        ctx.setLineDash([26, 22]);
+        ctx.beginPath(); ctx.moveTo(p.x + 10, p.y + p.h / 2); ctx.lineTo(p.x + p.w - 10, p.y + p.h / 2); ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+
+    for (const lm of LANDMARKS) {
+      if (lm.x > R + 200 || lm.x < L - 200 || lm.y > B + 200 || lm.y < T - 200) continue;
+      const pulse = 0.5 + Math.sin(game.time * 3) * 0.5;
+      ctx.save();
+      ctx.globalAlpha = 0.25 + pulse * 0.35;
+      ctx.fillStyle = lm.color;
+      ctx.beginPath(); ctx.arc(lm.doorX, lm.doorY, 22 + pulse * 6, 0, 6.2832); ctx.fill();
+      ctx.restore();
+      ctx.strokeStyle = lm.color; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(lm.doorX, lm.doorY, 19, 0, 6.2832); ctx.stroke();
+      ctx.fillStyle = '#0b0e12';
+      ctx.font = 'bold 16px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(lm.icon, lm.doorX, lm.doorY - 1);
+      ctx.font = 'bold 11px -apple-system,system-ui,sans-serif';
+      ctx.fillStyle = lm.color;
+      ctx.fillText(lm.name, lm.doorX, lm.doorY - 30);
+    }
+
+    const ch = currentChapter();
+    if (ch.goal && ch.goal.type === 'goto' && game.missions.indexOf(ch.id) < 0) {
+      const g = ch.goal;
+      const pulse = 0.5 + Math.sin(game.time * 4) * 0.5;
+      ctx.save();
+      ctx.globalAlpha = 0.3 + pulse * 0.3;
+      ctx.fillStyle = '#ffd84d';
+      ctx.beginPath(); ctx.arc(g.x, g.y, 30 + pulse * 10, 0, 6.2832); ctx.fill();
+      ctx.restore();
+      ctx.strokeStyle = '#ffd84d'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(g.x, g.y, 24, 0, 6.2832); ctx.stroke();
+    }
+
+    for (const p of pickups) {
+      if (p.t > 1) continue;
+      ctx.globalAlpha = 1 - p.t;
+      ctx.fillStyle = '#42d77d';
+      ctx.beginPath(); ctx.arc(p.x, p.y, 8, 0, 6.2832); ctx.fill();
+      ctx.fillStyle = '#0b2f1a';
+      ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('$', p.x, p.y);
+      ctx.globalAlpha = 1;
+    }
+
+    for (const b of bullets) {
+      ctx.strokeStyle = b.owner === 'player' ? '#ffe58a' : '#ff8f6b';
+      ctx.lineWidth = 2.4;
+      ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(b.x - b.vx * 0.6, b.y - b.vy * 0.6); ctx.stroke();
+    }
+
+    for (const p of peds) {
+      if (p.dead || p.x > R || p.x < L || p.y > B || p.y < T) continue;
+      ctx.fillStyle = 'rgba(0,0,0,.35)';
+      ctx.beginPath(); ctx.ellipse(p.x + 2, p.y + 3, 7, 5, 0, 0, 6.2832); ctx.fill();
+      ctx.fillStyle = p.flee > 0 ? '#e8a33d' : '#c8ccd6';
+      ctx.beginPath(); ctx.arc(p.x, p.y, 5.5, 0, 6.2832); ctx.fill();
+      ctx.fillStyle = '#8d93a3';
+      ctx.beginPath(); ctx.arc(p.x, p.y, 3.4, 0, 6.2832); ctx.fill();
+    }
+
+    for (const c of cops) {
+      ctx.fillStyle = 'rgba(0,0,0,.4)';
+      ctx.beginPath(); ctx.ellipse(c.x + 2, c.y + 3, 8, 6, 0, 0, 6.2832); ctx.fill();
+      ctx.fillStyle = '#2f5bd0';
+      ctx.beginPath(); ctx.arc(c.x, c.y, 7.5, 0, 6.2832); ctx.fill();
+      ctx.fillStyle = '#dfe4ee';
+      ctx.beginPath(); ctx.arc(c.x, c.y, 3.6, 0, 6.2832); ctx.fill();
+    }
+
+    for (const c of cars) {
+      if (c.x > R || c.x < L || c.y > B || c.y < T) continue;
+      if (c.dead) {
+        ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.ang);
+        ctx.fillStyle = '#1a1a1a'; ctx.fillRect(-c.w / 2, -c.h / 2, c.w, c.h);
+        ctx.restore();
+        continue;
+      }
+      drawCar(c);
+    }
+
+    if (!player.inCar) {
+      ctx.save();
+      ctx.translate(player.x, player.y);
+      ctx.fillStyle = 'rgba(0,0,0,.45)';
+      ctx.beginPath(); ctx.ellipse(2, 3, 11, 8, 0, 0, 6.2832); ctx.fill();
+      ctx.rotate(player.ang + Math.PI / 2);
+      ctx.fillStyle = '#ff2e88';
+      ctx.beginPath(); ctx.arc(0, 0, 9, 0, 6.2832); ctx.fill();
+      ctx.fillStyle = '#ffd1e4';
+      ctx.beginPath(); ctx.arc(0, -3, 4.4, 0, 6.2832); ctx.fill();
+      ctx.fillStyle = '#ff2e88';
+      ctx.beginPath(); ctx.moveTo(0, -13); ctx.lineTo(-4, -7); ctx.lineTo(4, -7); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+
+    // 人物标注
+    for (const p of peds) {
+      if (p.dead) continue;
+      if (p.x < L || p.x > R || p.y < T || p.y > B) continue;
+      if (dist(p.x, p.y, player.x, player.y) > 330) continue;
+      tag(p.x, p.y - 13, '行人', '#c8ccd6');
+    }
+    for (const c of cops) {
+      if (dist(c.x, c.y, player.x, player.y) > 430) continue;
+      tag(c.x, c.y - 15, '警察', '#7fa4ff');
+    }
+    for (const c of cars) {
+      if (c.dead || c.kind !== 'police') continue;
+      if (dist(c.x, c.y, player.x, player.y) > 430) continue;
+      tag(c.x, c.y - 17, '警车', '#ff7b8f');
+    }
+    if (player.inCar) tag(player.x, player.y - 24, '你的车', '#ffd84d');
+    else tag(player.x, player.y - 22, '你', '#ff8fb8');
+
+    for (const p of parts) {
+      ctx.globalAlpha = clamp(p.life * 2.2, 0, 1);
+      ctx.fillStyle = p.c;
+      ctx.fillRect(p.x - p.r / 2, p.y - p.r / 2, p.r, p.r);
+      ctx.globalAlpha = 1;
+    }
+
+    ctx.restore();
+
+    if (game.hitFlash > 0) {
+      ctx.fillStyle = 'rgba(200,20,40,' + (game.hitFlash * 0.5).toFixed(3) + ')';
+      ctx.fillRect(0, 0, W, H);
+    }
+    if (player.inCar) drawSpeedo();
+    drawMini();
+  }
+
+  function tag(x, y, text, color) {
+    ctx.font = 'bold 9.5px -apple-system,system-ui,sans-serif';
+    const w = ctx.measureText(text).width;
+    ctx.fillStyle = 'rgba(8,10,14,.7)';
+    roundRect(x - w / 2 - 4, y - 6, w + 8, 13, 3);
+    ctx.fill();
+    ctx.fillStyle = color;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(text, x, y + 0.5);
+  }
+
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  function drawCar(c) {
+    ctx.save();
+    ctx.translate(c.x, c.y);
+    ctx.rotate(c.ang);
+    ctx.fillStyle = 'rgba(0,0,0,.42)';
+    ctx.fillRect(-c.w / 2 + 3, -c.h / 2 + 3, c.w, c.h);
+    ctx.fillStyle = c.color;
+    roundRect(-c.w / 2, -c.h / 2, c.w, c.h, 5);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(150,210,255,.5)';
+    roundRect(-c.w * 0.12, -c.h / 2 + 3, c.w * 0.42, c.h - 6, 3);
+    ctx.fill();
+    ctx.fillStyle = '#ffe9a8';
+    ctx.fillRect(c.w / 2 - 3, -c.h / 2 + 2, 3, 4);
+    ctx.fillRect(c.w / 2 - 3, c.h / 2 - 6, 3, 4);
+    if (c.kind === 'police') {
+      const on = Math.sin(c.siren) > 0;
+      ctx.fillStyle = on ? '#ff3b3b' : '#3b6bff';
+      ctx.fillRect(-3, -c.h / 2 - 2, 6, 4);
+      ctx.fillStyle = on ? '#3b6bff' : '#ff3b3b';
+      ctx.fillRect(-3, c.h / 2 - 2, 6, 4);
+    }
+    ctx.restore();
+  }
+
+  function drawSpeedo() {
+    const c = player.inCar;
+    const hx = W - 160, hy = H - 64;
+    ctx.save();
+    ctx.fillStyle = 'rgba(10,13,18,.8)';
+    roundRect(hx - 46, hy - 22, 110, 46, 10); ctx.fill();
+    ctx.fillStyle = c.hp > 40 ? '#dfe4ee' : '#ff6b6b';
+    ctx.font = 'bold 22px -apple-system,system-ui,sans-serif';
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    ctx.fillText(Math.round(Math.abs(c.v) * 12), hx + 18, hy);
+    ctx.font = 'bold 10px sans-serif';
+    ctx.fillStyle = '#848e9c';
+    ctx.fillText('km/h', hx + 46, hy + 2);
+    ctx.fillStyle = 'rgba(255,255,255,.14)';
+    roundRect(hx - 46, hy + 9, 110, 4, 2); ctx.fill();
+    ctx.fillStyle = c.hp > 40 ? '#3a86ff' : '#ff3b3b';
+    roundRect(hx - 46, hy + 9, 110 * clamp(c.hp / 100, 0, 1), 4, 2); ctx.fill();
+    ctx.restore();
+  }
+
+  // ===== 小地图 =====
+  const MINI = 292;
+  let miniBase = null;
+  function buildMiniBase() {
+    const off = document.createElement('canvas');
+    off.width = MINI; off.height = MINI;
+    const c = off.getContext('2d');
+    const s = MINI / WORLD;
+    c.fillStyle = '#0c0f14';
+    c.fillRect(0, 0, MINI, MINI);
+    c.globalAlpha = 0.9;
+    for (let i = 0; i < GRID; i++) {
+      for (let j = 0; j < GRID; j++) {
+        const dk = groundMap[i * GRID + j] || 'residential';
+        c.fillStyle = DIST[dk].ground;
+        c.fillRect((i * CELL + ROAD / 2) * s, (j * CELL + ROAD / 2) * s, (CELL - ROAD) * s, (CELL - ROAD) * s);
+      }
+    }
+    c.globalAlpha = 1;
+    miniBase = off;
+  }
+
+  function drawMini() {
+    if (game.inside) {
+      const R = game.room;
+      const s = MINI / 900;
+      mctx.clearRect(0, 0, MINI, MINI);
+      mctx.fillStyle = '#0c0f14';
+      mctx.fillRect(0, 0, MINI, MINI);
+      mctx.fillStyle = R.floor;
+      mctx.fillRect(MINI / 2 - R.w * s / 2, MINI / 2 - R.h * s / 2, R.w * s, R.h * s);
+      mctx.strokeStyle = 'rgba(255,255,255,.4)';
+      mctx.lineWidth = 2;
+      mctx.strokeRect(MINI / 2 - R.w * s / 2, MINI / 2 - R.h * s / 2, R.w * s, R.h * s);
+      mctx.fillStyle = '#ffd84d';
+      mctx.fillRect(MINI / 2 - 7, MINI / 2 + R.h * s / 2 - 5, 14, 5);
+      mctx.fillStyle = '#ff2e88';
+      mctx.beginPath(); mctx.arc(MINI / 2 + player.x * s, MINI / 2 + player.y * s, 3.4, 0, 6.2832); mctx.fill();
+      return;
+    }
+    if (!miniBase) buildMiniBase();
+    const s = MINI / WORLD;
+    mctx.clearRect(0, 0, MINI, MINI);
+    mctx.drawImage(miniBase, 0, 0);
+    for (const lm of LANDMARKS) {
+      mctx.fillStyle = lm.color;
+      mctx.beginPath(); mctx.arc(lm.doorX * s, lm.doorY * s, 3.4, 0, 6.2832); mctx.fill();
+    }
+    const ch = currentChapter();
+    if (ch.goal && ch.goal.type === 'goto' && game.missions.indexOf(ch.id) < 0) {
+      mctx.strokeStyle = '#ffd84d'; mctx.lineWidth = 1.6;
+      mctx.beginPath(); mctx.arc(ch.goal.x * s, ch.goal.y * s, 5, 0, 6.2832); mctx.stroke();
+    }
+    for (const c of cars) {
+      if (c.kind === 'police' && !c.dead) { mctx.fillStyle = '#ff3b3b'; mctx.fillRect(c.x * s - 1.6, c.y * s - 1.6, 3.2, 3.2); }
+    }
+    for (const c of cops) { mctx.fillStyle = '#ff3b3b'; mctx.fillRect(c.x * s - 1.3, c.y * s - 1.3, 2.6, 2.6); }
+    mctx.fillStyle = '#ff2e88';
+    mctx.beginPath(); mctx.arc(player.x * s, player.y * s, 3.2, 0, 6.2832); mctx.fill();
+    mctx.strokeStyle = 'rgba(255,255,255,.6)'; mctx.lineWidth = 1; mctx.stroke();
+  }
+
+  // ===== HUD =====
+  const moneyEl = document.getElementById('money');
+  const starsEl = document.getElementById('stars');
+  const STAR = '<svg class="star" viewBox="0 0 24 24"><path fill="#ffd84d" d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg>';
+  starsEl.innerHTML = STAR.repeat(5);
+
+  function renderStars() {
+    const list = starsEl.querySelectorAll('.star');
+    for (let i = 0; i < list.length; i++) list[i].classList.toggle('on', i < game.wanted);
+  }
+  function updateBars() {
+    const hp = clamp(player.hp, 0, 100);
+    document.getElementById('hpBar').style.width = hp + '%';
+    document.getElementById('hpTxt').textContent = Math.ceil(hp);
+    const wrap = document.getElementById('carBarWrap');
+    if (player.inCar) {
+      wrap.style.display = 'block';
+      const chp = clamp(player.inCar.hp, 0, 100);
+      document.getElementById('carBar').style.width = chp + '%';
+      document.getElementById('carTxt').textContent = '车况 ' + Math.ceil(chp);
+    } else wrap.style.display = 'none';
+  }
+
+  let hudT = 0;
+  function updateHud() {
+    if (game.inside) return;
+    const bx = clamp(Math.floor(player.x / CELL), 0, GRID - 1);
+    const by = clamp(Math.floor(player.y / CELL), 0, GRID - 1);
+    const dkName = DIST[groundMap[bx * GRID + by] || 'residential'].name;
+    const whereEl = document.getElementById('where');
+    if (whereEl.textContent !== dkName) whereEl.textContent = dkName;
+    renderStars();
+    updateBars();
+    if (game.time - hudT > 0.35) { hudT = game.time; drawMini(); }
+    const hintEl = document.getElementById('hint');
+    if (game.nearLandmark) hintEl.textContent = '按 E 进入 ' + game.nearLandmark.icon + ' ' + game.nearLandmark.name;
+    else if (game.nearDoor) hintEl.textContent = '按 E 进入 ' + game.nearDoor.intName;
+    else if (player.inCar) hintEl.textContent = 'WASD 开车 · E 下车 · Shift 手刹 · 撞人 / 开枪会被通缉';
+    else hintEl.textContent = 'WASD 移动 · E 上车 / 进门 · 左键开火 · Shift 手刹';
+  }
+
+  let toastT = 0, toastEl = null;
+  function toast(msg) {
+    if (!toastEl) {
+      toastEl = document.createElement('div');
+      toastEl.style.cssText = 'position:fixed;left:50%;top:56px;transform:translateX(-50%);z-index:18;' +
+        'background:rgba(14,18,24,.94);border:1px solid rgba(255,216,77,.45);color:#ffd84d;' +
+        'padding:8px 16px;border-radius:999px;font-size:13px;font-weight:800;pointer-events:none;' +
+        'transition:opacity .3s;opacity:0;max-width:80vw;text-align:center';
+      document.body.appendChild(toastEl);
+    }
+    toastEl.textContent = msg;
+    toastEl.style.opacity = '1';
+    clearTimeout(toastT);
+    toastT = setTimeout(function () { toastEl.style.opacity = '0'; }, 2000);
+  }
+  const esc = function (s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  };
+
+  // ===== 成绩 / 榜单 =====
+  let submitted = 0;
+  function submitScore(v) {
+    const score = Math.round(v);
+    if (score <= 0 || score === submitted) return;
+    submitted = score;
+    try {
+      if (typeof window.mfhryScore === 'function') window.mfhryScore('gta', score);
+      else fetch('/api/score', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ game: 'gta', score: score }) });
+    } catch (e) {}
+  }
+
+  async function showRank() {
+    document.getElementById('panelStart').style.display = 'none';
+    document.getElementById('panelDead').style.display = 'none';
+    document.getElementById('panelRank').style.display = 'block';
+    document.getElementById('veil').classList.add('on');
+    const box = document.getElementById('rankList');
+    box.innerHTML = '<div style="padding:16px;text-align:center;color:#7c8698;font-size:12px">加载中…</div>';
+    try {
+      const r = await fetch('/api/score?game=gta&limit=20&_=' + Date.now());
+      const d = await r.json();
+      const rows = d.entries || [];
+      box.innerHTML = rows.length ? rows.map(function (e) {
+        return '<div class="r"><span>' + e.rank + '</span><span>' + (e.flag || '') + ' ' + (e.countryName || '未知') +
+          (e.name ? ' · ' + e.name : '') + '<br><small>' + (e.ip || '') + '</small></span>' +
+          '<b>¥' + Number(e.score).toLocaleString('en-US') + '</b></div>';
+      }).join('') : '<div style="padding:16px;text-align:center;color:#7c8698;font-size:12px">还没人上榜，去抢一票</div>';
+    } catch (e) {
+      box.innerHTML = '<div style="padding:16px;text-align:center;color:#7c8698;font-size:12px">加载失败</div>';
+    }
+  }
+
+  // ===== 开始 =====
+  function resetGame(fresh) {
+    game.running = true; game.over = false; game.paused = false;
+    game.time = 0; game.kills = 0; game.wanted = 0; game.wantedTimer = 0; game.spawnTimer = 0;
+    game.hitFlash = 0; game.shake = 0; game.surviveT = 0;
+    game.dlgQueue = []; game.dlgOn = false; game.dlgDone = null;
+    game.inside = null; game.room = null; game.nearObj = null; game.nearDoor = null;
+    document.getElementById('dlg').classList.remove('on');
+    player.x = CELL * 5; player.y = CELL * 6; player.hp = 100; player.inCar = null;
+    player.ammo = 12; player.weapon = 'gun'; player.cool = 0; player.ang = -Math.PI / 2;
+    cam.x = player.x; cam.y = player.y;
+    bullets = []; parts = []; pickups = []; cops = [];
+    flags.bought = false; flags.sold = false; flags.transferred = 0; flags.fxBought = 0;
+    spawnTraffic(); spawnPeds();
+    updateWeaponHud(); updateBars(); renderStars();
+    document.getElementById('veil').classList.remove('on');
+    if (fresh) { game.money = 0; game.chapter = 1; game.missions = []; }
+    moneyEl.textContent = money(game.money);
+    state.netWorth = game.money + state.fxUsd * state.rate;
+    setObjective();
+    if (fresh) startChapter(1);
+  }
+
+  document.getElementById('btnStart').addEventListener('click', async function () {
+    audioInit();
+    const d = await loadWallet();
+    if (d && d.missions && d.missions.length) {
+      game.money = d.cash;
+      game.chapter = d.chapter;
+      game.missions = d.missions || [];
+      resetGame(false);
+      chapterCard('继续 · 第 ' + game.chapter + ' 章', currentChapter().title);
+      setObjective();
+      toast('欢迎回来，钱和进度都还在');
+    } else {
+      resetGame(true);
+    }
+  });
+
+  document.getElementById('btnRetry').addEventListener('click', function () {
+    game.over = false; game.paused = false;
+    player.hp = 100; player.inCar = null;
+    document.getElementById('veil').classList.remove('on');
+    updateBars();
+  });
+
+  document.getElementById('btnReset').addEventListener('click', async function () {
+    if (!confirm('清空存档？城市现金、剧情进度会归零（股票账户里的钱不动）。')) return;
+    try { await api('/api/gta', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'reset' }) }); } catch (e) {}
+    game.money = 0; game.chapter = 1; game.missions = [];
+    resetGame(true);
+  });
+
+  document.getElementById('btnRank').addEventListener('click', showRank);
+  document.getElementById('btnRankClose').addEventListener('click', function () {
+    document.getElementById('panelRank').style.display = 'none';
+    if (game.running && !game.over) document.getElementById('veil').classList.remove('on');
+  });
+  document.getElementById('btnBank').addEventListener('click', function () {
+    if (!game.running) { toast('先进游戏'); return; }
+    openExchange();
+  });
+  document.getElementById('btnSound').addEventListener('click', function (e) {
+    soundOn = !soundOn;
+    e.currentTarget.textContent = soundOn ? '🔊' : '🔇';
+    if (soundOn) audioInit();
+  });
+
+  // ===== 主循环 =====
+  let last = performance.now(), acc = 0;
+  const STEP = 1 / 60;
+  function loop(now) {
+    let dt = (now - last) / 1000;
+    last = now;
+    acc += Math.min(dt, 0.25);
+    let steps = 0;
+    while (acc >= STEP && steps < 5) { update(STEP); acc -= STEP; steps++; }
+    if (steps === 5) acc = 0;
+    draw();
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+  document.addEventListener('visibilitychange', function () { last = performance.now(); });
+
+  updateWeaponHud(); updateBars(); renderStars(); setObjective();
+
+  // 调试钩子（浏览器控制台 / 自动化测试用；游戏本身是纯客户端，改这里不影响别人）
+  window.__gta = {
+    get game() { return game; },
+    get player() { return player; },
+    get state() { return state; },
+    get flags() { return flags; },
+    get counts() { return { cars: cars.length, peds: peds.length, buildings: buildings.length, props: props.length, landmarks: LANDMARKS.length, world: WORLD, grid: GRID }; },
+    chapter: function () { return { n: game.chapter, title: currentChapter().title, goal: currentChapter().goal.type, missions: game.missions.slice() }; },
+    doorNear: function (px, py) {
+      let best = null, bd = 1e9;
+      for (const b of buildings) {
+        if (!b.door) continue;
+        const d = dist(px, py, b.door.x, b.door.y);
+        if (d < bd) { bd = d; best = b; }
+      }
+      return best ? { x: best.door.x, y: best.door.y, name: best.intName, kind: best.int, dist: Math.round(bd) } : null;
+    },
+    doors: function () { return buildings.filter(function (b) { return !!b.door; }).length; },
+    doorOf: function (kind) {
+      for (const b of buildings) if (b.door && b.int === kind) return { x: b.door.x, y: b.door.y, name: b.intName, kind: b.int };
+      return null;
+    },
+    inside: function () { return game.inside ? { name: game.room.name, objs: game.room.objs.map(function (o) { return { label: o.label, kind: o.kind, x: o.x, y: o.y }; }) } : null; },
+    nearObj: function () { return game.nearObj ? game.nearObj.label : null; },
+  };
+})();
+</script>
+</body>
+</html>
