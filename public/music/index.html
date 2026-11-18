@@ -1151,6 +1151,11 @@
         }
 
         var onPick = function () {
+          if (!h.r2 && h.web) {                           /* 外链：去官方页面听 */
+            window.open(h.web, '_blank', 'noopener');
+            showToast('在网易云打开《' + (h.zh || h.label) + '》');
+            return;
+          }
           if (h.r2) {                                     /* 直链：直接进队播放 */
             var t = trackFromChip(h);
             var i = addTrack(t);
