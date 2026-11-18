@@ -657,17 +657,26 @@
     const q = quoteOf(state.symbol);
     const a = state.account;
     if (!q || !a) { $('quicks').innerHTML = ''; return; }
-    const price = cnyOf(q);
+    const price = cnyOf(q) || 1;
     const maxBuy = Math.max(0, Math.floor(a.cash / (price * 1.0003)));
-    const buySteps = isA()
-      ? [100, 500, Math.floor(maxBuy / 100) * 100]
-      : [1, 10, 100, Math.floor(maxBuy)];
     const held = (a.positions || []).find((p) => p.symbol === state.symbol)?.qty || 0;
-    const sellSteps = [Math.floor(held / 2), held].filter((v) => v > 0);
-    const steps = state.side === 'buy' ? buySteps : sellSteps;
-    const labels = state.side === 'buy' ? ['100 股', '500 股', '全仓'] : ['一半', '全部'];
-    $('quicks').innerHTML = steps.map((v, i) =>
-      '<button data-qty="' + v + '">' + (labels[i] || (v + ' 股')) + '</button>').join('');
+    let pairs;
+    if (state.side === 'buy') {
+      pairs = isA()
+        ? [[100, '1 手'], [500, '5 手'], [Math.floor(maxBuy / 100) * 100, '全仓']]
+        : [[1, '1 股'], [10, '10 股'], [100, '100 股'], [maxBuy, '全仓']];
+    } else {
+      pairs = [[Math.floor(held / 2), '一半'], [held, '全仓']];
+    }
+    const seen = new Map();
+    for (const [v, l] of pairs) {
+      if (!v || v <= 0) continue;
+      if (seen.has(v)) { if (l === '全仓') seen.set(v, l); continue; }
+      seen.set(v, l);
+    }
+    $('quicks').innerHTML = [...seen.entries()]
+      .map(([v, l]) => '<button data-qty="' + v + '">' + l + '</button>')
+      .join('');
   }
 
   async function trade(side, qty, symbol) {
