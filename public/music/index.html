@@ -387,6 +387,18 @@
     .pg-sticky{ position:static; }
     .pg-wrap{ padding-top:12px; }
   }
+
+/* 内嵌官方播放器（无直链的曲目，在本站页面里播，不跳转） */
+#ncbox{ position:fixed; left:16px; bottom:96px; width:min(330px,calc(100vw - 32px)); z-index:95;
+  background:rgba(18,18,20,.92); backdrop-filter:blur(18px); border:1px solid rgba(255,255,255,.12);
+  border-radius:14px; box-shadow:0 18px 50px rgba(0,0,0,.55); padding:10px 10px 8px; display:flex; flex-direction:column; gap:8px; }
+#ncbox[hidden]{ display:none; }
+#ncbox .nchead{ display:flex; align-items:center; gap:8px; font-size:12px; color:rgba(255,255,255,.72); }
+#ncbox .nchead b{ font-weight:600; color:#fff; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+#ncbox .ncx{ margin-left:auto; border:0; background:rgba(255,255,255,.1); color:#fff; width:22px; height:22px;
+  border-radius:50%; cursor:pointer; line-height:1; font-size:13px; }
+#ncbox iframe{ width:100%; height:66px; border:0; border-radius:8px; background:#0d0d0f; display:block; }
+@media (max-width:520px){ #ncbox{ left:8px; right:8px; width:auto; bottom:84px; } }
 </style>
 </head>
 <body>
@@ -1151,9 +1163,15 @@
         }
 
         var onPick = function () {
-          if (!h.r2 && h.web) {                           /* 外链：去官方页面听 */
-            window.open(h.web, '_blank', 'noopener');
-            showToast('在网易云打开《' + (h.zh || h.label) + '》');
+          if (!h.r2 && h.setId) {                         /* 镜像库有谱面：本站内直接播放 */
+            var t0 = trackFromChip(h);
+            var i0 = addTrack(t0);
+            playIndex(i0, true);
+            showToast('正在播放《' + (h.zh || h.label) + '》');
+            return;
+          }
+          if (!h.r2 && h.nc) {                            /* 无直链：页面内嵌官方播放器（不跳转） */
+            openNc(h);
             return;
           }
           if (h.r2) {                                     /* 直链：直接进队播放 */
@@ -1183,6 +1201,24 @@
       wrap.innerHTML = '<div class="pg-gtitle">曲单还没有内容</div>';
     }
   }
+
+  /* 内嵌官方播放器：在本站页面里播，不跳转 */
+  function openNc(h) {
+    var box = $('ncbox'), fr = $('ncframe');
+    if (!box || !fr) return;
+    $('nctitle').textContent = (h.zh || h.label) + (h.artist ? ' · ' + h.artist : '');
+    fr.src = 'https://music.163.com/outchain/player?type=2&id=' + encodeURIComponent(h.nc) +
+      '&auto=1&height=66';
+    box.hidden = false;
+    showToast('在本页播放《' + (h.zh || h.label) + '》');
+  }
+  document.addEventListener('click', function (ev) {
+    if (ev.target && ev.target.id === 'ncclose') {
+      var box = $('ncbox'), fr = $('ncframe');
+      if (box) box.hidden = true;
+      if (fr) fr.src = 'about:blank';
+    }
+  });
 
   function trackFromChip(h) {
     return {
@@ -1265,5 +1301,9 @@
   };
 })();
 </script>
+<div id="ncbox" hidden>
+  <div class="nchead"><b id="nctitle">网易云</b><span>官方播放器</span><button class="ncx" id="ncclose" type="button" aria-label="关闭播放器">✕</button></div>
+  <iframe id="ncframe" title="网易云官方播放器" loading="lazy" allow="autoplay; encrypted-media"></iframe>
+</div>
 </body>
 </html>
