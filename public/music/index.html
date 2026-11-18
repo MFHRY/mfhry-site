@@ -471,7 +471,7 @@
 <script src="/music/engine.js?v=3"></script>
 <!-- 组件按模块拆分，单文件均 < 1500 行（[216][219]）；ap-core 必须最先加载 -->
 <script src="/music/ap-core.js?v=3"></script>
-<script src="/music/ap-player.js?v=7"></script>
+<script src="/music/ap-player.js?v=8"></script>
 <script src="/music/ap-lyrics.js?v=4"></script>
 <script src="/music/ap-comments.js?v=3"></script>
 <script src="/music/ap-mv.js?v=4"></script>
@@ -670,17 +670,71 @@
     return [hue(h + 1 / 3) * 255, hue(h) * 255, hue(h - 1 / 3) * 255];
   }
 
+  /* --- 主色平滑过渡 ---
+     --pg-tint 是 "r,g,b" 三元组，CSS transition 动不了它；
+     这里用 rAF 逐帧插值，让背景色随封面换歌时缓慢过渡，而不是硬切。 */
+  var tintRaf = 0, tintCur = null;
+
+  function parseTint(str) {
+    if (!str) return null;
+    var p = String(str).split(',');
+    if (p.length !== 3) return null;
+    var out = [];
+    for (var i = 0; i < 3; i++) {
+      var n = parseFloat(p[i]);
+      if (!isFinite(n)) return null;
+      out.push(n);
+    }
+    return out;
+  }
+
+  function paintTint(raw, lit) {
+    root.style.setProperty('--pg-tint', Math.round(raw[0]) + ',' + Math.round(raw[1]) + ',' + Math.round(raw[2]));
+    root.style.setProperty('--pg-tint-lit', Math.round(lit[0]) + ',' + Math.round(lit[1]) + ',' + Math.round(lit[2]));
+  }
+
+  function animateTintTo(targetRaw, targetLit) {
+    if (!targetRaw) return;
+    if (!targetLit) targetLit = targetRaw;
+    var from = tintCur;
+    if (!from) {
+      var cs = getComputedStyle(root);
+      from = {
+        raw: parseTint(cs.getPropertyValue('--pg-tint')) || [10, 132, 255],
+        lit: parseTint(cs.getPropertyValue('--pg-tint-lit')) || [96, 160, 255]
+      };
+    }
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (tintRaf) { cancelAnimationFrame(tintRaf); tintRaf = 0; }
+    if (reduce) {
+      tintCur = { raw: targetRaw.slice(), lit: targetLit.slice() };
+      paintTint(tintCur.raw, tintCur.lit);
+      return;
+    }
+    var start = from, t0 = performance.now(), dur = 620;
+    var lerp = function (a, b, e) {
+      return [a[0] + (b[0] - a[0]) * e, a[1] + (b[1] - a[1]) * e, a[2] + (b[2] - a[2]) * e];
+    };
+    function frame(now) {
+      var k = Math.min(1, (now - t0) / dur);
+      var e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;   /* easeInOutQuad */
+      tintCur = { raw: lerp(start.raw, targetRaw, e), lit: lerp(start.lit, targetLit, e) };
+      paintTint(tintCur.raw, tintCur.lit);
+      if (k < 1) tintRaf = requestAnimationFrame(frame);
+      else tintRaf = 0;
+    }
+    tintRaf = requestAnimationFrame(frame);
+  }
+
   function setTint(url) {
     var seq = ++tintSeq;
-    if (!url) { root.style.removeProperty('--pg-tint'); return; }
+    if (!url) { animateTintTo([10, 132, 255], [96, 160, 255]); return; }
     if (tintCache[url]) {
       var c0 = tintCache[url];
       if (typeof c0 === 'string') {                 /* 兼容旧缓存 */
-        root.style.setProperty('--pg-tint', c0);
-        root.style.setProperty('--pg-tint-lit', c0);
+        animateTintTo(parseTint(c0), parseTint(c0));
       } else {
-        root.style.setProperty('--pg-tint', c0.raw);
-        root.style.setProperty('--pg-tint-lit', c0.lit);
+        animateTintTo(parseTint(c0.raw), parseTint(c0.lit));
       }
       return;
     }
@@ -708,12 +762,11 @@
           localStorage.setItem('ap:tint', JSON.stringify(tintCache));
         } catch (e) { }
         if (seq === tintSeq) {
-          root.style.setProperty('--pg-tint', tint.raw);
-          root.style.setProperty('--pg-tint-lit', tint.lit);
+          animateTintTo(parseTint(tint.raw), parseTint(tint.lit));
         }
       } catch (e) { }
     };
-    img.onerror = function () { if (seq === tintSeq) root.style.removeProperty('--pg-tint'); };
+    img.onerror = function () { if (seq === tintSeq) animateTintTo([10, 132, 255], [96, 160, 255]); };
     img.src = url;
   }
 
