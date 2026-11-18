@@ -199,6 +199,19 @@
     filter:blur(64px) saturate(155%) brightness(.60);
     transform:scale(1.12);
   }
+  /* 拖动封面时的目标曲目预演层：参数与背景一致，只换封面 */
+  .pg-fs-peek{
+    position:fixed; inset:-28%; z-index:-2; pointer-events:none; opacity:0;
+    background-color:#0b0b0d;
+    background-image:var(--fs-peek-cover, none);
+    background-size:cover; background-position:center;
+    filter:blur(64px) saturate(155%) brightness(.60);
+    transform:scale(1.12);
+    transition:opacity .16s linear;
+  }
+  .pg-root:not([data-fs]) .pg-fs-peek{ display:none; }
+  @media (prefers-reduced-motion:reduce){ .pg-fs-peek{ transition:none; } }
+
   /* 暗角与色调叠加，本身也带不透明底色，确保四边没有缝隙 */
   .pg-root[data-fs]::after{
     content:''; position:fixed; inset:0; z-index:-2; pointer-events:none;
@@ -470,6 +483,9 @@
     </div>
   </div>
 
+  <!-- 拖动封面时提前露出的下一首/上一首色调（仅全屏） -->
+  <div class="pg-fs-peek" id="fsPeek" aria-hidden="true"></div>
+
   <div class="pg-toast" id="toast" role="status" aria-live="polite"></div>
   <div class="pg-sr" id="live" role="status" aria-live="polite"></div>
 
@@ -483,7 +499,7 @@
 <script src="/music/engine.js?v=3"></script>
 <!-- 组件按模块拆分，单文件均 < 1500 行（[216][219]）；ap-core 必须最先加载 -->
 <script src="/music/ap-core.js?v=3"></script>
-<script src="/music/ap-player.js?v=9"></script>
+<script src="/music/ap-player.js?v=10"></script>
 <script src="/music/ap-lyrics.js?v=5"></script>
 <script src="/music/ap-comments.js?v=3"></script>
 <script src="/music/ap-mv.js?v=4"></script>
@@ -1079,6 +1095,19 @@
       renderFsQueue._last = st.index;
       renderFsQueue();
     }
+  });
+
+  /* 拖动封面 → 背景预演目标曲目（进度越大越明显，松手回落） */
+  var fsPeek = $('fsPeek');
+  document.addEventListener('ap-swipe', function (ev) {
+    if (!fsPeek) return;
+    var d = ev.detail || {};
+    if (!fsOn || !d.progress || !d.cover) { fsPeek.style.opacity = '0'; return; }
+    if (fsPeek.dataset.cover !== d.cover) {
+      fsPeek.dataset.cover = d.cover;
+      fsPeek.style.setProperty('--fs-peek-cover', 'url("' + d.cover + '")');
+    }
+    fsPeek.style.opacity = String(Math.min(0.85, d.progress * 0.8).toFixed(2));
   });
 
   var fsExitBtn = $('fsExit');

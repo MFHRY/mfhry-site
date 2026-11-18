@@ -554,6 +554,7 @@
         if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 12) {  /* 竖滑交给页面滚动 */
           sw.dragging = false;
           artEl.classList.remove('sw-hit');
+          self.dispatchEvent(new CustomEvent('ap-swipe', { detail: { progress: 0, cover: '' }, bubbles: true, composed: true }));
           artEl.style.transition = '';
           artEl.style.transform = '';
           return;
@@ -564,9 +565,18 @@
         var damped = Math.max(-44, Math.min(44, dx * 0.42));
         artEl.style.transform = 'translateX(' + damped.toFixed(1) + 'px) scale(.985)';
         artEl.classList.toggle('sw-hit', Math.abs(dx) >= SWITCH_AT);
+        /* 广播拖动进度：页面用它把背景提前过渡到目标曲目的色调 */
+        var n = self._tracks.length;
+        var dir = dx < 0 ? 1 : -1;                     /* 左滑 = 下一首 */
+        var nb = n > 1 ? self._tracks[(self._idx + dir + n) % n] : null;
+        self.dispatchEvent(new CustomEvent('ap-swipe', {
+          detail: { dir: dir, progress: Math.min(1, Math.abs(dx) / SWITCH_AT), cover: (nb && nb.cover) || '' },
+          bubbles: true, composed: true
+        }));
       };
       var settle = function (toNext) {
         artEl.classList.remove('sw-hit');
+        self.dispatchEvent(new CustomEvent('ap-swipe', { detail: { progress: 0, cover: '' }, bubbles: true, composed: true }));
         artEl.style.transition = 'transform .32s cubic-bezier(.22,1,.36,1)';
         artEl.style.transform = '';
         if (toNext) {
