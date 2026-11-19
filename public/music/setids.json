@@ -209,7 +209,11 @@
  "エイリアンエイリアン": {
   "artist": "NayutalieN",
   "id": 1647839,
-  "title": "Alien Alien (feat. Hatsune Miku)"
+  "title": "Alien Alien (feat. Hatsune Miku)",
+  "r2": "/api/r2?key=music/track-1647839.mp3",
+  "cover": "/api/r2?key=music/track-1647839-cover.jpg",
+  "bytes": 4371264,
+  "mb": 4.2
  },
  "ゴーストルール": {
   "artist": "DECO*27",
@@ -232,17 +236,29 @@
  "ビターチョコデコレーション": {
   "artist": "25-ji, Nightcord de.",
   "id": 1538879,
-  "title": "Bitter Choco Decoration"
+  "title": "Bitter Choco Decoration",
+  "r2": "/api/r2?key=music/track-1538879.mp3",
+  "cover": "/api/r2?key=music/track-1538879-cover.jpg",
+  "bytes": 3163392,
+  "mb": 3
  },
  "マトリョシカ": {
   "artist": "Hachi feat. Hatsune Miku & GUMI",
   "id": 470960,
-  "title": "Matryoshka"
+  "title": "Matryoshka",
+  "r2": "/api/r2?key=music/track-470960.mp3",
+  "cover": "/api/r2?key=music/track-470960-cover.jpg",
+  "bytes": 4798727,
+  "mb": 4.6
  },
  "メルト": {
   "artist": "ryo (supercell) x yanaginagi",
   "id": 870017,
-  "title": "Melt 10th ANNIVERSARY MIX"
+  "title": "Melt 10th ANNIVERSARY MIX",
+  "r2": "/api/r2?key=music/track-870017.mp3",
+  "cover": "/api/r2?key=music/track-870017-cover.jpg",
+  "bytes": 7332990,
+  "mb": 7
  },
  "ローリンガール": {
   "artist": "wowaka; (Genjitsu Touhi-P)",
@@ -256,47 +272,83 @@
  "ワールズエンド・ダンスホール": {
   "artist": "wowaka",
   "id": 1114556,
-  "title": "World's End Dancehall (ROCKETMAN remix)"
+  "title": "World's End Dancehall (ROCKETMAN remix)",
+  "r2": "/api/r2?key=music/track-1114556.mp3",
+  "cover": "/api/r2?key=music/track-1114556-cover.png",
+  "bytes": 6744355,
+  "mb": 6.4
  },
  "ヴァンパイア": {
   "artist": "DECO*27",
   "id": 2168317,
-  "title": "The Vampire feat. Hatsune Miku"
+  "title": "The Vampire feat. Hatsune Miku",
+  "r2": "/api/r2?key=music/track-2168317.mp3",
+  "cover": "/api/r2?key=music/track-2168317-cover.jpg",
+  "bytes": 4322304,
+  "mb": 4.1
  },
  "一途": {
   "artist": "King Gnu",
   "id": 1768259,
-  "title": "Ichizu"
+  "title": "Ichizu",
+  "r2": "/api/r2?key=music/track-1768259.mp3",
+  "cover": "/api/r2?key=music/track-1768259-cover.jpg",
+  "bytes": 4577951,
+  "mb": 4.4
  },
  "世界第一的公主殿下": {
   "artist": "supercell feat. Hatsune Miku",
   "id": 1784338,
-  "title": "World is Mine"
+  "title": "World is Mine",
+  "r2": "/api/r2?key=music/track-1784338.mp3",
+  "cover": "/api/r2?key=music/track-1784338-cover.png",
+  "bytes": 6192037,
+  "mb": 5.9
  },
  "六兆年と一夜物語": {
   "artist": "IA",
   "id": 51959,
-  "title": "Rokuchounen to Ichiya Monogatari"
+  "title": "Rokuchounen to Ichiya Monogatari",
+  "r2": "/api/r2?key=music/track-51959.mp3",
+  "cover": "/api/r2?key=music/track-51959-cover.jpg",
+  "bytes": 3523009,
+  "mb": 3.4
  },
  "唱": {
   "artist": "Ado",
   "id": 2098617,
-  "title": "Show"
+  "title": "Show",
+  "r2": "/api/r2?key=music/track-2098617.mp3",
+  "cover": "/api/r2?key=music/track-2098617-cover.jpg",
+  "bytes": 4546987,
+  "mb": 4.3
  },
  "夜に駆ける": {
   "artist": "YOASOBI",
   "id": 1374931,
-  "title": "Yoru ni Kakeru"
+  "title": "Yoru ni Kakeru",
+  "r2": "/api/r2?key=music/track-1374931.mp3",
+  "cover": "/api/r2?key=music/track-1374931-cover.png",
+  "bytes": 6211722,
+  "mb": 5.9
  },
  "太陽系ディスコ": {
   "artist": "Solar System Disco",
   "id": 624531,
-  "title": "Nayutalien feat.Miku Hatsune"
+  "title": "Nayutalien feat.Miku Hatsune",
+  "r2": "/api/r2?key=music/track-624531.mp3",
+  "cover": "/api/r2?key=music/track-624531-cover.jpg",
+  "bytes": 2936668,
+  "mb": 2.8
  },
  "廻廻奇譚": {
   "artist": "Eve",
   "id": 1436571,
-  "title": "Jujutsu Kaisen Opening Full Eve - Kaikai Kitan"
+  "title": "Jujutsu Kaisen Opening Full Eve - Kaikai Kitan",
+  "r2": "/api/r2?key=music/track-1436571.mp3",
+  "cover": "/api/r2?key=music/track-1436571-cover.jpg",
+  "bytes": 3755500,
+  "mb": 3.6
  },
  "怪物": {
   "artist": "YOASOBI",
@@ -310,17 +362,29 @@
  "恋愛サーキュレーション": {
   "artist": "Sengoku Nadeko (CV: Hanazawa Kana)",
   "id": 1650999,
-  "title": "Renai Circulation (TV Size)"
+  "title": "Renai Circulation (TV Size)",
+  "r2": "/api/r2?key=music/track-1650999.mp3",
+  "cover": "/api/r2?key=music/track-1650999-cover.jpg",
+  "bytes": 2198089,
+  "mb": 2.1
  },
  "惑星ループ": {
   "artist": "Nayutalien",
   "id": 1861500,
-  "title": "Planet Loop ver. Sou"
+  "title": "Planet Loop ver. Sou",
+  "r2": "/api/r2?key=music/track-1861500.mp3",
+  "cover": "/api/r2?key=music/track-1861500-cover.png",
+  "bytes": 4688109,
+  "mb": 4.5
  },
  "新時代": {
   "artist": "Ado",
-  "id": 1848011,
-  "title": "New Genesis"
+  "id": 1830890,
+  "title": "New Genesis",
+  "r2": "/api/r2?key=music/track-1830890.mp3",
+  "cover": "/api/r2?key=music/track-1830890-cover.jpg",
+  "bytes": 5446477,
+  "mb": 5.2
  },
  "春雷": {
   "artist": "Kenshi Yonezu",
@@ -388,17 +452,29 @@
  "群青": {
   "artist": "YOASOBI",
   "id": 1256369,
-  "title": "Gunjou"
+  "title": "Gunjou",
+  "r2": "/api/r2?key=music/track-1256369.mp3",
+  "cover": "/api/r2?key=music/track-1256369-cover.png",
+  "bytes": 6660667,
+  "mb": 6.4
  },
  "裏表ラバーズ": {
   "artist": "wowaka feat. Kagura Mea",
   "id": 928455,
-  "title": "Ura-omote Lovers"
+  "title": "Ura-omote Lovers",
+  "r2": "/api/r2?key=music/track-928455.mp3",
+  "cover": "/api/r2?key=music/track-928455-cover.png",
+  "bytes": 4069891,
+  "mb": 3.9
  },
  "金星のダンス": {
   "artist": "Hatsune Miku feat. NayutalieN",
   "id": 925206,
-  "title": "Dance of Venus"
+  "title": "Dance of Venus",
+  "r2": "/api/r2?key=music/track-925206.mp3",
+  "cover": "/api/r2?key=music/track-925206-cover.jpg",
+  "bytes": 8360000,
+  "mb": 8
  },
  "香水": {
   "artist": "Kamiyama Yoh",
