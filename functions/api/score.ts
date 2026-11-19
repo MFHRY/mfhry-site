@@ -32,6 +32,8 @@ const GAMES: Record<string, { asc: boolean; max: number; label: string; unit: st
   'stock-sim': { asc: false, max: 1000000000, label: '炒股', unit: '元', fmt: 'money' },
   // gta：这一局抢到 / 撞车 / 送货赚到的钱，死了结算
   'gta': { asc: false, max: 1000000000, label: 'GTA', unit: '元', fmt: 'money' },
+  // gta-3d：3D 版同一套钱包，撞车 / 开枪 / 送货赚到的钱，死了结算
+  'gta-3d': { asc: false, max: 1000000000, label: 'GTA 3D', unit: '元', fmt: 'money' },
 };
 
 // 榜单里默认遮掉 IP 最后一段：既看得出是不同的人，又不至于把完整地址公开。

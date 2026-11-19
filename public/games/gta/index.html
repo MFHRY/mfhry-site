@@ -216,6 +216,7 @@
     </div>
     <div class="legend"><span class="dot me"></span>你<span class="dot ped"></span>行人<span class="dot cop"></span>警察<span class="dot dr"></span>黄色门牌 / 门口黄条 = 可以进</div>
     <button class="go" id="btnStart">进入罪恶都市</button>
+    <button class="go ghost" id="btn3d" style="margin-top:8px">🏎 试试 3D 版（第三人称开车）</button>
     <button class="go ghost" id="btnReset" style="margin-top:6px;font-size:12px;padding:9px">清空存档重新开始</button>
   </div>
 
@@ -329,9 +330,12 @@
   const GRID = 30;
   const WORLD = CELL * GRID;
 
-  let W = 0, H = 0, DPR = 1;
+  let W = 0, H = 0, DPR = 1, tileScale = 1, perfStatic = 0;
+  const tileCache = new Map();
   function resize() {
     DPR = Math.min(window.devicePixelRatio || 1, 2);
+    tileScale = Math.min(DPR, 1.5);
+    tileCache.clear();
     W = window.innerWidth; H = window.innerHeight;
     cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
     cv.style.width = W + 'px'; cv.style.height = H + 'px';
@@ -2185,6 +2189,145 @@
   }
 
   // ===== 渲染 =====
+  // ===== 静态世界绘制：整城切成 512 逻辑块，画一次缓存，之后每帧只 blit 可见块 =====
+  const TILE = 512, TILES = Math.ceil(WORLD / TILE);
+
+  function paintStatic(g, L, T, R, B) {
+    g.save();
+    g.beginPath();
+    g.rect(L + 320, T + 320, Math.max(1, (R - L) - 640), Math.max(1, (B - T) - 640));
+    g.clip();
+      const bx0 = Math.max(0, Math.floor(L / CELL)), bx1 = Math.min(GRID - 1, Math.floor(R / CELL));
+      const by0 = Math.max(0, Math.floor(T / CELL)), by1 = Math.min(GRID - 1, Math.floor(B / CELL));
+
+      // 沥青路面
+      const rx0 = Math.max(L, 0), ry0 = Math.max(T, 0);
+      const rx1 = Math.min(R, WORLD), ry1 = Math.min(B, WORLD);
+      g.fillStyle = '#22252c';
+      g.fillRect(rx0, ry0, rx1 - rx0, ry1 - ry0);
+
+      // 街区地面 + 一圈人行道压边
+      for (let i = bx0; i <= bx1; i++) {
+        for (let j = by0; j <= by1; j++) {
+          const dk = groundMap[i * GRID + j] || 'residential';
+          g.fillStyle = DIST[dk].ground;
+          g.fillRect(i * CELL + ROAD / 2, j * CELL + ROAD / 2, CELL - ROAD, CELL - ROAD);
+          g.strokeStyle = 'rgba(0,0,0,.38)';
+          g.lineWidth = 3;
+          g.strokeRect(i * CELL + ROAD / 2 + 1.5, j * CELL + ROAD / 2 + 1.5, CELL - ROAD - 3, CELL - ROAD - 3);
+        }
+      }
+
+      // 车道线：压得很淡，只留一点方向感，别扎眼
+      g.strokeStyle = 'rgba(176,184,196,.075)';
+      g.lineWidth = 1.5;
+      g.setLineDash([10, 36]);
+      for (let i = bx0; i <= bx1 + 1; i++) {
+        const x = i * CELL;
+        if (x > L && x < R) { g.beginPath(); g.moveTo(x, Math.max(T, 0)); g.lineTo(x, Math.min(B, WORLD)); g.stroke(); }
+      }
+      for (let j = by0; j <= by1 + 1; j++) {
+        const y = j * CELL;
+        if (y > T && y < B) { g.beginPath(); g.moveTo(Math.max(L, 0), y); g.lineTo(Math.min(R, WORLD), y); g.stroke(); }
+      }
+      g.setLineDash([]);
+
+      g.strokeStyle = '#3a4150';
+      g.lineWidth = 8;
+      g.strokeRect(0, 0, WORLD, WORLD);
+
+      for (const b of buildings) {
+        if (b.x > R || b.x + b.w < L || b.y > B || b.y + b.h < T) continue;
+        g.fillStyle = 'rgba(0,0,0,.45)';
+        g.fillRect(b.x + b.h3d * 0.65, b.y + b.h3d * 0.65, b.w, b.h);
+        g.fillStyle = b.c;
+        g.fillRect(b.x, b.y, b.w, b.h);
+        g.fillStyle = b.roof;
+        g.fillRect(b.x, b.y, b.w, Math.min(10, b.h * 0.18));
+        g.strokeStyle = 'rgba(0,0,0,.35)';
+        g.lineWidth = 1.5;
+        g.strokeRect(b.x + 0.5, b.y + 0.5, b.w - 1, b.h - 1);
+        if (b.w > 70 && b.h > 46) {
+          g.fillStyle = 'rgba(255,220,150,.15)';
+          for (let wx = b.x + 12; wx < b.x + b.w - 10; wx += 20) {
+            for (let wy = b.y + 16; wy < b.y + b.h - 10; wy += 22) {
+              if (((wx * 7 + wy * 13) | 0) % 5 === 0) g.fillRect(wx, wy, 7, 8);
+            }
+          }
+        }
+      }
+
+      for (const p of props) {
+        if (p.x > R || p.x < L - 120 || p.y > B || p.y < T - 120) continue;
+        if (p.kind === 'tree') {
+          g.fillStyle = 'rgba(0,0,0,.35)';
+          g.beginPath(); g.arc(p.x + 4, p.y + 5, p.r, 0, 6.2832); g.fill();
+          g.fillStyle = '#2f5c3a';
+          g.beginPath(); g.arc(p.x, p.y, p.r, 0, 6.2832); g.fill();
+          g.fillStyle = '#3d7449';
+          g.beginPath(); g.arc(p.x - p.r * 0.3, p.y - p.r * 0.3, p.r * 0.55, 0, 6.2832); g.fill();
+        } else if (p.kind === 'palm') {
+          g.strokeStyle = '#6b5a3a'; g.lineWidth = 3;
+          g.beginPath(); g.moveTo(p.x, p.y + p.r); g.lineTo(p.x, p.y - p.r * 0.4); g.stroke();
+          g.fillStyle = '#3f7a4a';
+          for (let a = 0; a < 6; a++) {
+            const ang = (a / 6) * 6.2832;
+            g.beginPath();
+            g.ellipse(p.x + Math.cos(ang) * p.r * 0.8, p.y - p.r * 0.4 + Math.sin(ang) * p.r * 0.5, p.r * 0.6, p.r * 0.28, ang, 0, 6.2832);
+            g.fill();
+          }
+        } else if (p.kind === 'container') {
+          g.fillStyle = 'rgba(0,0,0,.4)';
+          g.fillRect(p.x + 5, p.y + 5, p.w, p.h);
+          g.fillStyle = p.c;
+          g.fillRect(p.x, p.y, p.w, p.h);
+          g.strokeStyle = 'rgba(0,0,0,.3)'; g.lineWidth = 1;
+          for (let k = 1; k < 4; k++) {
+            g.beginPath(); g.moveTo(p.x + (p.w / 4) * k, p.y); g.lineTo(p.x + (p.w / 4) * k, p.y + p.h); g.stroke();
+          }
+        } else if (p.kind === 'runway') {
+          g.fillStyle = '#3a3e46';
+          g.fillRect(p.x, p.y, p.w, p.h);
+          g.strokeStyle = 'rgba(255,255,255,.32)'; g.lineWidth = 3;
+          g.setLineDash([26, 22]);
+          g.beginPath(); g.moveTo(p.x + 10, p.y + p.h / 2); g.lineTo(p.x + p.w - 10, p.y + p.h / 2); g.stroke();
+          g.setLineDash([]);
+        }
+      }
+
+
+    g.restore();
+  }
+
+  function paintTile(tx, ty) {
+    const c = document.createElement('canvas');
+    const size = Math.ceil(TILE * tileScale);
+    c.width = size; c.height = size;
+    const g = c.getContext('2d');
+    g.scale(tileScale, tileScale);
+    g.translate(-tx * TILE, -ty * TILE);
+    paintStatic(g, tx * TILE - 320, ty * TILE - 320, (tx + 1) * TILE + 320, (ty + 1) * TILE + 320);
+    return c;
+  }
+
+  function drawStaticWorld(L, T, R, B) {
+    const x0 = Math.max(0, Math.floor(L / TILE)), x1 = Math.min(TILES - 1, Math.floor(R / TILE));
+    const y0 = Math.max(0, Math.floor(T / TILE)), y1 = Math.min(TILES - 1, Math.floor(B / TILE));
+    for (let tx = x0; tx <= x1; tx++) {
+      for (let ty = y0; ty <= y1; ty++) {
+        const key = tx * 1000 + ty;
+        let cv = tileCache.get(key);
+        if (cv) { tileCache.delete(key); tileCache.set(key, cv); }
+        else {
+          cv = paintTile(tx, ty);
+          tileCache.set(key, cv);
+          if (tileCache.size > 24) tileCache.delete(tileCache.keys().next().value);
+        }
+        ctx.drawImage(cv, tx * TILE, ty * TILE, TILE, TILE);
+      }
+    }
+  }
+
   function draw() {
     if (game.inside) { drawInterior(); return; }
     const sk = game.shake;
@@ -2197,115 +2340,25 @@
 
     const L = cam.x - W / 2 - 100, R = cam.x + W / 2 + 100;
     const T = cam.y - H / 2 - 100, B = cam.y + H / 2 + 100;
-    const bx0 = Math.max(0, Math.floor(L / CELL)), bx1 = Math.min(GRID - 1, Math.floor(R / CELL));
-    const by0 = Math.max(0, Math.floor(T / CELL)), by1 = Math.min(GRID - 1, Math.floor(B / CELL));
+    const tt0 = performance.now();
+    drawStaticWorld(L, T, R, B);
 
-    // 沥青路面
-    const rx0 = Math.max(L, 0), ry0 = Math.max(T, 0);
-    const rx1 = Math.min(R, WORLD), ry1 = Math.min(B, WORLD);
-    ctx.fillStyle = '#22252c';
-    ctx.fillRect(rx0, ry0, rx1 - rx0, ry1 - ry0);
-
-    // 街区地面 + 一圈人行道压边
-    for (let i = bx0; i <= bx1; i++) {
-      for (let j = by0; j <= by1; j++) {
-        const dk = groundMap[i * GRID + j] || 'residential';
-        ctx.fillStyle = DIST[dk].ground;
-        ctx.fillRect(i * CELL + ROAD / 2, j * CELL + ROAD / 2, CELL - ROAD, CELL - ROAD);
-        ctx.strokeStyle = 'rgba(0,0,0,.38)';
-        ctx.lineWidth = 3;
-        ctx.strokeRect(i * CELL + ROAD / 2 + 1.5, j * CELL + ROAD / 2 + 1.5, CELL - ROAD - 3, CELL - ROAD - 3);
-      }
-    }
-
-    // 车道线：压得很淡，只留一点方向感，别扎眼
-    ctx.strokeStyle = 'rgba(176,184,196,.075)';
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([10, 36]);
-    for (let i = bx0; i <= bx1 + 1; i++) {
-      const x = i * CELL;
-      if (x > L && x < R) { ctx.beginPath(); ctx.moveTo(x, Math.max(T, 0)); ctx.lineTo(x, Math.min(B, WORLD)); ctx.stroke(); }
-    }
-    for (let j = by0; j <= by1 + 1; j++) {
-      const y = j * CELL;
-      if (y > T && y < B) { ctx.beginPath(); ctx.moveTo(Math.max(L, 0), y); ctx.lineTo(Math.min(R, WORLD), y); ctx.stroke(); }
-    }
-    ctx.setLineDash([]);
-
-    ctx.strokeStyle = '#3a4150';
-    ctx.lineWidth = 8;
-    ctx.strokeRect(0, 0, WORLD, WORLD);
-
+    // 门牌（动态：呼吸 + 靠近高亮）
     for (const b of buildings) {
+      if (!b.door) continue;
       if (b.x > R || b.x + b.w < L || b.y > B || b.y + b.h < T) continue;
-      ctx.fillStyle = 'rgba(0,0,0,.45)';
-      ctx.fillRect(b.x + b.h3d * 0.65, b.y + b.h3d * 0.65, b.w, b.h);
-      ctx.fillStyle = b.c;
-      ctx.fillRect(b.x, b.y, b.w, b.h);
-      ctx.fillStyle = b.roof;
-      ctx.fillRect(b.x, b.y, b.w, Math.min(10, b.h * 0.18));
-      ctx.strokeStyle = 'rgba(0,0,0,.35)';
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(b.x + 0.5, b.y + 0.5, b.w - 1, b.h - 1);
-      if (b.w > 70 && b.h > 46) {
-        ctx.fillStyle = 'rgba(255,220,150,.15)';
-        for (let wx = b.x + 12; wx < b.x + b.w - 10; wx += 20) {
-          for (let wy = b.y + 16; wy < b.y + b.h - 10; wy += 22) {
-            if (((wx * 7 + wy * 13) | 0) % 5 === 0) ctx.fillRect(wx, wy, 7, 8);
-          }
-        }
-      }
-      if (b.door) {
-        const near = game.nearDoor === b;
-        const gl = near ? 0.95 : 0.45 + Math.sin(game.time * 3 + b.door.x * 0.05) * 0.18;
-        ctx.fillStyle = 'rgba(255,216,77,' + gl.toFixed(2) + ')';
-        ctx.fillRect(b.door.x - 16, b.y + b.h - 4, 32, 6);
-        if (near) {
-          ctx.fillStyle = '#ffd84d';
-          ctx.font = 'bold 11px -apple-system,system-ui,sans-serif';
-          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          ctx.fillText('E · ' + b.intName, b.door.x, b.y + b.h + 20);
-        }
+      const near = game.nearDoor === b;
+      const gl = near ? 0.95 : 0.45 + Math.sin(game.time * 3 + b.door.x * 0.05) * 0.18;
+      ctx.fillStyle = 'rgba(255,216,77,' + gl.toFixed(2) + ')';
+      ctx.fillRect(b.door.x - 16, b.y + b.h - 4, 32, 6);
+      if (near) {
+        ctx.fillStyle = '#ffd84d';
+        ctx.font = 'bold 11px -apple-system,system-ui,sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('E · ' + b.intName, b.door.x, b.y + b.h + 20);
       }
     }
-
-    for (const p of props) {
-      if (p.x > R || p.x < L - 120 || p.y > B || p.y < T - 120) continue;
-      if (p.kind === 'tree') {
-        ctx.fillStyle = 'rgba(0,0,0,.35)';
-        ctx.beginPath(); ctx.arc(p.x + 4, p.y + 5, p.r, 0, 6.2832); ctx.fill();
-        ctx.fillStyle = '#2f5c3a';
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.2832); ctx.fill();
-        ctx.fillStyle = '#3d7449';
-        ctx.beginPath(); ctx.arc(p.x - p.r * 0.3, p.y - p.r * 0.3, p.r * 0.55, 0, 6.2832); ctx.fill();
-      } else if (p.kind === 'palm') {
-        ctx.strokeStyle = '#6b5a3a'; ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.moveTo(p.x, p.y + p.r); ctx.lineTo(p.x, p.y - p.r * 0.4); ctx.stroke();
-        ctx.fillStyle = '#3f7a4a';
-        for (let a = 0; a < 6; a++) {
-          const ang = (a / 6) * 6.2832;
-          ctx.beginPath();
-          ctx.ellipse(p.x + Math.cos(ang) * p.r * 0.8, p.y - p.r * 0.4 + Math.sin(ang) * p.r * 0.5, p.r * 0.6, p.r * 0.28, ang, 0, 6.2832);
-          ctx.fill();
-        }
-      } else if (p.kind === 'container') {
-        ctx.fillStyle = 'rgba(0,0,0,.4)';
-        ctx.fillRect(p.x + 5, p.y + 5, p.w, p.h);
-        ctx.fillStyle = p.c;
-        ctx.fillRect(p.x, p.y, p.w, p.h);
-        ctx.strokeStyle = 'rgba(0,0,0,.3)'; ctx.lineWidth = 1;
-        for (let k = 1; k < 4; k++) {
-          ctx.beginPath(); ctx.moveTo(p.x + (p.w / 4) * k, p.y); ctx.lineTo(p.x + (p.w / 4) * k, p.y + p.h); ctx.stroke();
-        }
-      } else if (p.kind === 'runway') {
-        ctx.fillStyle = '#3a3e46';
-        ctx.fillRect(p.x, p.y, p.w, p.h);
-        ctx.strokeStyle = 'rgba(255,255,255,.32)'; ctx.lineWidth = 3;
-        ctx.setLineDash([26, 22]);
-        ctx.beginPath(); ctx.moveTo(p.x + 10, p.y + p.h / 2); ctx.lineTo(p.x + p.w - 10, p.y + p.h / 2); ctx.stroke();
-        ctx.setLineDash([]);
-      }
-    }
+    perfStatic = perfStatic * 0.9 + (performance.now() - tt0) * 0.1;
 
     for (const lm of LANDMARKS) {
       if (lm.x > R + 200 || lm.x < L - 200 || lm.y > B + 200 || lm.y < T - 200) continue;
@@ -2325,17 +2378,38 @@
       ctx.fillText(lm.name, lm.doorX, lm.doorY - 30);
     }
 
+    for (const P of POIS) {
+      if (P.x > R + 200 || P.x < L - 200 || P.y > B + 200 || P.y < T - 200) continue;
+      ctx.fillStyle = 'rgba(11,14,18,.9)';
+      ctx.beginPath(); ctx.arc(P.x, P.y, 16, 0, 6.2832); ctx.fill();
+      ctx.strokeStyle = P.color; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(P.x, P.y, 16, 0, 6.2832); ctx.stroke();
+      ctx.fillStyle = '#0b0e12';
+      ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(P.icon, P.x, P.y - 1);
+      ctx.font = 'bold 11px -apple-system,system-ui,sans-serif';
+      ctx.fillStyle = P.color;
+      ctx.fillText(P.name, P.x, P.y - 27);
+    }
+
     const ch = currentChapter();
     if (ch.goal && ch.goal.type === 'goto' && game.missions.indexOf(ch.id) < 0) {
       const g = ch.goal;
-      const pulse = 0.5 + Math.sin(game.time * 4) * 0.5;
-      ctx.save();
-      ctx.globalAlpha = 0.3 + pulse * 0.3;
-      ctx.fillStyle = '#ffd84d';
-      ctx.beginPath(); ctx.arc(g.x, g.y, 30 + pulse * 10, 0, 6.2832); ctx.fill();
-      ctx.restore();
-      ctx.strokeStyle = '#ffd84d'; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.arc(g.x, g.y, 24, 0, 6.2832); ctx.stroke();
+      const gx = g.x != null ? g.x : g.px, gy = g.y != null ? g.y : g.py;
+      if (gx != null) {
+        const pulse = 0.5 + Math.sin(game.time * 4) * 0.5;
+        ctx.save();
+        ctx.globalAlpha = 0.3 + pulse * 0.3;
+        ctx.fillStyle = '#ffd84d';
+        ctx.beginPath(); ctx.arc(gx, gy, 30 + pulse * 10, 0, 6.2832); ctx.fill();
+        ctx.restore();
+        ctx.strokeStyle = '#ffd84d'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(gx, gy, 24, 0, 6.2832); ctx.stroke();
+        ctx.fillStyle = '#ffd84d';
+        ctx.font = 'bold 11px -apple-system,system-ui,sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('目标', gx, gy - 34);
+      }
     }
 
     for (const p of pickups) {
@@ -2680,39 +2754,61 @@
   const STAR = '<svg class="star" viewBox="0 0 24 24"><path fill="#ffd84d" d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg>';
   starsEl.innerHTML = STAR.repeat(5);
 
+  const starNodes = starsEl.querySelectorAll('.star');
+  let starLast = -1;
   function renderStars() {
-    const list = starsEl.querySelectorAll('.star');
-    for (let i = 0; i < list.length; i++) list[i].classList.toggle('on', i < game.wanted);
+    if (starLast === game.wanted) return;
+    starLast = game.wanted;
+    for (let i = 0; i < starNodes.length; i++) starNodes[i].classList.toggle('on', i < game.wanted);
   }
+  const hudEl = {
+    hpBar: document.getElementById('hpBar'),
+    hpTxt: document.getElementById('hpTxt'),
+    carBarWrap: document.getElementById('carBarWrap'),
+    carBar: document.getElementById('carBar'),
+    carTxt: document.getElementById('carTxt'),
+  };
+  let barCache = { hp: -1, car: -1 };
   function updateBars() {
-    const hp = clamp(player.hp, 0, 100);
-    document.getElementById('hpBar').style.width = hp + '%';
-    document.getElementById('hpTxt').textContent = Math.ceil(hp);
-    const wrap = document.getElementById('carBarWrap');
+    const hp = Math.ceil(clamp(player.hp, 0, 100));
+    if (hp !== barCache.hp) {
+      barCache.hp = hp;
+      hudEl.hpBar.style.width = hp + '%';
+      hudEl.hpTxt.textContent = hp;
+    }
     if (player.inCar) {
-      wrap.style.display = 'block';
-      const chp = clamp(player.inCar.hp, 0, 100);
-      document.getElementById('carBar').style.width = chp + '%';
-      document.getElementById('carTxt').textContent = '车况 ' + Math.ceil(chp);
-    } else wrap.style.display = 'none';
+      const chp = Math.ceil(clamp(player.inCar.hp, 0, 100));
+      if (barCache.car !== chp + 1000) {
+        barCache.car = chp + 1000;
+        hudEl.carBarWrap.style.display = 'block';
+        hudEl.carBar.style.width = chp + '%';
+        hudEl.carTxt.textContent = '车况 ' + chp;
+      }
+    } else if (barCache.car !== -1) {
+      barCache.car = -1;
+      hudEl.carBarWrap.style.display = 'none';
+    }
   }
 
   let hudT = 0;
+  const whereEl = document.getElementById('where');
+  const hintEl = document.getElementById('hint');
+  let hudHint = '';
   function updateHud() {
     if (game.inside) return;
     const bx = clamp(Math.floor(player.x / CELL), 0, GRID - 1);
     const by = clamp(Math.floor(player.y / CELL), 0, GRID - 1);
     const dkName = DIST[groundMap[bx * GRID + by] || 'residential'].name;
-    const whereEl = document.getElementById('where');
     if (whereEl.textContent !== dkName) whereEl.textContent = dkName;
     renderStars();
     updateBars();
     if (game.time - hudT > 0.35) { hudT = game.time; drawMini(); }
-    const hintEl = document.getElementById('hint');
-    if (game.nearLandmark) hintEl.textContent = '按 E 进入 ' + game.nearLandmark.icon + ' ' + game.nearLandmark.name;
-    else if (game.nearDoor) hintEl.textContent = '按 E 进入 ' + game.nearDoor.intName;
-    else if (player.inCar) hintEl.textContent = 'WASD 开车 · E 下车 · Shift 手刹 · 撞人 / 开枪会被通缉';
-    else hintEl.textContent = 'WASD 移动 · E 上车 / 进门 · 左键开火 · Shift 手刹';
+    let hint;
+    if (game.nearLandmark) hint = '按 E 进入 ' + game.nearLandmark.icon + ' ' + game.nearLandmark.name;
+    else if (game.nearDoor) hint = '按 E 进入 ' + game.nearDoor.intName;
+    else if (player.inCar) hint = 'WASD 开车 · E 下车 · Shift 手刹 · 撞人 / 开枪会被通缉';
+    else hint = 'WASD 移动 · E 上车 / 进门 · 左键开火 · M 地图';
+    if (hint !== hudHint) { hudHint = hint; hintEl.textContent = hint; }
   }
 
   let toastT = 0, toastEl = null;
@@ -2844,6 +2940,7 @@
     toggleMap();
   });
   document.getElementById('btnRank').addEventListener('click', showRank);
+  document.getElementById('btn3d').addEventListener('click', function () { location.href = '/games/gta-3d/'; });
   document.getElementById('btnRankClose').addEventListener('click', function () {
     document.getElementById('panelRank').style.display = 'none';
     if (game.running && !game.over) document.getElementById('veil').classList.remove('on');
@@ -2868,7 +2965,7 @@
     let steps = 0;
     while (acc >= STEP && steps < 5) { update(STEP); acc -= STEP; steps++; }
     if (steps === 5) acc = 0;
-    draw();
+    if (!game.paused || game.inside) draw();
     requestAnimationFrame(loop);
   }
   requestAnimationFrame(loop);
@@ -2903,6 +3000,8 @@
     mini: function () { return game.mini ? game.mini.kind : null; },
     wantedNow: function () { return game.wanted; },
     goalNow: function () { const g = currentChapter().goal || {}; return { type: g.type, sec: g.sec, n: g.n, amount: g.amount, target: g.target }; },
+    perf: function () { return { staticMs: Math.round(perfStatic * 100) / 100, tiles: tileCache.size, tileScale: tileScale, buildings: buildings.length, props: props.length }; },
+    resetTiles: function () { tileCache.clear(); },
   };
 })();
 </script>

@@ -1,0 +1,1326 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>罪恶都市 3D · 开车进城</title>
+<meta name="description" content="罪恶都市 3D 版：第三人称开车横穿 30×30 街区，抢车、开枪、甩警察，钱和 2D 版、炒股、外汇共用同一个账户。">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;overflow:hidden;background:linear-gradient(#070b14 0%,#101a2b 45%,#2b3a52 100%);
+    color:#e8ecf4;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    user-select:none;touch-action:none}
+  #game{position:fixed;inset:0;display:block;width:100%;height:100%}
+
+  .hud{position:fixed;left:0;right:0;pointer-events:none;z-index:5}
+  .top{top:0;display:flex;align-items:flex-start;justify-content:space-between;padding:12px 14px;gap:10px}
+  .chipbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .chip{background:rgba(10,14,20,.62);border:1px solid rgba(255,255,255,.1);border-radius:999px;
+    padding:7px 12px;font-size:12.5px;font-weight:800;letter-spacing:.3px;backdrop-filter:blur(10px)}
+  .chip.money{color:#ffd84d}
+  .chip.where{color:#9fb2cc}
+  .stars{display:flex;gap:3px;background:rgba(10,14,20,.62);border:1px solid rgba(255,255,255,.1);
+    border-radius:999px;padding:6px 10px;backdrop-filter:blur(10px)}
+  .star{font-size:14px;opacity:.22;filter:grayscale(1);transition:.2s}
+  .star.on{opacity:1;filter:none;text-shadow:0 0 8px rgba(255,190,60,.8)}
+
+  .tr{display:flex;gap:8px;pointer-events:auto}
+  .btn3d{background:rgba(16,21,30,.82);border:1px solid rgba(255,255,255,.14);color:#cfd8e6;
+    border-radius:10px;padding:8px 11px;font-size:12.5px;font-weight:800;cursor:pointer;font-family:inherit;backdrop-filter:blur(8px)}
+  .btn3d:hover{background:rgba(255,46,136,.22);color:#fff}
+
+  .bl{left:14px;bottom:14px;display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+  .barwrap{width:170px;height:9px;background:rgba(255,255,255,.12);border-radius:99px;overflow:hidden}
+  .barfill{height:100%;width:100%;background:linear-gradient(90deg,#ff5c8a,#ff2e88);transition:width .15s}
+  .barlab{font-size:10.5px;color:#93a0b4;font-weight:800;letter-spacing:.4px}
+
+  .speedo{position:fixed;right:14px;bottom:14px;z-index:6;pointer-events:none;
+    background:rgba(10,14,20,.7);border:1px solid rgba(255,255,255,.1);border-radius:14px;
+    padding:10px 14px;text-align:right;backdrop-filter:blur(10px);min-width:104px}
+  .speedo b{font-size:26px;letter-spacing:-.5px}
+  .speedo i{font-style:normal;font-size:10px;color:#8b98ad;font-weight:800;margin-left:2px}
+  #miniWrap{position:fixed;right:14px;bottom:96px;z-index:6;width:132px;height:132px;border-radius:12px;
+    overflow:hidden;border:1px solid rgba(255,255,255,.14);background:#0b0e14;opacity:.94}
+  #mini{display:block;width:132px;height:132px}
+
+  .hint{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:6;
+    background:rgba(10,14,20,.72);border:1px solid rgba(255,255,255,.1);border-radius:999px;
+    padding:8px 16px;font-size:12px;font-weight:700;color:#b9c6d8;white-space:nowrap;backdrop-filter:blur(10px)}
+
+  .objective{position:fixed;left:14px;top:58px;z-index:6;max-width:min(340px,60vw);
+    background:rgba(10,14,20,.72);border:1px solid rgba(255,216,77,.3);border-radius:12px;
+    padding:10px 13px;font-size:12.5px;font-weight:700;color:#ffe6a3;backdrop-filter:blur(10px);display:none}
+  .objective.show{display:block}
+  .objective .t{font-size:10.5px;color:#ffd84d;letter-spacing:1px;font-weight:900;margin-bottom:3px}
+
+  .veil{position:fixed;inset:0;z-index:20;display:none;place-items:center;padding:18px;
+    background:rgba(4,6,10,.78);backdrop-filter:blur(8px)}
+  .veil.on{display:grid}
+  .panel{width:min(94vw,520px);background:linear-gradient(180deg,rgba(22,27,36,.98),rgba(14,18,25,.98));
+    border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:20px;text-align:center}
+  .panel h1{font-size:22px;letter-spacing:.5px;margin-bottom:6px}
+  .panel h1 em{font-style:normal;color:#ff2e88}
+  .panel p{font-size:13px;line-height:1.7;color:#a9b6c8;margin:8px 0}
+  .panel .keys{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:12px 0}
+  .panel .keys div{display:flex;justify-content:space-between;font-size:12px;color:#8e9cb0;
+    background:rgba(255,255,255,.04);border-radius:8px;padding:6px 9px}
+  .panel .keys k{color:#e8ecf4;font-weight:800}
+  .go{width:100%;margin-top:10px;border:0;border-radius:12px;padding:14px;font-size:15px;font-weight:900;
+    color:#0b0e14;background:linear-gradient(180deg,#ff6fa5,#ff2e88);cursor:pointer;font-family:inherit}
+  .go:disabled{opacity:.6}
+  .ghost{background:rgba(255,255,255,.08);color:#cfd8e6}
+
+  .dlg{position:fixed;left:50%;bottom:0;transform:translate(-50%,120%);width:min(680px,96vw);z-index:26;
+    background:linear-gradient(180deg,rgba(18,22,30,.96),rgba(10,13,18,.98));
+    border:1px solid rgba(255,255,255,.14);border-bottom:0;border-radius:16px 16px 0 0;
+    padding:16px 18px 12px;transition:transform .28s cubic-bezier(.2,.9,.2,1)}
+  .dlg.on{transform:translate(-50%,0)}
+  .dlg .who{font-size:12px;font-weight:900;letter-spacing:1px;color:#ffd84d;margin-bottom:6px}
+  .dlg .txt{font-size:14px;line-height:1.75;color:#e2e8f2;min-height:44px}
+  .dlg .nx{margin-top:8px;text-align:right;font-size:11px;color:#7c8698;font-weight:800}
+
+  .toast{position:fixed;left:50%;top:64px;transform:translate(-50%,-14px);z-index:30;opacity:0;
+    background:rgba(10,14,20,.9);border:1px solid rgba(255,255,255,.14);border-radius:12px;
+    padding:9px 16px;font-size:13px;font-weight:800;transition:.22s;pointer-events:none;max-width:86vw;text-align:center}
+  .toast.on{opacity:1;transform:translate(-50%,0)}
+
+  .touch{position:fixed;inset:auto 0 0 0;z-index:7;display:none;justify-content:space-between;
+    padding:0 16px 16px;pointer-events:none}
+  .touch.on{display:flex}
+  .pad{display:flex;gap:10px;pointer-events:auto}
+  .tbtn{width:64px;height:64px;border-radius:50%;background:rgba(16,21,30,.72);
+    border:1px solid rgba(255,255,255,.16);color:#dfe6f2;font-size:20px;font-weight:900;
+    display:grid;place-items:center;backdrop-filter:blur(8px)}
+  .tbtn:active{background:rgba(255,46,136,.35)}
+  @media (max-width:760px){
+    .speedo{bottom:auto;top:auto;right:10px;bottom:auto;padding:6px 10px;min-width:86px}
+    #miniWrap{width:96px;height:96px;right:10px;bottom:100px}
+    #mini{width:96px;height:96px}
+    .speedo b{font-size:20px}
+    .hint{font-size:10.5px;padding:6px 10px;bottom:88px}
+    .objective{max-width:52vw;font-size:11px;top:52px}
+  }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div class="hud top">
+  <div class="chipbar">
+    <div class="chip money" id="money">¥0</div>
+    <div class="chip where" id="where">海滩</div>
+    <div class="stars" id="stars"></div>
+  </div>
+  <div class="tr">
+    <button class="btn3d" id="btn2d">2D 版</button>
+    <button class="btn3d" id="btnHelp">操作</button>
+  </div>
+</div>
+
+<div class="objective" id="obj"><div class="t">剧情</div><div id="objTxt"></div></div>
+
+<div class="bl hud">
+  <div class="barlab">生命</div>
+  <div class="barwrap"><div class="barfill" id="hpBar"></div></div>
+</div>
+
+<div id="miniWrap"><canvas id="mini" width="132" height="132"></canvas></div>
+
+<div class="speedo"><b id="spd">0</b><i>km/h</i></div>
+<div class="hint" id="hint">WASD 开车 · E 上下车 · 左键开枪 · Shift 手刹</div>
+
+<div class="touch" id="touch">
+  <div class="pad">
+    <div class="tbtn" data-k="left">◀</div>
+    <div class="tbtn" data-k="right">▶</div>
+  </div>
+  <div class="pad">
+    <div class="tbtn" data-k="fire">🔫</div>
+    <div class="tbtn" data-k="use">E</div>
+    <div class="tbtn" data-k="gas">▲</div>
+  </div>
+</div>
+
+<div class="veil on" id="veil">
+  <div class="panel">
+    <h1>罪恶都市 <em>3D</em></h1>
+    <p>第三人称俯冲视角，开着车横穿 30×30 街区：海滩、山丘、市中心、机场、港口。<br>抢车、开枪、甩警察，钱和 2D 版、炒股、外汇**同一个账户**。</p>
+    <div class="keys">
+      <div><span>油门 / 倒车</span><k>W S</k></div>
+      <div><span>转向</span><k>A D</k></div>
+      <div><span>上下车</span><k>E</k></div>
+      <div><span>开枪</span><k>左键 / J</k></div>
+      <div><span>手刹漂移</span><k>Shift</k></div>
+      <div><span>转视角</span><k>拖动鼠标</k></div>
+    </div>
+    <button class="go" id="btnStart">开车进城</button>
+    <button class="go ghost" id="btnFull2d" style="margin-top:8px">去 2D 版玩 19 章剧情</button>
+  </div>
+</div>
+
+<div class="veil" id="dead">
+  <div class="panel">
+    <h1>你倒下了</h1>
+    <p id="deadTxt">这一局赚到的钱已经存进账户。</p>
+    <button class="go" id="btnRetry">再来一次</button>
+  </div>
+</div>
+
+<div class="veil" id="help">
+  <div class="panel">
+    <h1>操作</h1>
+    <p>W/S 油门倒车，A/D 转向，Shift 手刹漂移，E 上下车。<br>鼠标拖动转镜头，左键或 J 开枪。<br>撞人、开枪、抢车都会涨通缉星，星星越多警车越多；躲远点、安静一阵会慢慢掉星。</p>
+    <p>赚到的钱实时同步到账户，和 2D 版 / 炒股 / 外汇通用。</p>
+    <button class="go" id="btnHelpClose">知道了</button>
+  </div>
+</div>
+
+<div class="dlg" id="dlg">
+  <div class="who" id="dlgWho">老麦</div>
+  <div class="txt" id="dlgTxt"></div>
+  <div class="nx">点这里 / 空格 继续 ▸</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="/games/score.js"></script>
+<script type="module">
+import * as THREE from './three.module.min.js';
+
+const cv = document.getElementById('game');
+const renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+renderer.setSize(window.innerWidth, window.innerHeight, false);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x141c28, 150, 520);
+
+const camera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.5, 1200);
+
+// ====== 世界参数（和 2D 版同一套分区）======
+const G = 30, C = 24, WORLD = G * C, ROAD = 6;
+const BLOCK = C - ROAD;
+
+const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+const lerp = (a, b, t) => a + (b - a) * t;
+const rnd = (a, b) => a + Math.random() * (b - a);
+const dist2 = (ax, az, bx, bz) => Math.hypot(ax - bx, az - bz);
+
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const rand = mulberry32(20261119);
+
+function districtAt(bx, by) {
+  if (bx <= 2) return 'beach';
+  if (by <= 4) return 'hills';
+  if (by >= 26 && bx >= 3 && bx <= 21) return 'port';
+  if (bx >= 24 && by >= 12 && by <= 22) return 'airport';
+  if (bx <= 5 && by >= 16) return 'industry';
+  if (bx >= 10 && bx <= 18 && by >= 6 && by <= 15) return 'downtown';
+  if (bx >= 19 && by >= 3 && by <= 12) return 'commercial';
+  if (bx >= 13 && bx <= 21 && by >= 17 && by <= 24) return 'hood';
+  if ((bx === 8 && by === 17) || (bx === 22 && by === 24) || (bx === 3 && by === 9)) return 'park';
+  return 'residential';
+}
+
+const DIST = {
+  beach:      { name: '海滩',   pad: 0xd9c8a4, wall: [0xe3d4b4, 0xd8c8a4, 0xcbb894], h: [7, 16], prop: 'palm' },
+  hills:      { name: '山丘',   pad: 0x2f4234, wall: [0x41503f, 0x37452f, 0x485a44], h: [6, 13], prop: 'tree' },
+  downtown:   { name: '市中心', pad: 0x2b3140, wall: [0x46557a, 0x53537e, 0x3c4a6e, 0x4f5670], h: [34, 78], prop: 'none' },
+  commercial: { name: '商业区', pad: 0x33343c, wall: [0x6a5860, 0x53675c, 0x6b6053, 0x565667], h: [16, 40], prop: 'none' },
+  residential:{ name: '住宅区', pad: 0x363a44, wall: [0x7c6a5b, 0x6d7c6d, 0x7a5b6d, 0x6b6a7c], h: [8, 18], prop: 'tree' },
+  hood:       { name: '贫民区', pad: 0x33363d, wall: [0x5b5042, 0x4b584f, 0x574a4a], h: [6, 15], prop: 'none' },
+  airport:    { name: '机场',   pad: 0x3b4048, wall: [0x4a5058, 0x575d66, 0x6a717c], h: [10, 22], prop: 'none' },
+  port:       { name: '港口',   pad: 0x363b43, wall: [0x3f4a55, 0x4a5560, 0x5a6470], h: [7, 20], prop: 'none' },
+  industry:   { name: '工业区', pad: 0x34373d, wall: [0x4a4a42, 0x55554a, 0x62625a], h: [8, 24], prop: 'none' },
+  park:       { name: '公园',   pad: 0x2f4a36, wall: [0x3a5540], h: [4, 8], prop: 'tree' },
+};
+
+const LANDMARKS = [
+  { id: 'exchange', name: '证券交易所', icon: '🏦', bx: 14, by: 10, color: 0x4aa3ff },
+  { id: 'bankfx', name: '地下钱庄', icon: '💱', bx: 17, by: 20, color: 0x42d77d },
+  { id: 'hospital', name: '医院', icon: '🏥', bx: 6, by: 8, color: 0xff6b6b },
+];
+const POIS = [
+  { id: 'port_wh', name: '港口仓库', icon: '📦', bx: 8, by: 27, color: 0x7fd1ff },
+  { id: 'club', name: '布兰登夜店', icon: '🎵', bx: 20, by: 19, color: 0xb78bff },
+];
+for (const L of [...LANDMARKS, ...POIS]) {
+  L.x = L.bx * C + BLOCK / 2;
+  L.z = L.by * C + BLOCK / 2;
+}
+
+// ====== 灯光 ======
+scene.add(new THREE.HemisphereLight(0xb4d2ff, 0x2b3038, 1.35));
+const sun = new THREE.DirectionalLight(0xffe6c0, 1.35);
+sun.position.set(90, 140, 60);
+scene.add(sun);
+const rim = new THREE.DirectionalLight(0x6f9bff, 0.5);
+rim.position.set(-90, 60, -70);
+scene.add(rim);
+
+// ====== 地面 / 人行道 / 车道线 ======
+const groundGeo = new THREE.PlaneGeometry(WORLD + 120, WORLD + 120);
+const groundMat = new THREE.MeshLambertMaterial({ color: 0x24272e });
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.position.set(WORLD / 2, -0.02, WORLD / 2);
+scene.add(ground);
+
+// 街区块（人行道 + 地面色）
+const padGeo = new THREE.BoxGeometry(BLOCK, 0.5, BLOCK);
+const padMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+const padMesh = new THREE.InstancedMesh(padGeo, padMat, G * G);
+padMesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+{
+  const m = new THREE.Matrix4();
+  const col = new THREE.Color();
+  let i = 0;
+  for (let bx = 0; bx < G; bx++) {
+    for (let by = 0; by < G; by++) {
+      const d = DIST[districtAt(bx, by)];
+      m.makeTranslation(bx * C + BLOCK / 2, 0.22, by * C + BLOCK / 2);
+      padMesh.setMatrixAt(i, m);
+      padMesh.setColorAt(i, col.setHex(d.pad));
+      i++;
+    }
+  }
+  padMesh.instanceMatrix.needsUpdate = true;
+  padMesh.instanceColor.needsUpdate = true;
+}
+scene.add(padMesh);
+
+// 车道虚线（沿每条路中线，两向）
+const dashGeo = new THREE.PlaneGeometry(0.28, 5.2);
+const dashMat = new THREE.MeshBasicMaterial({ color: 0xcfd8e6, transparent: true, opacity: 0.16, depthWrite: false });
+const DASH_STEP = 10;
+const dashes = new THREE.InstancedMesh(dashGeo, dashMat, (G + 1) * Math.floor(WORLD / DASH_STEP) * 2);
+{
+  const m = new THREE.Matrix4();
+  const q = new THREE.Quaternion();
+  let i = 0;
+  const horiz = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0));
+  const vert = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, Math.PI / 2));
+  for (let k = 0; k <= G; k++) {
+    for (let s = 0; s < Math.floor(WORLD / DASH_STEP); s++) {
+      if (i + 2 > dashes.count) break;
+      // 横向路
+      m.compose(new THREE.Vector3(k * C, 0.06, s * 10 + 5), horiz, new THREE.Vector3(1, 1, 1));
+      dashes.setMatrixAt(i++, m);
+      // 纵向路
+      m.compose(new THREE.Vector3(s * 10 + 5, 0.06, k * C), vert, new THREE.Vector3(1, 1, 1));
+      dashes.setMatrixAt(i++, m);
+    }
+  }
+  dashes.count = i;
+  dashes.instanceMatrix.needsUpdate = true;
+}
+scene.add(dashes);
+
+// ====== 建筑（实例化）======
+const buildings = [];           // {x,z,w,d,h,cell}
+const buildingGeo = new THREE.BoxGeometry(1, 1, 1);
+const buildingMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+const MAXB = 2600;
+const bMesh = new THREE.InstancedMesh(buildingGeo, buildingMat, MAXB);
+bMesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+const roofGeo = new THREE.BoxGeometry(1, 1, 1);
+const roofMesh = new THREE.InstancedMesh(roofGeo, new THREE.MeshLambertMaterial({ color: 0xffffff }), MAXB);
+roofMesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+
+{
+  const m = new THREE.Matrix4();
+  const col = new THREE.Color();
+  let bi = 0, ri = 0;
+  for (let bx = 0; bx < G; bx++) {
+    for (let by = 0; by < G; by++) {
+      const dk = districtAt(bx, by);
+      const D = DIST[dk];
+      const isLandmarkBlock = LANDMARKS.some(l => l.bx === bx && l.by === by) || POIS.some(p => p.bx === bx && p.by === by);
+      const x0 = bx * C + ROAD / 2 + 1.4, z0 = by * C + ROAD / 2 + 1.4;
+      const area = BLOCK - 2.8;
+      const count = dk === 'downtown' ? 3 : dk === 'park' ? 1 : (rand() < 0.55 ? 2 : 1);
+      for (let k = 0; k < count; k++) {
+        const w = rnd(area * 0.36, area * 0.62) * (count === 1 ? 1.25 : 1);
+        const dd = rnd(area * 0.36, area * 0.62) * (count === 1 ? 1.25 : 1);
+        const px = x0 + rnd(w / 2, Math.max(w / 2 + 0.1, area - w / 2));
+        const pz = z0 + rnd(dd / 2, Math.max(dd / 2 + 0.1, area - dd / 2));
+        const h = rnd(D.h[0], D.h[1]) * (dk === 'downtown' && rand() < 0.25 ? 1.35 : 1);
+        if (bi >= MAXB) break;
+        m.compose(new THREE.Vector3(px, h / 2 + 0.4, pz), new THREE.Quaternion(), new THREE.Vector3(w, h, dd));
+        bMesh.setMatrixAt(bi, m);
+        col.setHex(D.wall[(rand() * D.wall.length) | 0]);
+        bMesh.setColorAt(bi, col);
+        buildings.push({ x: px, z: pz, hw: w / 2, hd: dd / 2, h: h, cell: bx * G + by });
+        bi++;
+        // 屋顶设备箱
+        if (rand() < 0.6 && ri < MAXB) {
+          const rw = w * rnd(0.18, 0.34), rd = dd * rnd(0.18, 0.34), rh = rnd(0.6, 2.2);
+          m.compose(new THREE.Vector3(px + rnd(-w / 4, w / 4), h + rh / 2 + 0.4, pz + rnd(-dd / 4, dd / 4)),
+            new THREE.Quaternion(), new THREE.Vector3(rw, rh, rd));
+          roofMesh.setMatrixAt(ri, m);
+          roofMesh.setColorAt(ri, col.setHex(0x2c3038));
+          ri++;
+        }
+      }
+      if (isLandmarkBlock) {
+        // 地标占位：一块醒目的矮楼，稍后加标签
+        const lm = [...LANDMARKS, ...POIS].find(l => l.bx === bx && l.by === by);
+        m.compose(new THREE.Vector3(lm.x, 7, lm.z), new THREE.Quaternion(), new THREE.Vector3(area * 0.72, 14, area * 0.72));
+        bMesh.setMatrixAt(bi, m);
+        bMesh.setColorAt(bi, col.setHex(lm.color).multiplyScalar(0.72));
+        buildings.push({ x: lm.x, z: lm.z, hw: area * 0.36, hd: area * 0.36, h: 14, cell: bx * G + by });
+        bi++;
+      }
+    }
+  }
+  bMesh.count = bi;
+  bMesh.instanceMatrix.needsUpdate = true;
+  bMesh.instanceColor.needsUpdate = true;
+  roofMesh.count = ri;
+  roofMesh.instanceMatrix.needsUpdate = true;
+  roofMesh.instanceColor.needsUpdate = true;
+}
+scene.add(bMesh, roofMesh);
+
+// ====== 树 / 棕榈（实例化）======
+const treeCount = 240;
+const trunkMesh = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.28, 0.36, 4, 6),
+  new THREE.MeshLambertMaterial({ color: 0x5d4a33 }), treeCount);
+const leafMesh = new THREE.InstancedMesh(new THREE.ConeGeometry(2.4, 5.2, 7),
+  new THREE.MeshLambertMaterial({ color: 0x2f6a41 }), treeCount);
+{
+  const m = new THREE.Matrix4();
+  const q = new THREE.Quaternion();
+  let i = 0;
+  const spots = [];
+  for (let bx = 0; bx < G; bx++) for (let by = 0; by < G; by++) {
+    const dk = districtAt(bx, by);
+    if (dk !== 'beach' && dk !== 'hills' && dk !== 'residential' && dk !== 'park') continue;
+    if (rand() > 0.55) continue;
+    spots.push([bx, by, dk]);
+  }
+  for (const [bx, by, dk] of spots) {
+    if (i >= treeCount) break;
+    const x = bx * C + rnd(ROAD / 2 + 2, C - ROAD / 2 - 2);
+    const z = by * C + rnd(ROAD / 2 + 2, C - ROAD / 2 - 2);
+    const s = dk === 'beach' ? rnd(0.9, 1.3) : rnd(0.7, 1.15);
+    m.compose(new THREE.Vector3(x, 2.6 * s, z), q, new THREE.Vector3(s, s, s));
+    trunkMesh.setMatrixAt(i, m);
+    m.compose(new THREE.Vector3(x, 5.6 * s, z), q, new THREE.Vector3(s, s, s));
+    leafMesh.setMatrixAt(i, m);
+    i++;
+  }
+  trunkMesh.count = i; leafMesh.count = i;
+  trunkMesh.instanceMatrix.needsUpdate = true;
+  leafMesh.instanceMatrix.needsUpdate = true;
+}
+scene.add(trunkMesh, leafMesh);
+
+// ====== 建筑碰撞查询 ======
+const cellMap = new Map();
+function cellKey(bx, by) { return bx * 1000 + by; }
+for (const b of buildings) {
+  const cx = Math.floor(b.x / C), cz = Math.floor(b.z / C);
+  for (let ix = cx - 1; ix <= cx + 1; ix++) for (let iz = cz - 1; iz <= cz + 1; iz++) {
+    const k = cellKey(ix, iz);
+    let arr = cellMap.get(k);
+    if (!arr) { arr = []; cellMap.set(k, arr); }
+    arr.push(b);
+  }
+}
+function nearBuildings(x, z, r) {
+  const arr = cellMap.get(cellKey(Math.floor(x / C), Math.floor(z / C)));
+  return arr || null;
+}
+
+// ====== 标签（地标 / 剧情点）======
+function makeLabel(text, color) {
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 128;
+  const g = c.getContext('2d');
+  g.fillStyle = 'rgba(8,10,14,.82)';
+  g.beginPath();
+  g.roundRect ? g.roundRect(8, 24, 496, 80, 18) : g.rect(8, 24, 496, 80);
+  g.fill();
+  g.strokeStyle = color; g.lineWidth = 4; g.stroke();
+  g.fillStyle = color;
+  g.font = 'bold 46px -apple-system,system-ui,sans-serif';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(text, 256, 66);
+  const tex = new THREE.CanvasTexture(c);
+  tex.minFilter = THREE.LinearFilter;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
+  sp.scale.set(22, 5.5, 1);
+  return sp;
+}
+const labelSprites = [];
+for (const L of [...LANDMARKS, ...POIS]) {
+  const sp = makeLabel(L.icon + ' ' + L.name, '#' + new THREE.Color(L.color).getHexString());
+  sp.position.set(L.x, 20, L.z);
+  scene.add(sp);
+  labelSprites.push(sp);
+}
+
+// ====== 玩家 / 车 ======
+const carGroup = new THREE.Group();
+{
+  const bodyMat = new THREE.MeshLambertMaterial({ color: 0xff2e88 });
+  const glassMat = new THREE.MeshLambertMaterial({ color: 0x22303f });
+  const wheelMat = new THREE.MeshLambertMaterial({ color: 0x14171c });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.85, 4.5), bodyMat);
+  body.position.y = 0.95;
+  const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.7, 2.1), glassMat);
+  cabin.position.set(0, 1.65, -0.15);
+  const hood = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.22, 1.5), bodyMat);
+  hood.position.set(0, 1.28, 1.5);
+  carGroup.add(body, cabin, hood);
+  const wheelGeo = new THREE.CylinderGeometry(0.48, 0.48, 0.42, 12);
+  for (const [wx, wz] of [[-1.02, 1.45], [1.02, 1.45], [-1.02, -1.45], [1.02, -1.45]]) {
+    const w = new THREE.Mesh(wheelGeo, wheelMat);
+    w.rotation.z = Math.PI / 2;
+    w.position.set(wx, 0.48, wz);
+    carGroup.add(w);
+  }
+  const lightMat = new THREE.MeshBasicMaterial({ color: 0xfff3c4 });
+  const hl = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.18, 0.12), lightMat);
+  hl.position.set(0, 1.05, 2.28);
+  carGroup.add(hl);
+  const tail = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.16, 0.12), new THREE.MeshBasicMaterial({ color: 0xff4444 }));
+  tail.position.set(0, 1.05, -2.28);
+  carGroup.add(tail);
+}
+scene.add(carGroup);
+
+const foot = new THREE.Group();
+{
+  const skin = new THREE.MeshLambertMaterial({ color: 0xf0c9a8 });
+  const shirt = new THREE.MeshLambertMaterial({ color: 0xff2e88 });
+  const pants = new THREE.MeshLambertMaterial({ color: 0x2b3340 });
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.0, 0.5), shirt);
+  torso.position.y = 1.35;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.34, 12, 10), skin);
+  head.position.y = 2.05;
+  const legs = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.85, 0.45), pants);
+  legs.position.y = 0.62;
+  foot.add(torso, head, legs);
+  foot.visible = false;
+}
+scene.add(foot);
+
+// ====== 交通车 / 警车 / 行人 ======
+const CAR_N = 34;
+const trafficBody = new THREE.InstancedMesh(new THREE.BoxGeometry(2, 0.9, 4.3),
+  new THREE.MeshLambertMaterial({ color: 0xffffff }), CAR_N);
+const trafficTop = new THREE.InstancedMesh(new THREE.BoxGeometry(1.7, 0.65, 1.9),
+  new THREE.MeshLambertMaterial({ color: 0x1b2430 }), CAR_N);
+trafficBody.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+trafficTop.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+{
+  const col = new THREE.Color();
+  const palette = [0x8f98a8, 0x2f6df0, 0xc8503f, 0xd8b23f, 0x4a8f6b, 0xbfc6d2, 0x6b4a8f];
+  for (let i = 0; i < CAR_N; i++) trafficBody.setColorAt(i, col.setHex(palette[(Math.random() * palette.length) | 0]));
+  trafficBody.instanceColor.needsUpdate = true;
+}
+scene.add(trafficBody, trafficTop);
+
+const PED_N = 70;
+const pedMesh = new THREE.InstancedMesh(new THREE.CapsuleGeometry(0.32, 1.0, 4, 8),
+  new THREE.MeshLambertMaterial({ color: 0xffffff }), PED_N);
+pedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+{
+  const col = new THREE.Color();
+  const palette = [0xd8dde6, 0xcf9a6a, 0x8f9fb5, 0xb58fc0, 0x9ab58f, 0xd0b38f];
+  for (let i = 0; i < PED_N; i++) pedMesh.setColorAt(i, col.setHex(palette[(Math.random() * palette.length) | 0]));
+  pedMesh.instanceColor.needsUpdate = true;
+}
+scene.add(pedMesh);
+
+const traffic = [];
+for (let i = 0; i < CAR_N; i++) {
+  const axis = Math.random() < 0.5 ? 'x' : 'z';
+  const lane = Math.random() < 0.5 ? -1.5 : 1.5;
+  const line = Math.round(Math.random() * G) * C;
+  traffic.push({
+    axis, lane, line,
+    pos: Math.random() * WORLD,
+    speed: rnd(7, 13) * (Math.random() < 0.5 ? 1 : -1),
+    h: 0,
+  });
+}
+
+const peds = [];
+for (let i = 0; i < PED_N; i++) {
+  const bx = Math.floor(Math.random() * G), by = Math.floor(Math.random() * G);
+  const edge = Math.floor(Math.random() * 4);
+  const t = Math.random();
+  let x, z, h;
+  const bx0 = bx * C + ROAD / 2 + 1, bz0 = by * C + ROAD / 2 + 1;
+  const bw = BLOCK - 2;
+  if (edge === 0) { x = bx0 + bw * t; z = bz0; h = Math.PI / 2; }
+  else if (edge === 1) { x = bx0 + bw; z = bz0 + bw * t; h = Math.PI; }
+  else if (edge === 2) { x = bx0 + bw * t; z = bz0 + bw; h = -Math.PI / 2; }
+  else { x = bx0; z = bz0 + bw * t; h = 0; }
+  peds.push({ x, z, h, speed: rnd(0.7, 1.6), flee: 0, dead: 0, spin: Math.random() * 6 });
+}
+
+// 警车（最多 6 辆）
+let copCars = [];
+const copBody = new THREE.InstancedMesh(new THREE.BoxGeometry(2.1, 0.95, 4.4),
+  new THREE.MeshLambertMaterial({ color: 0x1b2a4a }), 8);
+const copTop = new THREE.InstancedMesh(new THREE.BoxGeometry(1.8, 0.6, 1.8),
+  new THREE.MeshLambertMaterial({ color: 0xdfe8f6 }), 8);
+const copLight = new THREE.InstancedMesh(new THREE.BoxGeometry(1.6, 0.2, 0.5),
+  new THREE.MeshBasicMaterial({ color: 0xff2b2b }), 8);
+copBody.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+copTop.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+copLight.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+scene.add(copBody, copTop, copLight);
+
+// ====== 状态 ======
+const game = {
+  running: false, over: false, paused: false,
+  money: 0, wanted: 0, time: 0, crimeAt: -99, quiet: 0,
+  kills: 0, shake: 0, dlgOn: false, dlgQueue: [], dlgDone: null,
+  chapter: 1, missions: [], surviveT: 0, chapterDone: false,
+  hp: 100, inCar: true, speed: 0, camYaw: 0, camPitch: 0,
+  bullets: [], parts: [],
+};
+const car = { x: 0, z: 0, h: 0, v: 0, hp: 100 };
+const player = { x: 0, z: 0, h: 0 };
+car.x = 4 * C; car.z = 6 * C; car.h = 0;
+player.x = car.x - 3.4; player.z = car.z; player.h = 0;
+function activePos() { return game.inCar ? car : player; }
+
+const SAVE_CHAPTER = 'gta3d.chapter';
+
+// ====== 小工具：音效 / toast ======
+let actx = null;
+function audioInit() { try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+function beep(freq, dur, type, vol) {
+  if (!actx) return;
+  const o = actx.createOscillator(), g = actx.createGain();
+  o.type = type || 'sine'; o.frequency.value = freq;
+  g.gain.value = vol == null ? 0.05 : vol;
+  o.connect(g); g.connect(actx.destination);
+  const t = actx.currentTime;
+  g.gain.setValueAtTime(g.gain.value, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.start(t); o.stop(t + dur + 0.02);
+}
+let toastT = 0;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('on');
+  clearTimeout(toastT);
+  toastT = setTimeout(() => el.classList.remove('on'), 1800);
+}
+const money = (v) => '¥' + Math.round(v).toLocaleString('zh-CN');
+
+// ====== 钱包 ======
+async function api(path, opt) {
+  const r = await fetch(path, Object.assign({ credentials: 'same-origin' }, opt || {}));
+  if (!r.ok) throw new Error(path + ' ' + r.status);
+  return r.json();
+}
+async function loadWallet() {
+  try {
+    const d = await api('/api/gta');
+    if (d && d.ok) { game.money = d.cash || 0; }
+  } catch (e) {}
+}
+let bankT = 0, bankBusy = false;
+async function bankSync(force) {
+  if (!game.running) return;
+  if (bankBusy) return;
+  if (!force && game.time - bankT < 7) return;
+  bankT = game.time;
+  bankBusy = true;
+  try {
+    await api('/api/gta', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ action: 'bank', cash: Math.max(0, Math.round(game.money)) }),
+    });
+  } catch (e) {}
+  bankBusy = false;
+}
+
+// ====== 剧情（3 章 3D 试炼）======
+const CHARCOLOR = { '老麦': '#ffd84d', '你': '#ff2e88', '阿丽': '#7fd1ff', '雷诺': '#ff7b8f' };
+const STORY = [
+  {
+    id: 'c1', title: '出狱', lines: [
+      ['老麦', '出来了？街边那辆车归你了，直接开走。'],
+      ['你', '就这样？没人拦？'],
+      ['老麦', '有人拦就踩油门。'],
+    ],
+    goal: { type: 'steal', text: '抢一辆车（按 E 上车）' },
+    done: [['老麦', '行，先开到市中心的证券交易所。']], reward: 300,
+  },
+  {
+    id: 'c2', title: '送货', lines: [
+      ['老麦', '证券交易所有个箱子，送到门口。别问里面是什么。'],
+      ['你', '不问。'],
+    ],
+    goal: { type: 'goto', x: LANDMARKS[0].x, z: LANDMARKS[0].z, text: '开到 🏦 证券交易所门口' },
+    done: [['老麦', '箱子有人接了。现在去惹点事，让他们知道这条街换人了。']], reward: 2500,
+  },
+  {
+    id: 'c3', title: '立威', lines: [
+      ['老麦', '把通缉顶到 2 星，撑住 30 秒，警车会追你。'],
+      ['你', '这算哪门子立威？'],
+      ['老麦', '能甩掉警车的人，才配谈生意。'],
+    ],
+    goal: { type: 'survive', stars: 2, sec: 30, text: '通缉 2 星，撑住 30 秒' },
+    done: [['老麦', '不错。这座城市开始记住你的名字了。'], ['老麦', '下一站，贫民区的地下钱庄。']], reward: 12000,
+  },
+  {
+    id: 'c4', title: '跑腿钱庄', lines: [
+      ['老陈', '老麦介绍来的？美元最近涨得凶。'],
+      ['你', '我只是来送个信封。'],
+      ['老陈', '送信封的人，最后都成了客户。'],
+    ],
+    goal: { type: 'goto', x: LANDMARKS[1].x, z: LANDMARKS[1].z, text: '开到 💱 地下钱庄门口' },
+    done: [['老陈', '回去告诉老麦，账我记下了。']], reward: 3000,
+  },
+  {
+    id: 'c5', title: '决战', lines: [
+      ['老麦', '布兰登的人今晚会来找你。把通缉顶到 4 星，撑住 45 秒。'],
+      ['你', '为什么每次都要我当诱饵？'],
+      ['老麦', '因为你开车最快。'],
+    ],
+    goal: { type: 'survive', stars: 4, sec: 45, text: '通缉 4 星，撑住 45 秒（按 J 或左键还击）' },
+    done: [
+      ['老麦', '车不错，人也不错。'],
+      ['你', '这就完了？'],
+      ['老麦', '3D 版先到这。真正的大城市在 2D 版，那儿有 19 章。'],
+    ], reward: 30000, final: true,
+  },
+];
+function currentChapter() { return STORY[Math.min(game.chapter - 1, STORY.length - 1)]; }
+
+// ====== 对话 ======
+function playDialogue(lines, done) {
+  game.dlgQueue = lines.slice();
+  game.dlgDone = done || null;
+  game.dlgOn = true;
+  game.paused = true;
+  showLine();
+}
+function showLine() {
+  const l = game.dlgQueue.shift();
+  const el = document.getElementById('dlg');
+  if (!l) {
+    el.classList.remove('on');
+    game.dlgOn = false;
+    game.paused = false;
+    const d = game.dlgDone; game.dlgDone = null;
+    if (d) d();
+    return;
+  }
+  document.getElementById('dlgWho').textContent = l[0];
+  document.getElementById('dlgWho').style.color = CHARCOLOR[l[0]] || '#ffd84d';
+  document.getElementById('dlgTxt').textContent = l[1];
+  el.classList.add('on');
+}
+function nextLine() { if (game.dlgOn) showLine(); }
+document.getElementById('dlg').addEventListener('click', nextLine);
+
+// ====== HUD ======
+const starsEl = document.getElementById('stars');
+for (let i = 0; i < 5; i++) {
+  const s = document.createElement('div');
+  s.className = 'star';
+  s.textContent = '★';
+  starsEl.appendChild(s);
+}
+const starNodes = starsEl.querySelectorAll('.star');
+let starLast = -1;
+function renderStars() {
+  if (starLast === game.wanted) return;
+  starLast = game.wanted;
+  for (let i = 0; i < starNodes.length; i++) starNodes[i].classList.toggle('on', i < game.wanted);
+}
+let hpLast = -1, spdLast = -1, moneyLast = -1;
+function updateHud() {
+  const hp = Math.ceil(clamp(game.hp, 0, 100));
+  if (hp !== hpLast) { hpLast = hp; document.getElementById('hpBar').style.width = hp + '%'; }
+  const kmh = Math.round(Math.abs(car.v) * 4.6);
+  if (kmh !== spdLast) { spdLast = kmh; document.getElementById('spd').textContent = kmh; }
+  const m = Math.round(game.money);
+  if (m !== moneyLast) { moneyLast = m; document.getElementById('money').textContent = money(m); }
+  const bx = clamp(Math.floor(car.x / C), 0, G - 1), bz = clamp(Math.floor(car.z / C), 0, G - 1);
+  const name = DIST[districtAt(bx, bz)].name;
+  const where = document.getElementById('where');
+  if (where.textContent !== name) where.textContent = name;
+  renderStars();
+}
+
+// ====== 小地图 ======
+const miniCv = document.getElementById('mini');
+const mctx = miniCv.getContext('2d');
+let miniBase = null;
+function buildMiniBase() {
+  miniBase = document.createElement('canvas');
+  miniBase.width = miniBase.height = 132;
+  const g = miniBase.getContext('2d');
+  const s = 132 / WORLD;
+  g.fillStyle = '#0c0f14';
+  g.fillRect(0, 0, 132, 132);
+  for (let bx = 0; bx < G; bx++) for (let bz = 0; bz < G; bz++) {
+    const d = DIST[districtAt(bx, bz)];
+    g.fillStyle = '#' + d.pad.toString(16).padStart(6, '0');
+    g.fillRect(bx * C * s, bz * C * s, BLOCK * s, BLOCK * s);
+  }
+}
+function drawMini() {
+  if (!miniBase) buildMiniBase();
+  const s = 132 / WORLD;
+  mctx.clearRect(0, 0, 132, 132);
+  mctx.drawImage(miniBase, 0, 0);
+  for (const L of [...LANDMARKS, ...POIS]) {
+    mctx.fillStyle = '#' + L.color.toString(16).padStart(6, '0');
+    mctx.beginPath(); mctx.arc(L.x * s, L.z * s, 2.6, 0, 6.2832); mctx.fill();
+  }
+  if (game.wanted > 0) {
+    mctx.fillStyle = '#ff3b3b';
+    for (const c of copCars) mctx.fillRect(c.x * s - 1.8, c.z * s - 1.8, 3.6, 3.6);
+  }
+  mctx.save();
+  const ap = activePos();
+  mctx.translate(ap.x * s, ap.z * s);
+  mctx.rotate(ap.h + Math.PI);
+  mctx.fillStyle = '#ff2e88';
+  mctx.beginPath(); mctx.moveTo(0, -5); mctx.lineTo(3.6, 4); mctx.lineTo(-3.6, 4); mctx.closePath(); mctx.fill();
+  mctx.restore();
+}
+
+// ====== 通缉 ======
+function addWanted(n) {
+  game.wanted = clamp(game.wanted + n, 0, 5);
+  game.crimeAt = game.time;
+  game.quiet = 0;
+  renderStars();
+}
+function updateWanted(dt) {
+  if (game.wanted <= 0) return;
+  const quiet = game.time - game.crimeAt;
+  if (quiet > 3) {
+    game.quiet += dt;
+    if (game.quiet > 7) { game.wanted--; game.quiet = 0; renderStars(); }
+  } else game.quiet = 0;
+}
+function updateCops(dt) {
+  const ap = activePos();
+  const want = game.wanted > 0 ? Math.min(6, game.wanted + 1) : 0;
+  while (copCars.filter((c) => !c.dead).length < want) {
+    const a = Math.random() * 6.2832;
+    copCars.push({ x: ap.x + Math.cos(a) * 110, z: ap.z + Math.sin(a) * 110, h: a + Math.PI, v: 0, hp: 100, cool: 0, dead: 0 });
+  }
+  copCars = copCars.filter((c) => !c.dead);
+  while (copCars.length > want) copCars.pop();
+  for (const c of copCars) {
+    const dx = ap.x - c.x, dz = ap.z - c.z;
+    const d = Math.hypot(dx, dz) || 1;
+    const target = Math.atan2(dx, dz);
+    let diff = ((target - c.h + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+    c.h += clamp(diff, -0.06, 0.06) * Math.min(1, 0.4 + dt * 30);
+    const spd = d > 14 ? 26 : 10;
+    c.v = lerp(c.v, spd, 0.06);
+    c.x += Math.sin(c.h) * c.v * dt;
+    c.z += Math.cos(c.h) * c.v * dt;
+    if (d < 5.6 && c.cool <= 0) { damage(9); c.cool = 1.3; }
+    c.cool = Math.max(0, c.cool - dt);
+  }
+}
+
+// ====== 伤害 / 死亡 ======
+function damage(n) {
+  game.hp -= n;
+  game.shake = Math.min(8, game.shake + n * 0.4);
+  if (game.hp <= 0) die();
+}
+function die() {
+  game.over = true; game.running = false;
+  bankSync(true);
+  try { if (window.mfhryScore) window.mfhryScore('gta-3d', Math.round(game.money)); } catch (e) {}
+  document.getElementById('deadTxt').textContent = '这一局赚到 ' + money(game.money) + '，已经存进账户。';
+  document.getElementById('dead').classList.add('on');
+}
+
+// ====== 射击 ======
+function shoot() {
+  if (game.inCar) return;
+  if (game.paused || !game.running) return;
+  beep(320, 0.07, 'square', 0.05);
+  const src = activePos();
+  const fx = Math.sin(src.h), fz = Math.cos(src.h);
+  let best = null, bd = 1e9;
+  const targets = [];
+  for (const p of peds) if (!p.dead) targets.push(p);
+  for (const c of copCars) targets.push(c);
+  for (const t of targets) {
+    const dx = t.x - src.x, dz = t.z - src.z;
+    const d = Math.hypot(dx, dz);
+    if (d > 42 || d < 0.1) continue;
+    const dot = (dx * fx + dz * fz) / d;
+    if (dot < 0.92) continue;
+    if (d < bd) { bd = d; best = t; }
+  }
+  const hx = src.x + fx * (best ? bd : 40), hz = src.z + fz * (best ? bd : 40);
+  game.bullets.push({ x0: src.x, z0: src.z, x1: hx, z1: hz, life: 0.08 });
+  if (best) {
+    if (best.hp !== undefined) { best.hp -= 34; if (best.hp <= 0) { best.dead = 1; addWanted(1); game.kills++; reward(300); } }
+    else { best.dead = 1; addWanted(1); game.kills++; reward(200); }
+  }
+}
+function reward(n) { game.money += n; toast('+' + money(n)); }
+
+// 子弹线条池
+const shotMat = new THREE.LineBasicMaterial({ color: 0xffe58a, transparent: true, opacity: 0.9 });
+const shotLines = [];
+for (let i = 0; i < 8; i++) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
+  const ln = new THREE.Line(g, shotMat.clone());
+  ln.frustumCulled = false;
+  ln.visible = false;
+  scene.add(ln);
+  shotLines.push(ln);
+}
+
+// ====== 输入 ======
+const keys = {};
+const mouse = { dragging: false, lastX: 0, lastY: 0, down: false };
+window.addEventListener('keydown', (e) => {
+  const k = e.key.toLowerCase();
+  keys[k] = true;
+  if ([' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) e.preventDefault();
+  if (k === 'e') useKey();
+  if (k === 'j') shoot();
+  if (k === ' ' && game.dlgOn) nextLine();
+});
+window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
+cv.addEventListener('mousedown', (e) => {
+  mouse.down = true;
+  if (e.button === 2 || e.shiftKey) { mouse.dragging = true; mouse.lastX = e.clientX; mouse.lastY = e.clientY; }
+  else shoot();
+});
+window.addEventListener('mouseup', () => { mouse.down = false; mouse.dragging = false; });
+window.addEventListener('mousemove', (e) => {
+  if (!mouse.dragging) return;
+  game.camYaw -= (e.clientX - mouse.lastX) * 0.006;
+  game.camPitch = clamp(game.camPitch + (e.clientY - mouse.lastY) * 0.003, -0.35, 0.6);
+  mouse.lastX = e.clientX; mouse.lastY = e.clientY;
+});
+cv.addEventListener('contextmenu', (e) => e.preventDefault());
+
+// 触屏
+const touchEl = document.getElementById('touch');
+const touchState = {};
+for (const btn of touchEl.querySelectorAll('.tbtn')) {
+  const k = btn.dataset.k;
+  const on = (e) => { e.preventDefault(); touchState[k] = true; if (k === 'use') useKey(); if (k === 'fire') shoot(); };
+  const off = (e) => { e.preventDefault(); touchState[k] = false; };
+  btn.addEventListener('touchstart', on, { passive: false });
+  btn.addEventListener('touchend', off, { passive: false });
+  btn.addEventListener('touchcancel', off, { passive: false });
+  btn.addEventListener('mousedown', on);
+  btn.addEventListener('mouseup', off);
+}
+if ('ontouchstart' in window) touchEl.classList.add('on');
+
+// ====== 上下车 ======
+function nearOwnCar() {
+  return dist2(player.x, player.z, car.x, car.z) < 7;
+}
+function useKey() {
+  if (game.dlgOn) { nextLine(); return; }
+  if (!game.running) return;
+  if (game.inCar) {
+    game.inCar = false;
+    car.v = 0;
+    player.x = car.x - Math.sin(car.h + Math.PI / 2) * 3.2;
+    player.z = car.z - Math.cos(car.h + Math.PI / 2) * 3.2;
+    player.h = car.h;
+    foot.visible = true;
+    toast('下车了（按 E 上车）');
+    beep(420, 0.08, 'sine', 0.03);
+  } else if (nearOwnCar()) {
+    game.inCar = true;
+    foot.visible = false;
+    toast('上车');
+    beep(620, 0.09, 'sine', 0.03);
+    if (currentChapter().goal.type === 'steal' && game.missions.indexOf('c1') < 0) completeGoal();
+  } else {
+    toast('离车太远，走回去再按 E');
+  }
+}
+
+// ====== 剧情流程 ======
+function submitScore() {
+  try { if (window.mfhryScore) window.mfhryScore('gta-3d', Math.round(game.money)); } catch (e) {}
+}
+function startChapter(n) {
+  game.chapter = clamp(n, 1, STORY.length);
+  game.surviveT = 0;
+  game.chapterDone = false;
+  localStorage.setItem(SAVE_CHAPTER, String(game.chapter));
+  const ch = currentChapter();
+  setObjective();
+  setTimeout(() => {
+    playDialogue(ch.lines);
+  }, 500);
+}
+function setObjective() {
+  const ch = currentChapter();
+  const el = document.getElementById('obj');
+  if (game.missions.indexOf(ch.id) >= 0) {
+    el.classList.remove('show');
+    return;
+  }
+  el.classList.add('show');
+  document.getElementById('objTxt').textContent = '第 ' + game.chapter + ' 章 · ' + ch.title + '：' + ch.goal.text;
+}
+function completeGoal() {
+  const ch = currentChapter();
+  if (game.missions.indexOf(ch.id) >= 0) return;
+  playDialogue(ch.done, () => {
+    game.missions.push(ch.id);
+    if (ch.reward) { game.money += ch.reward; toast('+' + money(ch.reward)); }
+    localStorage.setItem('gta3d.missions', JSON.stringify(game.missions));
+    if (ch.final) {
+      toast('🎬 3D 试炼通过，去 2D 版接 19 章正片');
+      submitScore();
+      setObjective();
+      return;
+    }
+    game.chapter++;
+    startChapter(game.chapter);
+  });
+}
+function checkGoal(dt) {
+  if (game.paused) return;
+  const ch = currentChapter();
+  if (game.missions.indexOf(ch.id) >= 0) return;
+  const g = ch.goal;
+  if (g.type === 'steal') {
+    if (game.inCar) completeGoal();
+  } else if (g.type === 'goto') {
+    if (!game.inCar) return;
+    if (dist2(car.x, car.z, g.x, g.z) < 18) completeGoal();
+  } else if (g.type === 'survive') {
+    if (game.wanted >= g.stars) {
+      game.surviveT += dt;
+      if (game.surviveT >= g.sec) completeGoal();
+    }
+  }
+}
+
+// ====== 主循环 ======
+let last = performance.now();
+let miniT = 0;
+let slowFrames = 0, curDpr = Math.min(window.devicePixelRatio || 1, 1.5);
+function frame(now) {
+  let raw = (now - last) / 1000;
+  let dt = Math.min(raw, 0.05);
+  last = now;
+  if (game.running && raw > 0.045) slowFrames++;
+  else slowFrames = Math.max(0, slowFrames - 1);
+  if (slowFrames > 90 && curDpr > 0.75) {
+    curDpr = Math.max(0.75, curDpr - 0.25);
+    renderer.setPixelRatio(curDpr);
+    renderer.setSize(window.innerWidth, window.innerHeight, false);
+    slowFrames = 0;
+  }
+  if (game.running && !game.paused) update(dt);
+  render();
+  requestAnimationFrame(frame);
+}
+
+function update(dt) {
+  game.time += dt;
+
+  // 车 / 人
+  if (game.inCar) {
+    const gas = (keys['w'] || keys['arrowup'] || touchState.gas) ? 1 : 0;
+    const back = (keys['s'] || keys['arrowdown']) ? 1 : 0;
+    const left = (keys['a'] || keys['arrowleft'] || touchState.left) ? 1 : 0;
+    const right = (keys['d'] || keys['arrowright'] || touchState.right) ? 1 : 0;
+    const hb = keys['shift'] ? 1 : 0;
+    const accel = 26, maxV = 34;
+    car.v += (gas - back) * accel * dt;
+    car.v *= hb ? 0.96 : 0.994;
+    car.v = clamp(car.v, -maxV * 0.4, maxV);
+    const steerRate = 1.9 * clamp(Math.abs(car.v) / 10, 0, 1) * (hb ? 1.35 : 1);
+    car.h += (left - right) * steerRate * dt * (car.v < 0 ? -1 : 1);
+    const nx = car.x + Math.sin(car.h) * car.v * dt;
+    const nz = car.z + Math.cos(car.h) * car.v * dt;
+    const hit = collideCar(nx, nz, 2.1);
+    if (hit) {
+      car.x += hit.x; car.z += hit.z;
+      if (Math.abs(car.v) > 16) { damage(Math.abs(car.v) * 0.22); car.hp -= Math.abs(car.v) * 0.5; }
+      car.v *= -0.24;
+      game.shake = Math.min(10, Math.abs(car.v) * 0.2);
+    } else {
+      car.x = nx; car.z = nz;
+    }
+    car.x = clamp(car.x, 4, WORLD - 4);
+    car.z = clamp(car.z, 4, WORLD - 4);
+    carGroup.position.set(car.x, 0, car.z);
+    carGroup.rotation.y = car.h;
+    carGroup.visible = true;
+  } else {
+    const left = keys['a'] || keys['arrowleft'] || touchState.left;
+    const right = keys['d'] || keys['arrowright'] || touchState.right;
+    const up = keys['w'] || keys['arrowup'] || touchState.gas;
+    const down = keys['s'] || keys['arrowdown'];
+    const mx = (right ? 1 : 0) - (left ? 1 : 0);
+    const mz = (up ? 1 : 0) - (down ? 1 : 0);
+    if (mx || mz) {
+      const len = Math.hypot(mx, mz) || 1;
+      const sp = 9;
+      player.h = Math.atan2(mx / len, mz / len);
+      const nx = clamp(player.x + (mx / len) * sp * dt, 4, WORLD - 4);
+      const nz = clamp(player.z + (mz / len) * sp * dt, 4, WORLD - 4);
+      const hit = collideCar(nx, nz, 0.7);
+      if (hit) { player.x += hit.x; player.z += hit.z; }
+      else { player.x = nx; player.z = nz; }
+    }
+    foot.position.set(player.x, 0, player.z);
+    foot.rotation.y = player.h;
+    foot.visible = true;
+    carGroup.visible = true;
+  }
+
+  // 相机跟随
+  const p = activePos();
+  const camDist = game.inCar ? 16 : 11;
+  const camH = game.inCar ? 8.6 : 6.6;
+  const yaw = p.h + Math.PI + game.camYaw;
+  const tx = p.x + Math.sin(yaw) * camDist;
+  const tz = p.z + Math.cos(yaw) * camDist;
+  const ty = camH + game.camPitch * 6;
+  camera.position.x = lerp(camera.position.x, tx, Math.min(1, dt * 5));
+  camera.position.z = lerp(camera.position.z, tz, Math.min(1, dt * 5));
+  camera.position.y = lerp(camera.position.y, ty, Math.min(1, dt * 5));
+  camera.lookAt(p.x + Math.sin(p.h) * 8, 1.6, p.z + Math.cos(p.h) * 8);
+
+  // 交通车
+  const tm = new THREE.Matrix4();
+  const tq = new THREE.Quaternion();
+  for (let i = 0; i < traffic.length; i++) {
+    const t = traffic[i];
+    t.pos += t.speed * dt;
+    if (t.pos > WORLD) t.pos -= WORLD;
+    if (t.pos < 0) t.pos += WORLD;
+    const x = t.axis === 'z' ? t.line + t.lane : t.pos;
+    const z = t.axis === 'x' ? t.line + t.lane : t.pos;
+    const h = t.axis === 'z' ? (t.speed > 0 ? 0 : Math.PI) : (t.speed > 0 ? Math.PI / 2 : -Math.PI / 2);
+    tq.setFromAxisAngle(new THREE.Vector3(0, 1, 0), h);
+    tm.compose(new THREE.Vector3(x, 0.95, z), tq, new THREE.Vector3(1, 1, 1));
+    trafficBody.setMatrixAt(i, tm);
+    tm.compose(new THREE.Vector3(x, 1.75, z), tq, new THREE.Vector3(1, 1, 1));
+    trafficTop.setMatrixAt(i, tm);
+    if (game.inCar && dist2(x, z, car.x, car.z) < 4.6 && Math.abs(car.v) > 6) {
+      car.v *= 0.5; damage(4); t.pos += 6;
+    }
+  }
+  trafficBody.instanceMatrix.needsUpdate = true;
+  trafficTop.instanceMatrix.needsUpdate = true;
+
+  // 行人
+  const pm = new THREE.Matrix4();
+  const pq = new THREE.Quaternion();
+  for (let i = 0; i < peds.length; i++) {
+    const p = peds[i];
+    if (p.dead) {
+      pm.compose(new THREE.Vector3(p.x, 0.15, p.z), pq, new THREE.Vector3(1.6, 0.25, 1.6));
+      pedMesh.setMatrixAt(i, pm);
+      continue;
+    }
+    const ap = activePos();
+    const dPlayer = dist2(p.x, p.z, ap.x, ap.z);
+    p.flee = Math.max(0, p.flee - dt);
+    if (dPlayer < 22 && game.inCar) p.flee = Math.max(p.flee, 0.6);
+    const sp = p.flee > 0 ? 4.2 : p.speed;
+    p.x += Math.sin(p.h) * sp * dt;
+    p.z += Math.cos(p.h) * sp * dt;
+    if (Math.random() < 0.01) p.h += rnd(-1.2, 1.2);
+    if (p.x < 6 || p.x > WORLD - 6 || p.z < 6 || p.z > WORLD - 6) p.h += Math.PI;
+    if (game.inCar && dPlayer < 2.6 && Math.abs(car.v) > 5) {
+      p.dead = 1; addWanted(1); game.kills++; reward(120); beep(180, 0.12, 'sawtooth', 0.05);
+    }
+    pq.setFromAxisAngle(new THREE.Vector3(0, 1, 0), p.h);
+    pm.compose(new THREE.Vector3(p.x, 0.95, p.z), pq, new THREE.Vector3(1, 1, 1));
+    pedMesh.setMatrixAt(i, pm);
+  }
+  pedMesh.instanceMatrix.needsUpdate = true;
+
+  // 警车
+  if (copCars.length) {
+    for (let i = 0; i < copCars.length; i++) {
+      const c = copCars[i];
+      tq.setFromAxisAngle(new THREE.Vector3(0, 1, 0), c.h);
+      tm.compose(new THREE.Vector3(c.x, 0.95, c.z), tq, new THREE.Vector3(1, 1, 1));
+      copBody.setMatrixAt(i, tm);
+      tm.compose(new THREE.Vector3(c.x, 1.75, c.z), tq, new THREE.Vector3(1, 1, 1));
+      copTop.setMatrixAt(i, tm);
+      const blink = (Math.sin(game.time * 12 + i) > 0) ? 1 : 0.25;
+      tm.compose(new THREE.Vector3(c.x, 2.12, c.z), tq, new THREE.Vector3(blink, 1, 1));
+      copLight.setMatrixAt(i, tm);
+    }
+    copBody.count = copCars.length; copTop.count = copCars.length; copLight.count = copCars.length;
+    copBody.instanceMatrix.needsUpdate = true;
+    copTop.instanceMatrix.needsUpdate = true;
+    copLight.instanceMatrix.needsUpdate = true;
+  }
+
+  updateTrafficAI();
+  updateWanted(dt);
+  updateCops(dt);
+  checkGoal(dt);
+  bankSync(false);
+  updateHud();
+  if (game.time - miniT > 0.25) { miniT = game.time; drawMini(); }
+
+  // 子弹线淡出
+  for (const b of game.bullets) b.life -= dt;
+  game.bullets = game.bullets.filter((b) => b.life > 0);
+}
+
+function updateTrafficAI() {
+  // 简化：直行 + 到路口小概率转向，避免所有车都撞墙
+  for (const t of traffic) {
+    if (Math.random() < 0.0015) {
+      t.axis = t.axis === 'x' ? 'z' : 'x';
+      t.line = Math.round(t.pos / C) * C;
+      t.pos = Math.random() * WORLD;
+    }
+  }
+}
+
+function collideCar(x, z, r) {
+  const arr = nearBuildings(x, z, 4);
+  if (!arr) return null;
+  r = r || 2.1;
+  for (const b of arr) {
+    const dx = x - b.x, dz = z - b.z;
+    const ox = b.hw + r - Math.abs(dx);
+    const oz = b.hd + r - Math.abs(dz);
+    if (ox > 0 && oz > 0) {
+      if (ox < oz) return { x: Math.sign(dx || 1) * ox, z: 0 };
+      return { x: 0, z: Math.sign(dz || 1) * oz };
+    }
+  }
+  return null;
+}
+
+function render() {
+  const sh = game.shake;
+  if (sh > 0.1) {
+    camera.position.x += rnd(-sh, sh) * 0.05;
+    camera.position.y += rnd(-sh, sh) * 0.05;
+    game.shake *= 0.9;
+  }
+  // 子弹线
+  for (let i = 0; i < shotLines.length; i++) {
+    const b = game.bullets[i];
+    const ln = shotLines[i];
+    if (!b) { ln.visible = false; continue; }
+    const pos = ln.geometry.attributes.position;
+    pos.setXYZ(0, b.x0, 1.2, b.z0);
+    pos.setXYZ(1, b.x1, 1.2, b.z1);
+    pos.needsUpdate = true;
+    ln.visible = true;
+    ln.material.opacity = clamp(b.life / 0.08, 0, 1);
+  }
+  renderer.render(scene, camera);
+}
+
+// ====== 窗口尺寸 ======
+function onResize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.setPixelRatio(curDpr);
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  cv.style.width = w + 'px';
+  cv.style.height = h + 'px';
+}
+window.addEventListener('resize', onResize);
+onResize();
+
+// ====== 开始 ======
+function reset() {
+  car.x = 4 * C; car.z = 6 * C; car.h = 0; car.v = 0; car.hp = 100;
+  player.x = car.x - 3.4; player.z = car.z; player.h = 0;
+  game.hp = 100; game.wanted = 0; game.over = false; game.time = 0;
+  game.surviveT = 0; game.inCar = false; game.kills = 0;
+  game.camYaw = 0; game.camPitch = 0;
+  game.missions = JSON.parse(localStorage.getItem('gta3d.missions') || '[]');
+  game.chapter = clamp(+(localStorage.getItem(SAVE_CHAPTER) || 1), 1, STORY.length);
+  copCars.length = 0;
+  for (const p of peds) p.dead = 0;
+  camera.position.set(player.x - 12, 8, player.z - 12);
+  foot.visible = false;
+  carGroup.visible = true;
+  game.running = true;
+  game.paused = false;
+  document.getElementById('veil').classList.remove('on');
+  document.getElementById('dead').classList.remove('on');
+  if (game.missions.length >= STORY.length) {
+    setObjective();
+    document.getElementById('obj').classList.remove('show');
+  } else {
+    startChapter(game.chapter);
+  }
+}
+
+async function begin() {
+  const btn = document.getElementById('btnStart');
+  if (btn.disabled) return;
+  btn.disabled = true;
+  const old = btn.textContent;
+  btn.textContent = '读档中…';
+  audioInit();
+  await loadWallet();
+  btn.disabled = false;
+  btn.textContent = old;
+  reset();
+}
+
+document.getElementById('btnStart').addEventListener('click', begin);
+document.getElementById('btnRetry').addEventListener('click', () => { reset(); });
+document.getElementById('btn2d').addEventListener('click', () => { location.href = '/games/gta/'; });
+document.getElementById('btnFull2d').addEventListener('click', () => { location.href = '/games/gta/'; });
+document.getElementById('btnHelp').addEventListener('click', () => document.getElementById('help').classList.add('on'));
+document.getElementById('btnHelpClose').addEventListener('click', () => document.getElementById('help').classList.remove('on'));
+window.addEventListener('keydown', (e) => { if (e.key === 'Escape') document.getElementById('help').classList.remove('on'); });
+
+requestAnimationFrame(frame);
+updateHud();
+drawMini();
+
+// 调试钩子
+window.__gta3d = {
+  get game() { return game; },
+  get car() { return car; },
+  get counts() { return { buildings: buildings.length, traffic: traffic.length, peds: peds.length, cops: copCars.length, world: WORLD, cell: C }; },
+  chapter: () => ({ n: game.chapter, title: currentChapter().title, goal: currentChapter().goal.type }),
+  addWanted,
+  tp: (x, z) => { car.x = x; car.z = z; },
+  step: (n) => { for (let i = 0; i < n; i++) update(1 / 60); },
+  camPos: () => ({ x: camera.position.x, y: camera.position.y, z: camera.position.z }),
+};
+window.__gta3dReady = true;
+</script>
+</body>
+</html>
