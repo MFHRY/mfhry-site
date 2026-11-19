@@ -1231,15 +1231,15 @@
     var groups = window.MFHRY_SONGS || [];
 
     groups.forEach(function (g) {
-      var title = document.createElement('div');
-      title.className = 'pg-gtitle';
-      title.textContent = g.title;
-      wrap.appendChild(title);
-
       var items = (g.items || []).filter(function (h) {
         return !artistFilter || ('divider' in h ? false : artistOf(h) === artistFilter);
       });
       if (artistFilter && !items.length) return;          /* 该组没有符合条件的歌，整组隐藏 */
+
+      var title = document.createElement('div');
+      title.className = 'pg-gtitle';
+      title.textContent = g.title;
+      wrap.appendChild(title);
 
       var row = document.createElement('div');
       row.className = 'pg-row';
