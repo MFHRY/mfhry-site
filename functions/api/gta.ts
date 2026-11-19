@@ -22,7 +22,7 @@ interface Env { DB: D1Database }
 const MAX_CASH = 1_000_000_000;   // 10 亿封顶，防止上报天文数字
 const MIN_MOVE = 100;             // 最少转 100 元
 const MAX_MOVE = 50_000_000;      // 单次最多转 5000 万
-const MAX_STORY_CHAPTER = 12;
+const MAX_STORY_CHAPTER = 24;   // 前端目前 19 章，留点余量
 
 let schemaReady = false;
 async function ensureGtaSchema(env: Env) {

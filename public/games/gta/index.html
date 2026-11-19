@@ -63,6 +63,11 @@
   .dlg.on{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0)}
   .dlg .who{font-size:12px;font-weight:900;color:#ff2e88;letter-spacing:1px;margin-bottom:7px}
   .dlg .txt{font-size:14.5px;line-height:1.75;color:#e6ebf4;min-height:52px}
+  .choicelist{display:none;flex-direction:column;gap:8px;margin-top:12px}
+  .choicelist .chbtn{text-align:left;background:rgba(255,46,136,.12);border:1px solid rgba(255,46,136,.45);
+    color:#ffc2d8;border-radius:9px;padding:10px 14px;font-size:13.5px;font-weight:800;cursor:pointer;
+    font-family:inherit;transition:.15s}
+  .choicelist .chbtn:hover{background:rgba(255,46,136,.24);color:#fff;transform:translateX(3px)}
   .dlg .nx{margin-top:10px;text-align:right;font-size:11.5px;color:#7c8698;font-weight:700}
   .dlg .nx b{color:#42d77d}
 
@@ -143,6 +148,8 @@
   .btn.red{background:rgba(246,70,93,.14);border-color:rgba(246,70,93,.5);color:#ff7b8f}
   .btn.gold{background:rgba(255,216,77,.14);border-color:rgba(255,216,77,.45);color:#ffd84d}
   .pos{display:flex;justify-content:space-between;font-size:12px;padding:6px 2px;border-bottom:1px solid rgba(255,255,255,.06)}
+  .mapwrap{padding:12px 16px 6px}
+  #bigmap{width:100%;height:auto;display:block;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#0c0f14}
   .tip{font-size:10.5px;color:#6b7484;line-height:1.6;margin-top:10px}
   .tip a{color:#7f9cff;text-decoration:none}
 </style>
@@ -163,6 +170,7 @@
   <div class="tr">
     <a class="btn3d" href="/games/">← 返回</a>
     <button class="btn3d" id="btnBank">🏦 财经</button>
+    <button class="btn3d" id="btnMap">📍 地图</button>
     <button class="btn3d" id="btnRank">排行榜</button>
     <button class="btn3d" id="btnSound">🔊</button>
   </div>
@@ -189,18 +197,22 @@
 <div class="dlg" id="dlg">
   <div class="who" id="dlgWho">老麦</div>
   <div class="txt" id="dlgTxt"></div>
+  <div class="choicelist" id="dlgChoices"></div>
   <div class="nx">按 <b>空格</b> 或点这里继续 ▸</div>
 </div>
 
 <div class="veil on" id="veil">
   <div class="panel" id="panelStart">
     <h1>罪恶都市<em>LOS SANTOS · 超大地图</em></h1>
-    <p>30×30 街区的大都会：<b>海滩、山丘、市中心、机场、港口、贫民区</b>。八章剧情从出狱一路做到抢银行，城里的<b>证券交易所</b>和<b>地下钱庄</b>直接连着网站上的炒股 / 外汇小游戏（同一个账户、同一份真实现价）。</p>
+    <p>30×30 街区的大都会：<b>海滩、山丘、市中心、机场、港口、贫民区</b>。<b>19 章剧情</b>从出狱一路演到跟布兰登抢这座城市，结尾还能自己选走向；城里的<b>证券交易所</b>和<b>地下钱庄</b>直接连着网站上的炒股 / 外汇小游戏（同一个账户、同一份真实现价）。</p>
+    <p style="margin-top:-2px">大多数建筑能进门：便利店买子弹和刮刮乐、酒吧喝一杯和拉老虎机、公寓睡觉换衣服降通缉、写字楼撬保险柜和伪造证件、仓库搬货、当铺翻箱底。<b>按 M 看全城地图</b>。</p>
     <div class="keys">
       <div><span>移动</span><k>WASD</k></div>
       <div><span>上车 / 进门 / 进店</span><k>E</k></div>
       <div><span>开火</span><k>左键 / J</k></div>
+      <div><span>全城地图</span><k>M</k></div>
       <div><span>手刹漂移</span><k>Shift</k></div>
+      <div><span>继续对白</span><k>空格</k></div>
     </div>
     <div class="legend"><span class="dot me"></span>你<span class="dot ped"></span>行人<span class="dot cop"></span>警察<span class="dot dr"></span>黄色门牌 / 门口黄条 = 可以进</div>
     <button class="go" id="btnStart">进入罪恶都市</button>
@@ -222,6 +234,21 @@
     <h1 style="font-size:18px">🏆 富豪榜</h1>
     <div class="rank" id="rankList"><div style="padding:16px;text-align:center;color:#7c8698;font-size:12px">加载中…</div></div>
     <button class="go ghost" id="btnRankClose">关闭</button>
+  </div>
+</div>
+
+<div class="veil" id="mapVeil">
+  <div class="panel trade-panel" style="max-width:620px">
+    <div class="th">
+      <h2>📍 洛圣都地图</h2>
+      <div class="sub">按 M 开关 · 30×30 街区</div>
+      <button class="x" data-close="mapVeil">✕</button>
+    </div>
+    <div class="mapwrap"><canvas id="bigmap" width="900" height="900"></canvas></div>
+    <div class="tip" style="padding:0 16px 14px">
+      🏦 交易所 · 💱 地下钱庄 · 🏥 医院 ｜ 📦 港口仓库 · 🎵 布兰登夜店 · 🏛 联邦银行<br>
+      黄色圆环 = 当前任务目标，粉色圆点 = 你，红色小点 = 警察
+    </div>
   </div>
 </div>
 
@@ -361,6 +388,17 @@
     L.y = L.by * CELL + CELL / 2;
     L.doorX = L.bx * CELL + CELL / 2;
     L.doorY = (L.by + 1) * CELL - ROAD / 2 - 16;
+  }
+
+  // 剧情地点（只在地图上标出，不做面板）
+  const POIS = [
+    { id: 'port_wh', name: '港口仓库', icon: '📦', bx: 8, by: 27, color: '#7fd1ff' },
+    { id: 'club', name: '布兰登夜店', icon: '🎵', bx: 20, by: 19, color: '#b78bff' },
+    { id: 'bank_federal', name: '联邦银行', icon: '🏛', bx: 16, by: 8, color: '#ffd84d' },
+  ];
+  for (const P of POIS) {
+    P.x = P.bx * CELL + CELL / 2;
+    P.y = P.by * CELL + CELL / 2;
   }
 
   const buildings = [];
@@ -550,7 +588,11 @@
     garage:    { floor: '#30343a', wall: '#1a1e22' },
     pawn:      { floor: '#3a3327', wall: '#231d15' },
   };
-  const OBJICON = { ammo: '🔫', ammo2: '🔧', heal: '💊', drink: '🍺', sleep: '🛏', tv: '📺', computer: '🖥', safe: '🔐', crate: '📦', pawn: '💰', chat: '🧑' };
+  const OBJICON = {
+    ammo: '🔫', ammo2: '🔧', heal: '💊', drink: '🍺', sleep: '🛏', tv: '📺', computer: '🖥',
+    safe: '🔐', crate: '📦', pawn: '💰', chat: '🧑',
+    slots: '🎰', disguise: '👕', forge: '🖨', timing: '🕹', dig: '🗃',
+  };
 
   function buildRoom(b) {
     const look = ROOMLOOK[b.int] || ROOMLOOK.shop;
@@ -560,30 +602,87 @@
       add(-185, -108, 'ammo', '货架 · 子弹 10 发 ¥100');
       add(-15, -118, 'heal', '药柜 · 医疗包 ¥300');
       add(170, -70, 'chat', '柜台 · 老板');
+      add(160, 105, 'dig', '刮刮乐 · ¥500 一张');
     } else if (b.int === 'bar') {
       add(-150, -96, 'drink', '吧台 · 来一杯 ¥50');
-      add(155, -80, 'chat', '角落 · 酒客');
+      add(160, -96, 'slots', '老虎机 · ¥100 一局');
+      add(10, 120, 'chat', '角落 · 酒客');
     } else if (b.int === 'home') {
       add(-150, -104, 'sleep', '床 · 睡一觉');
       add(125, -96, 'tv', '电视');
+      add(180, 100, 'disguise', '衣柜 · 换身衣服 ¥300');
     } else if (b.int === 'office') {
       add(-175, -104, 'computer', '电脑 · 看盘 / 炒股');
       add(115, -104, 'safe', '保险柜 · 撬开');
-      add(20, 118, 'chat', '前台');
+      add(60, 110, 'forge', '复印机 · 伪造证件 ¥1200');
     } else if (b.int === 'warehouse') {
       add(-170, -104, 'crate', '木箱 · 搜刮');
-      add(-15, -110, 'crate', '木箱 · 搜刮');
+      add(-15, -110, 'timing', '搬货 · 拼手速');
       add(175, 92, 'crate', '木箱 · 搜刮');
     } else if (b.int === 'garage') {
       add(-150, -100, 'ammo2', '工具台 · 补子弹 ¥80');
       add(120, -88, 'chat', '修车师傅');
+      add(20, 110, 'dig', '二手零件箱 · ¥500');
     } else if (b.int === 'pawn') {
       add(-150, -104, 'pawn', '柜台 · 当点东西');
-      add(130, -92, 'chat', '老板');
+      add(160, -80, 'slots', '老虎机 · ¥100 一局');
+      add(20, 110, 'dig', '翻箱底 · ¥500');
     } else {
       add(0, -100, 'chat', '老板');
     }
     return { w: 660, h: 470, floor: look.floor, wall: look.wall, name: b.intName || '室内', objs: objs, b: b };
+  }
+
+  const SLOT_SYMS = ['🍒', '🔔', '💎', '7️⃣', '⭐', '🍋'];
+
+  function spinSlots(cost) {
+    if (game.mini) return;
+    if (game.money < cost) { toast('老虎机要 ¥' + cost + ' 一局'); return; }
+    addMoney(-cost);
+    const reels = [pick(SLOT_SYMS), pick(SLOT_SYMS), pick(SLOT_SYMS)];
+    game.mini = { kind: 'slots', t: 1.5, reels: reels, cost: cost };
+    beep(700, 0.08, 'square', 0.04);
+    setTimeout(function () { settleSlots(cost, reels); }, 1450);
+  }
+
+  function settleSlots(cost, reels) {
+    const m = game.mini;
+    if (!m || m.kind !== 'slots') return;
+    game.mini = null;
+    let mult = 0;
+    let label = '没中';
+    if (reels[0] === reels[1] && reels[1] === reels[2]) { mult = 10; label = '三个 ' + reels[0]; }
+    else if (reels[0] === reels[1] || reels[1] === reels[2] || reels[0] === reels[2]) { mult = 2; label = '两个一样'; }
+    if (mult > 1) {
+      addMoney(cost * mult);
+      toast('🎰 ' + label + '　赢 ' + money(cost * mult) + '（' + mult + ' 倍）');
+      beep(1180, 0.2, 'triangle', 0.06);
+    } else {
+      toast('🎰 ' + label + '　输掉 ' + money(cost));
+      beep(180, 0.16, 'sawtooth', 0.05);
+    }
+  }
+
+  function resolveTiming() {
+    const m = game.mini;
+    if (!m || m.kind !== 'timing') return;
+    game.mini = null;
+    const o = m.o;
+    if (o) o.cd = game.time + 12;
+    const d = Math.abs(m.pos - 0.5);
+    if (d < 0.09) {
+      addMoney(400);
+      toast('搬得漂亮！+¥400');
+      beep(1100, 0.16, 'triangle', 0.05);
+    } else if (d < 0.2) {
+      addMoney(150);
+      toast('勉强过关 +¥150');
+      beep(760, 0.12, 'triangle', 0.04);
+    } else {
+      addMoney(30);
+      toast('箱子砸脚了，只拿到 ¥30');
+      beep(200, 0.14, 'sawtooth', 0.05);
+    }
   }
 
   function enterBuilding(b) {
@@ -593,6 +692,7 @@
     game.room = b.room;
     player.inCar = null;
     player.x = 0; player.y = game.room.h / 2 - 70; player.ang = -Math.PI / 2;
+    if (flags.entered.indexOf(b.int) < 0) flags.entered.push(b.int);
     game.shake = 0;
     game.nearObj = null;
     beep(520, 0.08, 'triangle', 0.04);
@@ -616,6 +716,7 @@
     const pay = function (cost) {
       if (game.money < cost) { toast('钱不够，要 ¥' + cost); return false; }
       addMoney(-cost);
+      flags.boughtNow = true;
       return true;
     };
     if (o.kind === 'ammo') {
@@ -641,9 +742,40 @@
       toast(pick(['电视里在播你的通缉令。', '新闻：股市又涨了。', '电视剧台词："这座城市会吃掉你。"', '广告：地下钱庄，汇率公道。']));
     } else if (o.kind === 'computer') {
       openExchange();
+    } else if (o.kind === 'slots') {
+      spinSlots(100);
+    } else if (o.kind === 'disguise') {
+      if (!pay(300)) return;
+      if (game.wanted > 0) { addWanted(-1); toast('换了身衣服，通缉降到 ' + game.wanted + ' 星'); }
+      else toast('换了身衣服，你看起来像个正经人');
+      beep(600, 0.1, 'triangle', 0.04);
+    } else if (o.kind === 'forge') {
+      if (o.used) { toast('复印机已经烧了，别再折腾'); return; }
+      if (!pay(1200)) return;
+      o.used = true;
+      game.wanted = 0;
+      toast('伪造证件到手：通缉清零');
+      beep(900, 0.14, 'triangle', 0.05);
+    } else if (o.kind === 'timing') {
+      if (game.mini) return;
+      if (o.cd && game.time < o.cd) { toast('工人还在忙，等一会儿'); return; }
+      game.mini = { kind: 'timing', pos: 0, dir: 1, speed: 1.25, o: o };
+      toast('看准中间绿色区域，按 E 停下');
+    } else if (o.kind === 'dig') {
+      if (o.used) { toast('已经翻过了'); return; }
+      if (!pay(500)) return;
+      o.used = true;
+      const roll = Math.random();
+      let got = 0;
+      if (roll < 0.08) got = 5000;
+      else if (roll < 0.25) got = 1500;
+      else if (roll < 0.5) got = 600;
+      if (got) { addMoney(got); toast('翻出好东西 +' + money(got)); beep(1000, 0.16, 'triangle', 0.05); }
+      else toast('一堆破烂，500 块打水漂');
     } else if (o.kind === 'safe') {
       if (o.used) { toast('保险柜已经空了'); return; }
       o.used = true;
+      flags.robbedNow = true;
       const got = 1200 + ((Math.random() * 1400) | 0);
       addMoney(got); addWanted(1);
       toast('撬开保险柜 +' + money(got) + '，通缉 +1');
@@ -688,7 +820,16 @@
     player.x = clamp(player.x, -R.w / 2 + 28, R.w / 2 - 28);
     player.y = clamp(player.y, -R.h / 2 + 28, R.h / 2 - 20);
 
-    if (player.y > R.h / 2 - 40 && Math.abs(player.x) < 66) { leaveBuilding(); return; }
+    if (player.y > R.h / 2 - 40 && Math.abs(player.x) < 66 && !game.mini) { leaveBuilding(); return; }
+
+    if (game.mini) {
+      if (game.mini.kind === 'slots') game.mini.t = Math.max(0, game.mini.t - dt);
+      if (game.mini.kind === 'timing') {
+        game.mini.pos += game.mini.dir * game.mini.speed * dt;
+        if (game.mini.pos > 1) { game.mini.pos = 1; game.mini.dir = -1; }
+        if (game.mini.pos < 0) { game.mini.pos = 0; game.mini.dir = 1; }
+      }
+    }
 
     game.nearObj = null;
     let bd = 60;
@@ -697,7 +838,9 @@
       if (d < bd) { bd = d; game.nearObj = o; }
     }
     const hintEl = document.getElementById('hint');
-    hintEl.textContent = game.nearObj
+    if (game.mini && game.mini.kind === 'timing') hintEl.textContent = '按 E 停在中间的绿色区域';
+    else if (game.mini && game.mini.kind === 'slots') hintEl.textContent = '老虎机转起来了…';
+    else hintEl.textContent = game.nearObj
       ? '按 E　' + game.nearObj.label
       : 'WASD 走动 · 走到门口（下方）或按 E 出去';
     renderStars();
@@ -793,6 +936,53 @@
     ctx.font = 'bold 12px -apple-system,system-ui,sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('室内 · ' + R.name, W / 2, 26);
+
+    if (game.mini && game.mini.kind === 'slots') {
+      const m = game.mini;
+      const cw = 96, ch = 96, gap = 14;
+      const total = cw * 3 + gap * 2;
+      const x0 = W / 2 - total / 2;
+      const y0 = H / 2 - ch / 2 - 20;
+      ctx.fillStyle = 'rgba(8,10,14,.92)';
+      roundRect(x0 - 20, y0 - 20, total + 40, ch + 40, 14); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,216,77,.5)'; ctx.lineWidth = 2;
+      roundRect(x0 - 20, y0 - 20, total + 40, ch + 40, 14); ctx.stroke();
+      for (let i = 0; i < 3; i++) {
+        const x = x0 + i * (cw + gap);
+        ctx.fillStyle = '#12161d';
+        roundRect(x, y0, cw, ch, 10); ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,.12)'; ctx.lineWidth = 1.5;
+        roundRect(x, y0, cw, ch, 10); ctx.stroke();
+        const cycling = m.t > 0.35 - i * 0.18;
+        const sym = cycling ? SLOT_SYMS[Math.floor(game.time * 14 + i * 3) % SLOT_SYMS.length] : m.reels[i];
+        ctx.font = '46px sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(sym, x + cw / 2, y0 + ch / 2 + 2);
+      }
+      ctx.fillStyle = '#ffd84d';
+      ctx.font = 'bold 12px -apple-system,system-ui,sans-serif';
+      ctx.fillText('三连 10 倍 · 两个 2 倍 · 一局 ¥' + (m.cost || 100), W / 2, y0 + ch + 42);
+    }
+
+    if (game.mini && game.mini.kind === 'timing') {
+      const bw = Math.min(420, W - 80), bh = 26;
+      const bx = W / 2 - bw / 2, by = H - 150;
+      ctx.fillStyle = 'rgba(8,10,14,.92)';
+      roundRect(bx - 14, by - 14, bw + 28, bh + 58, 12); ctx.fill();
+      ctx.fillStyle = '#1b2029';
+      roundRect(bx, by, bw, bh, 8); ctx.fill();
+      ctx.fillStyle = 'rgba(66,215,125,.45)';
+      ctx.fillRect(bx + bw * 0.41, by, bw * 0.18, bh);
+      ctx.fillStyle = 'rgba(255,216,77,.25)';
+      ctx.fillRect(bx + bw * 0.3, by, bw * 0.4, bh);
+      const px = bx + bw * clamp(game.mini.pos, 0, 1);
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(px - 2, by - 5, 4, bh + 10);
+      ctx.fillStyle = '#ffd84d';
+      ctx.font = 'bold 12px -apple-system,system-ui,sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('按 E 停在绿色区域 · 越准钱越多', W / 2, by + bh + 22);
+    }
   }
 
 
@@ -812,34 +1002,40 @@
 
   let cars = [], peds = [], bullets = [], parts = [], pickups = [], cops = [];
   const cam = { x: player.x, y: player.y };
-  const flags = { bought: false, sold: false, transferred: 0, fxBought: 0 };
+  const flags = {
+    bought: false, sold: false, transferred: 0, fxBought: 0,
+    killsAt: 0, entered: [], boughtNow: false, robbedNow: false,
+  };
 
   // ===== 剧情 =====
   const STORY = [
     {
-      id: 'ch1', title: '出狱', lines: [
+      id: 'ch1', title: '出狱',
+      lines: [
         ['老麦', '你终于出来了。五年，够长了。'],
         ['你', '这破地方还是老样子。'],
-        ['老麦', '别急着感慨。街口有辆车，抢了它，开去市中心等我。'],
+        ['老麦', '别急着感慨。街口那辆车，抢了它，开去市中心等我。'],
         ['你', '就这么简单？'],
         ['老麦', '简单的事才最容易搞砸。'],
       ],
       goal: { type: 'steal', text: '抢一辆车' },
-      done: [['老麦', '不错，至少你还没把方向盘忘了。']],
+      done: [['老麦', '不错，至少方向盘还没忘。']],
       reward: 300,
     },
     {
-      id: 'ch2', title: '送货', lines: [
-        ['老麦', '仓库里有个箱子，送到市中心的证券交易所门口。'],
+      id: 'ch2', title: '送货',
+      lines: [
+        ['老麦', '后座有个箱子，送到市中心的证券交易所门口。'],
         ['你', '交易所？我这种人进去不会被赶出来？'],
         ['老麦', '你现在是"投资者"，记住这个词。'],
       ],
-      goal: { type: 'goto', x: LANDMARKS[0].doorX, y: LANDMARKS[0].doorY, text: '把箱子送到证券交易所门口' },
+      goal: { type: 'goto', x: LANDMARKS[0].doorX, y: LANDMARKS[0].doorY, text: '把箱子送到证券交易所门口（地图 🏦）' },
       done: [['老麦', '箱子里的东西，够你在股市里玩一阵了。']],
       reward: 2500,
     },
     {
-      id: 'ch3', title: '洗钱', lines: [
+      id: 'ch3', title: '洗钱',
+      lines: [
         ['老麦', '现金太脏。进门，转 5 万进你的股票账户。'],
         ['你', '这钱洗得也太明目张胆。'],
         ['老麦', '谁说是洗？这叫投资。'],
@@ -849,7 +1045,8 @@
       reward: 0,
     },
     {
-      id: 'ch4', title: '选股', lines: [
+      id: 'ch4', title: '选股',
+      lines: [
         ['老麦', '挑一只，随便哪只。真金白银买进去，你才会真的盯着盘。'],
         ['你', '要是亏了呢？'],
         ['老麦', '那你就知道什么叫心疼了。'],
@@ -859,7 +1056,8 @@
       reward: 0,
     },
     {
-      id: 'ch5', title: '出货', lines: [
+      id: 'ch5', title: '出货',
+      lines: [
         ['老麦', '赚了还是亏了？不重要，重要的是你学会了看那个数字。'],
         ['你', '下一票是什么？'],
         ['老麦', '汇市。地下钱庄，把人民币换成美元。'],
@@ -869,18 +1067,21 @@
       reward: 0,
     },
     {
-      id: 'ch6', title: '美元', lines: [
+      id: 'ch6', title: '美元',
+      lines: [
         ['老麦', '钱庄在贫民区，门口有个绿色招牌。换 5000 块人民币的美元。'],
         ['你', '汇率还能赚差价？'],
         ['老麦', '低买高卖，跟股票一个道理，只是快一点。'],
+        ['老陈', '新面孔。换汇欢迎，别带警察来。'],
       ],
-      goal: { type: 'fx-buy', amount: 5000, text: '在地下钱庄兑换 5000 元人民币的美元' },
+      goal: { type: 'fx-buy', amount: 5000, text: '在地下钱庄兑换 5000 元人民币的美元（地图 💱）' },
       done: [['老麦', '行，你现在有点金融流氓的样子了。']],
       reward: 1000,
     },
     {
-      id: 'ch7', title: '抢银行', lines: [
-        ['老麦', '最后一票。市中心的联邦银行，金库在二楼。'],
+      id: 'ch7', title: '抢银行',
+      lines: [
+        ['老麦', '下一票。市中心的联邦银行，金库在二楼。'],
         ['你', '这次会有多少警察？'],
         ['老麦', '全部。撑住 45 秒，接应的车就到。'],
         ['你', '……你最好别放我鸽子。'],
@@ -891,17 +1092,156 @@
       reward: 80000,
     },
     {
-      id: 'ch8', title: '上岸', lines: [
+      id: 'ch8', title: '上岸',
+      lines: [
         ['老麦', '你现在有钱了。150 万，你就算上岸了。'],
         ['你', '然后呢？'],
         ['老麦', '然后你就可以像我一样，坐在海边看别人拼命。'],
       ],
       goal: { type: 'networth', target: 1500000, text: '总资产达到 150 万（现金 + 美元 + 股票）' },
-      done: [['老麦', '恭喜，你上岸了。这座城市归你了。']],
+      done: [['老麦', '恭喜，你上岸了。'], ['你', '……太顺了。顺得不像真的。']],
       reward: 0,
+    },
+    {
+      id: 'ch9', title: '黑吃黑',
+      lines: [
+        ['老麦', '码头那票货，被布兰登的人截了。'],
+        ['你', '布兰登是谁？'],
+        ['老麦', '港口的老大。一百多号人，还有自己的会计。'],
+        ['你', '那我们怎么办？'],
+        ['老麦', '先去仓库看看，别动手。'],
+      ],
+      goal: { type: 'goto', px: POIS[0].x, py: POIS[0].y, text: '去港口仓库看看（地图 📦）' },
+      done: [['老麦', '……全空了。他连箱子都搬走了。'], ['你', '这不是抢，这是搬家。']],
+      reward: 8000,
+    },
+    {
+      id: 'ch10', title: '会面',
+      lines: [
+        ['老麦', '我一个人搞不定他。去贫民区那家酒吧，找阿丽。'],
+        ['你', '阿丽？'],
+        ['老麦', '她以前替布兰登做账，现在替自己。'],
+        ['你', '她要多少钱？'],
+        ['老麦', '她不要钱。她要知道布兰登的钱藏在哪。'],
+      ],
+      goal: { type: 'enter', kind: 'bar', text: '进任意一家酒吧找阿丽（门口黄条）' },
+      done: [['阿丽', '你想搞布兰登？先看看你这身打扮。'], ['你', '……那你有办法吗？'], ['阿丽', '有。但你得先有枪。']],
+      reward: 1500,
+    },
+    {
+      id: 'ch11', title: '军火',
+      lines: [
+        ['阿丽', '便利店后面的老板什么都卖。去买点东西，顺便把脸露熟。'],
+        ['你', '买弹药？'],
+        ['阿丽', '在这座城市，钱比枪管用。去吧。'],
+      ],
+      goal: { type: 'buy', text: '在任意店里花钱买一次东西（便利店 / 酒吧 / 修车行）' },
+      done: [['阿丽', '行，至少你身上有子弹味了。']],
+      reward: 800,
+    },
+    {
+      id: 'ch12', title: '讨债',
+      lines: [
+        ['老麦', '布兰登欠我们一条命。先去他几个场子收点利息。'],
+        ['你', '几个意思？'],
+        ['老麦', '五个。别多也别少，多一个警察就来了。'],
+      ],
+      goal: { type: 'kill', n: 5, text: '干掉 5 个布兰登的人（街上随便挑）' },
+      done: [['老麦', '消息传出去了。布兰登开始怕你了。']],
+      reward: 20000,
+    },
+    {
+      id: 'ch13', title: '引蛇出洞',
+      lines: [
+        ['阿丽', '他躲在自己夜店里不出来。你得让他坐不住。'],
+        ['你', '怎么做？'],
+        ['阿丽', '把自己搞成全市通缉犯。他的车一定会出来。'],
+        ['你', '这计划听着像自杀。'],
+        ['阿丽', '差不多。但你会活下来。'],
+      ],
+      goal: { type: 'wanted', n: 3, text: '把自己搞到 3 星通缉，把布兰登的人引出来' },
+      done: [['阿丽', '看，黑色 SUV 动了。跟着它。']],
+      reward: 5000,
+    },
+    {
+      id: 'ch14', title: '查账',
+      lines: [
+        ['阿丽', '布兰登不在，他的会计在写字楼。金库在办公室，撬它。'],
+        ['你', '这算抢劫还是查账？'],
+        ['阿丽', '都算。'],
+      ],
+      goal: { type: 'robbed', text: '进写字楼（🏢 门牌）撬开里面的保险柜' },
+      done: [['阿丽', '账本拿到了。他一半的钱是假的。'], ['你', '另一半呢？'], ['阿丽', '在股市里。']],
+      reward: 10000,
+    },
+    {
+      id: 'ch15', title: '洗白',
+      lines: [
+        ['阿丽', '他的钱在股市里洗。我们得比他的会计师更快。'],
+        ['你', '转多少？'],
+        ['阿丽', '三十万。让账户看起来像正经人。'],
+      ],
+      goal: { type: 'to-stock', amount: 300000, text: '再转 30 万城市现金进股票账户' },
+      done: [['阿丽', '现在你的账户，比他的还干净。']],
+      reward: 0,
+    },
+    {
+      id: 'ch16', title: '跑路钱',
+      lines: [
+        ['老陈', '美元又涨了，孩子。'],
+        ['你', '我要跑路？'],
+        ['老陈', '不，你要谈生意。两万美元，换雷诺警长一个晚上。'],
+        ['你', '警长也收钱？'],
+        ['老陈', '警长最收钱。'],
+      ],
+      goal: { type: 'fx-buy', amount: 20000, text: '在地下钱庄换 2 万元人民币的美元（打点警长）' },
+      done: [['老陈', '警长收了。今晚全市警力都去东边喝酒。']],
+      reward: 3000,
+    },
+    {
+      id: 'ch17', title: '决战 · 上',
+      lines: [
+        ['老麦', '布兰登约你今晚在港口见面。带上人，带上枪。'],
+        ['你', '我一个人？'],
+        ['老麦', '你不是一个人。还有阿丽的眼睛。'],
+      ],
+      goal: { type: 'kill', n: 8, text: '在港口干掉 8 个布兰登的人' },
+      done: [['阿丽', '他往仓库里面退了。别让他上船。']],
+      reward: 40000,
+    },
+    {
+      id: 'ch18', title: '决战 · 下',
+      lines: [
+        ['老麦', '撑住，我的人马上到。'],
+        ['你', '你说过不会放我鸽子。'],
+        ['老麦', '这次真的。'],
+      ],
+      goal: { type: 'survive', sec: 60, text: '全城通缉，撑住 60 秒等老麦的人' },
+      trigger: function () { addWanted(4); toast('🚨 布兰登拼命了，撑住 60 秒'); },
+      done: [['老麦', '结束了。'], ['你', '城市呢？'], ['老麦', '城市是你的问题。']],
+      reward: 150000,
+    },
+    {
+      id: 'ch19', title: '抉择',
+      lines: [
+        ['阿丽', '布兰登倒了。他的场子、账本、还有他的位置，都在你手上。'],
+        ['你', '你想让我怎么选？'],
+        ['阿丽', '我不会替你选。这座城市的账，你自己算。'],
+        ['你', '……', [
+          { t: '拿钱走人，去海边', lines: [['你', '我拿钱走人。这城市谁爱管谁管。'], ['阿丽', '聪明。海边见。']], end: '上岸' },
+          { t: '接手这座城市', lines: [['你', '我要这座城。'], ['阿丽', '那就别怪我没提醒你。'], ['老麦', '从今天起，你得学着当老板，不是当枪。']], end: '新东家' },
+        ]],
+      ],
+      goal: { type: 'choice', text: '做出你的选择（对白里选）' },
       final: true,
+      reward: 0,
     },
   ];
+
+  const CHARCOLOR = {
+    '老麦': '#ffd84d', '你': '#ff2e88', '阿丽': '#7fd1ff', '老陈': '#42d77d',
+    '雷诺': '#ff7b8f', '布兰登': '#b78bff', '小六': '#c8ccd6',
+  };
 
   function currentChapter() { return STORY[Math.min(game.chapter - 1, STORY.length - 1)]; }
 
@@ -910,14 +1250,25 @@
     const g = ch.goal;
     document.getElementById('objTitle').textContent = '第 ' + game.chapter + ' 章 · ' + ch.title;
     let sub = g.text;
-    if (g.type === 'goto' && !game.inside) sub += '　' + Math.round(dist(player.x, player.y, g.x, g.y) / 10) + ' 米';
-    else if (g.type === 'survive') sub += '　' + Math.max(0, g.sec - Math.round(game.surviveT)) + ' 秒';
+    if (g.type === 'goto') {
+      const gx = g.x != null ? g.x : g.px, gy = g.y != null ? g.y : g.py;
+      if (!game.inside && gx != null) sub += '　' + Math.round(dist(player.x, player.y, gx, gy) / 10) + ' 米';
+    } else if (g.type === 'survive') sub += '　' + Math.max(0, g.sec - Math.round(game.surviveT)) + ' 秒';
     else if (g.type === 'networth') sub += '　当前 ' + money(state.netWorth);
+    else if (g.type === 'kill') sub += '　' + Math.max(0, game.kills - flags.killsAt) + ' / ' + g.n;
+    else if (g.type === 'wanted') sub += '　当前 ' + game.wanted + ' 星';
+    else if (g.type === 'to-stock') sub += '　已转 ' + money(Math.min(flags.transferred, g.amount)) + ' / ' + money(g.amount);
+    else if (g.type === 'fx-buy') sub += '　已换 ' + money(Math.min(flags.fxBought, g.amount)) + ' / ' + money(g.amount);
     document.getElementById('objSub').textContent = sub;
     const wrap = document.getElementById('objPbWrap');
-    if (g.type === 'survive') {
+    let pct = -1;
+    if (g.type === 'survive') pct = (game.surviveT / g.sec) * 100;
+    else if (g.type === 'kill') pct = ((game.kills - flags.killsAt) / g.n) * 100;
+    else if (g.type === 'to-stock') pct = (flags.transferred / g.amount) * 100;
+    else if (g.type === 'fx-buy') pct = (flags.fxBought / g.amount) * 100;
+    if (pct >= 0) {
       wrap.hidden = false;
-      document.getElementById('objPb').style.width = clamp((game.surviveT / g.sec) * 100, 0, 100) + '%';
+      document.getElementById('objPb').style.width = clamp(pct, 0, 100) + '%';
     } else wrap.hidden = true;
   }
 
@@ -928,6 +1279,22 @@
     game.dlgDone = onEnd || null;
     showLine();
   }
+  function pickChoice(c) {
+    game.dlgQueue = (c.lines || []).slice();
+    game.dlgDone = function () {
+      if (!c.end) return;
+      game.ending = c.end;
+      if (game.missions.indexOf('ch19') < 0) game.missions.push('ch19');
+      if (game.missions.indexOf('ending:' + c.end) < 0) game.missions.push('ending:' + c.end);
+      saveStory();
+      setObjectiveDone();
+      chapterCard('全剧终 · ' + c.end, '感谢游玩');
+      toast('🎬 结局：' + c.end);
+      submitScore(game.money);
+    };
+    showLine();
+  }
+
   function showLine() {
     const l = game.dlgQueue.shift();
     const el = document.getElementById('dlg');
@@ -940,11 +1307,40 @@
       if (f) f();
       return;
     }
-    document.getElementById('dlgWho').textContent = l[0];
+    const whoEl = document.getElementById('dlgWho');
+    whoEl.textContent = l[0];
+    whoEl.style.color = CHARCOLOR[l[0]] || '#ff2e88';
     document.getElementById('dlgTxt').textContent = l[1];
+
+    const box = document.getElementById('dlgChoices');
+    const nx = document.querySelector('.dlg .nx');
+    if (l[2] && l[2].length) {
+      box.innerHTML = l[2].map(function (c, i) {
+        return '<button class="chbtn" data-i="' + i + '">' + esc(c.t) + '</button>';
+      }).join('');
+      box.style.display = 'flex';
+      if (nx) nx.style.display = 'none';
+      box.onclick = function (e) {
+        const b = e.target.closest('.chbtn');
+        if (!b) return;
+        const c = l[2][Number(b.getAttribute('data-i'))];
+        box.style.display = 'none';
+        box.innerHTML = '';
+        if (nx) nx.style.display = '';
+        pickChoice(c);
+      };
+    } else {
+      box.style.display = 'none';
+      box.innerHTML = '';
+      if (nx) nx.style.display = '';
+    }
     el.classList.add('on');
   }
-  function nextLine() { if (game.dlgOn) showLine(); }
+  function nextLine() {
+    const box = document.getElementById('dlgChoices');
+    if (box && box.style.display === 'flex') return;
+    if (game.dlgOn) showLine();
+  }
   document.getElementById('dlg').addEventListener('click', nextLine);
   window.addEventListener('keydown', function (e) {
     if (game.dlgOn && (e.key === ' ' || e.key === 'Enter')) { e.preventDefault(); nextLine(); }
@@ -963,6 +1359,12 @@
   function startChapter(n) {
     game.chapter = clamp(n, 1, STORY.length);
     game.surviveT = 0;
+    flags.killsAt = game.kills;
+    flags.entered = [];
+    flags.boughtNow = false;
+    flags.robbedNow = false;
+    flags.transferred = 0;
+    flags.fxBought = 0;
     const ch = currentChapter();
     chapterCard('第 ' + game.chapter + ' 章', ch.title);
     setObjective();
@@ -1002,7 +1404,15 @@
     const g = ch.goal;
     if (!g || game.missions.indexOf(ch.id) >= 0) return;
     if (g.type === 'steal') { if (player.inCar) completeGoal(); }
-    else if (g.type === 'goto') { if (dist(player.x, player.y, g.x, g.y) < 66) completeGoal(); }
+    else if (g.type === 'goto') {
+      const gx = g.x != null ? g.x : g.px, gy = g.y != null ? g.y : g.py;
+      if (gx != null && !game.inside && dist(player.x, player.y, gx, gy) < 70) completeGoal();
+    }
+    else if (g.type === 'kill') { if (game.kills - flags.killsAt >= g.n) completeGoal(); }
+    else if (g.type === 'wanted') { if (game.wanted >= g.n) completeGoal(); }
+    else if (g.type === 'enter') { if (flags.entered.indexOf(g.kind) >= 0) completeGoal(); }
+    else if (g.type === 'buy') { if (flags.boughtNow) completeGoal(); }
+    else if (g.type === 'robbed') { if (flags.robbedNow) completeGoal(); }
     else if (g.type === 'stock-buy') { if (flags.bought) completeGoal(); }
     else if (g.type === 'stock-sell') { if (flags.sold) completeGoal(); }
     else if (g.type === 'to-stock') { if (flags.transferred >= g.amount) completeGoal(); }
@@ -1282,7 +1692,9 @@
       if (e.target === document.body) e.preventDefault();
     }
     keys[e.key.toLowerCase()] = true;
-    if (e.key.toLowerCase() === 'e') interact();
+    const k = e.key.toLowerCase();
+    if (k === 'e') interact();
+    else if (k === 'm' && game.running && !game.dlgOn) toggleMap();
   });
   window.addEventListener('keyup', function (e) { keys[e.key.toLowerCase()] = false; });
   cv.addEventListener('mousemove', function (e) { mouse.x = e.clientX; mouse.y = e.clientY; mouse.moved = true; });
@@ -1353,6 +1765,8 @@
   function interact() {
     if (!game.running || game.over || game.dlgOn || game.paused) return;
     if (game.inside) {
+      if (game.mini && game.mini.kind === 'timing') { resolveTiming(); return; }
+      if (game.mini) return;
       if (game.nearObj) useObject(game.nearObj);
       else leaveBuilding();
       return;
@@ -2070,21 +2484,26 @@
 
   function drawSpeedo() {
     const c = player.inCar;
-    const hx = W - 160, hy = H - 64;
+    // 小地图在右下角（移动端 96px / 桌面 146px），车速表一律放在它正上方
+    const miniSize = W <= 760 ? 96 : 146;
+    const bw = 132, bh = 48;
+    const bx = W - 12 - bw;
+    const by = H - 12 - miniSize - 10 - bh;
     ctx.save();
     ctx.fillStyle = 'rgba(10,13,18,.8)';
-    roundRect(hx - 46, hy - 22, 110, 46, 10); ctx.fill();
+    roundRect(bx, by, bw, bh, 10); ctx.fill();
     ctx.fillStyle = c.hp > 40 ? '#dfe4ee' : '#ff6b6b';
     ctx.font = 'bold 22px -apple-system,system-ui,sans-serif';
     ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-    ctx.fillText(Math.round(Math.abs(c.v) * 12), hx + 18, hy);
+    ctx.fillText(Math.round(Math.abs(c.v) * 12), bx + bw - 30, by + 21);
     ctx.font = 'bold 10px sans-serif';
     ctx.fillStyle = '#848e9c';
-    ctx.fillText('km/h', hx + 46, hy + 2);
+    ctx.textAlign = 'left';
+    ctx.fillText('km/h', bx + bw - 26, by + 23);
     ctx.fillStyle = 'rgba(255,255,255,.14)';
-    roundRect(hx - 46, hy + 9, 110, 4, 2); ctx.fill();
+    roundRect(bx + 10, by + bh - 13, bw - 20, 4, 2); ctx.fill();
     ctx.fillStyle = c.hp > 40 ? '#3a86ff' : '#ff3b3b';
-    roundRect(hx - 46, hy + 9, 110 * clamp(c.hp / 100, 0, 1), 4, 2); ctx.fill();
+    roundRect(bx + 10, by + bh - 13, (bw - 20) * clamp(c.hp / 100, 0, 1), 4, 2); ctx.fill();
     ctx.restore();
   }
 
@@ -2108,6 +2527,111 @@
     }
     c.globalAlpha = 1;
     miniBase = off;
+  }
+
+  function drawBigMap() {
+    const c = document.getElementById('bigmap');
+    const g = c.getContext('2d');
+    const S = c.width / WORLD;
+    g.fillStyle = '#0c0f14';
+    g.fillRect(0, 0, c.width, c.height);
+    for (let i = 0; i < GRID; i++) {
+      for (let j = 0; j < GRID; j++) {
+        const dk = groundMap[i * GRID + j] || 'residential';
+        g.fillStyle = DIST[dk].ground;
+        g.fillRect(i * CELL * S, j * CELL * S, CELL * S, CELL * S);
+      }
+    }
+    // 主干道
+    g.strokeStyle = 'rgba(255,255,255,.06)';
+    g.lineWidth = 1;
+    for (let i = 0; i <= GRID; i++) {
+      g.beginPath(); g.moveTo(i * CELL * S, 0); g.lineTo(i * CELL * S, c.height); g.stroke();
+      g.beginPath(); g.moveTo(0, i * CELL * S); g.lineTo(c.width, i * CELL * S); g.stroke();
+    }
+    g.strokeStyle = 'rgba(255,255,255,.22)';
+    g.lineWidth = 2;
+    g.strokeRect(1, 1, c.width - 2, c.height - 2);
+
+    // 区域名
+    const REGIONS = [
+      ['海滩', 1, 15], ['山丘', 8, 2], ['市中心', 14, 10], ['商业区', 21, 7],
+      ['贫民区', 17, 20], ['机场', 26, 17], ['港口', 12, 28], ['工业区', 3, 21], ['住宅区', 8, 14],
+    ];
+    g.font = 'bold 21px -apple-system,system-ui,sans-serif';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    for (const [name, bx, by] of REGIONS) {
+      g.fillStyle = 'rgba(0,0,0,.5)';
+      g.fillText(name, bx * CELL * S + 1, by * CELL * S + 1);
+      g.fillStyle = 'rgba(255,255,255,.66)';
+      g.fillText(name, bx * CELL * S, by * CELL * S);
+    }
+
+    // 地标 / 剧情点
+    const marks = [];
+    for (const L of LANDMARKS) marks.push({ x: L.doorX, y: L.doorY, icon: L.icon, name: L.name, color: L.color });
+    for (const P of POIS) marks.push({ x: P.x, y: P.y, icon: P.icon, name: P.name, color: P.color });
+    for (const m of marks) {
+      const x = m.x * S, y = m.y * S;
+      g.fillStyle = 'rgba(8,10,14,.85)';
+      g.beginPath(); g.arc(x, y, 15, 0, 6.2832); g.fill();
+      g.strokeStyle = m.color; g.lineWidth = 2.5;
+      g.beginPath(); g.arc(x, y, 15, 0, 6.2832); g.stroke();
+      g.font = '15px sans-serif';
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(m.icon, x, y + 1);
+      g.font = 'bold 13px -apple-system,system-ui,sans-serif';
+      g.fillStyle = m.color;
+      g.fillText(m.name, x, y - 24);
+    }
+
+    // 当前目标
+    const ch = currentChapter();
+    if (ch.goal && game.missions.indexOf(ch.id) < 0) {
+      const gx = ch.goal.x != null ? ch.goal.x : ch.goal.px;
+      const gy = ch.goal.y != null ? ch.goal.y : ch.goal.py;
+      if (gx != null) {
+        const x = gx * S, y = gy * S;
+        g.strokeStyle = '#ffd84d'; g.lineWidth = 3;
+        g.beginPath(); g.arc(x, y, 20, 0, 6.2832); g.stroke();
+        g.beginPath(); g.arc(x, y, 30, 0, 6.2832); g.stroke();
+      }
+    }
+
+    // 警察
+    if (game.wanted > 0) {
+      g.fillStyle = '#ff3b3b';
+      for (const cc of cars) {
+        if (cc.kind !== 'police' || cc.dead) continue;
+        g.fillRect(cc.x * S - 2.5, cc.y * S - 2.5, 5, 5);
+      }
+    }
+
+    // 玩家
+    const px = player.x * S, py = player.y * S;
+    g.fillStyle = '#ff2e88';
+    g.beginPath(); g.arc(px, py, 6, 0, 6.2832); g.fill();
+    g.strokeStyle = 'rgba(255,255,255,.9)'; g.lineWidth = 2;
+    g.beginPath(); g.arc(px, py, 10, 0, 6.2832); g.stroke();
+    g.font = 'bold 14px -apple-system,system-ui,sans-serif';
+    g.fillStyle = '#ff8fb8';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText('你在这里', px, py - 22);
+  }
+
+  function toggleMap(force) {
+    const el = document.getElementById('mapVeil');
+    const open = force != null ? force : !el.classList.contains('on');
+    if (open) {
+      if (game.inside) drawMini();
+      drawBigMap();
+      el.classList.add('on');
+      game.paused = true;
+    } else {
+      el.classList.remove('on');
+      if (!document.querySelector('.veil.on') && game.running && !game.over) game.paused = false;
+    }
   }
 
   function drawMini() {
@@ -2280,12 +2804,22 @@
     btn.textContent = old;
     if (d && d.missions && d.missions.length) {
       game.money = d.cash;
-      game.chapter = d.chapter;
       game.missions = d.missions || [];
+      const done = game.missions.filter(function (m) { return /^ch\d+$/.test(m); }).length;
+      game.chapter = clamp(Math.max(d.chapter || 1, done + 1), 1, STORY.length);
       resetGame(false);
-      chapterCard('继续 · 第 ' + game.chapter + ' 章', currentChapter().title);
-      setObjective();
-      toast('欢迎回来，钱和进度都还在');
+      if (done >= STORY.length) {
+        setObjectiveDone();
+        chapterCard('全剧终', '城市归你了');
+        toast('全部剧情都打完了，随便玩');
+      } else {
+        chapterCard('继续 · 第 ' + game.chapter + ' 章', currentChapter().title);
+        setObjective();
+        toast('欢迎回来，钱和进度都还在');
+        if (currentChapter().goal.type === 'choice') {
+          setTimeout(function () { playDialogue(currentChapter().lines); }, 900);
+        }
+      }
     } else {
       resetGame(true);
     }
@@ -2305,6 +2839,10 @@
     resetGame(true);
   });
 
+  document.getElementById('btnMap').addEventListener('click', function () {
+    if (!game.running) { toast('先进游戏'); return; }
+    toggleMap();
+  });
   document.getElementById('btnRank').addEventListener('click', showRank);
   document.getElementById('btnRankClose').addEventListener('click', function () {
     document.getElementById('panelRank').style.display = 'none';
@@ -2362,6 +2900,9 @@
     },
     inside: function () { return game.inside ? { name: game.room.name, objs: game.room.objs.map(function (o) { return { label: o.label, kind: o.kind, x: o.x, y: o.y }; }) } : null; },
     nearObj: function () { return game.nearObj ? game.nearObj.label : null; },
+    mini: function () { return game.mini ? game.mini.kind : null; },
+    wantedNow: function () { return game.wanted; },
+    goalNow: function () { const g = currentChapter().goal || {}; return { type: g.type, sec: g.sec, n: g.n, amount: g.amount, target: g.target }; },
   };
 })();
 </script>
