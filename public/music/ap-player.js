@@ -23,7 +23,7 @@
       background:var(--ap-hover);
       box-shadow:var(--ap-art-inset);              /* 内高光 [62] */
     }
-    .ap-art img{ width:100%; height:100%; object-fit:cover; display:block; }  /* [61] */
+    .ap-art img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }  /* [61] */
     .ap-art::after{ content:''; position:absolute; inset:0; border-radius:inherit;
       box-shadow:var(--ap-art-inset); pointer-events:none; }
     /* 播放时呼吸动画：幅度 2%，周期 9s，仅播放（[57][63]） */
@@ -902,14 +902,43 @@
         );
       }
       if (t.cover) {
-        if (!art.querySelector('img') || art.querySelector('img').getAttribute('src') !== t.cover) {
-          art.innerHTML = '';
+        /* 已有同源封面就不动（_syncMeta 可能在同一轮被多个订阅触发两次，
+           否则会叠出两张一样的图） */
+        var all = art.querySelectorAll('img');
+        var dup = null;
+        for (var q = 0; q < all.length; q++) {
+          if (all[q].getAttribute('src') === t.cover) { dup = all[q]; break; }
+        }
+        if (!dup) {
+          /* 新封面解码完成后再淡入，旧封面同时淡出：
+             避免"先清空再加载"造成的一下白闪。 */
           var img = document.createElement('img');
           img.src = t.cover;
           img.alt = (t.zh || t.label || '') + ' 封面';
-          img.loading = 'lazy';               /* [210] */
           img.decoding = 'async';
-          img.addEventListener('error', function () { img.remove(); });
+          img.style.opacity = soft ? '0' : '1';
+          img.addEventListener('load', function () {
+            if (!img.isConnected) return;
+            var now = AP.Store.track();
+            if (now && now !== t) return;                 /* 期间又切歌了，交给新的一次处理 */
+            if (soft) {
+              img.style.transition = 'opacity .30s ease';
+              requestAnimationFrame(function () { img.style.opacity = '1'; });
+            }
+            var olds = art.querySelectorAll('img');
+            for (var k = 0; k < olds.length; k++) {
+              var o = olds[k];
+              if (o === img) continue;
+              if (soft) {
+                o.style.transition = 'opacity .30s ease';
+                o.style.opacity = '0';
+                (function (el) { setTimeout(function () { el.remove(); }, 340); })(o);
+              } else {
+                o.remove();
+              }
+            }
+          }, { once: true });
+          img.addEventListener('error', function () { img.remove(); }, { once: true });
           art.appendChild(img);
         }
       } else {

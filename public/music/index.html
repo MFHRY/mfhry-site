@@ -131,8 +131,19 @@
   }
 
 
+  /* 曲单表头：标题 + 数量 + 复位 */
+  .pg-cathead{ display:flex; align-items:baseline; gap:10px; margin:0 0 8px; }
+  .pg-cathead .n{ font-size:12px; color:var(--pg-text-2); font-variant-numeric:tabular-nums; }
+  .pg-cathead .reset{ margin-left:auto; border:0; background:none; color:rgba(10,132,255,.95);
+    font-size:12px; cursor:pointer; padding:0; }
+  .pg-cathead .reset[hidden]{ display:none; }
+
   /* 作者分类标签 */
   .pg-artists{ display:flex; flex-wrap:wrap; gap:6px; margin:0 0 12px; }
+  .pg-artists .pg-art{ max-width:190px; }
+  .pg-artists .pg-art span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .pg-artists:not(.open) .pg-art.extra{ display:none; }
+  .pg-art.more{ border-style:dashed; color:var(--pg-text-2); }
   .pg-art{ display:inline-flex; align-items:center; gap:5px; min-height:30px; padding:4px 11px;
     border-radius:999px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.05);
     color:rgba(255,255,255,.78); font-size:12px; cursor:pointer; user-select:none;
@@ -471,7 +482,11 @@
           <ap-player id="player" aria-label="播放器"></ap-player>
         </div>
         <section aria-labelledby="cat-ttl">
-          <h2 id="cat-ttl" class="pg-gtitle" style="margin:0 0 8px">曲单</h2>
+          <div class="pg-cathead">
+            <h2 id="cat-ttl" class="pg-gtitle" style="margin:0">曲单</h2>
+            <span class="n" id="cat-n"></span>
+            <button class="reset" id="cat-reset" type="button" hidden>清除筛选</button>
+          </div>
           <div class="pg-artists" id="artists" role="group" aria-label="按作者筛选"></div>
           <div class="pg-catalog pg-skel" id="catalog" aria-busy="true">
             <i></i><i></i><i></i>
@@ -1185,6 +1200,8 @@
   /* ------------------------------------------------------------ 曲单渲染 */
   /* ---------------------------------------------------- 作者标签（筛选） */
   var artistFilter = '';
+  var artistsOpen = false;
+  var ART_SHOW = 10;               /* 折叠时显示的作者标签数量 */
 
   function artistOf(h) { return (h.artist || '').trim(); }
 
@@ -1204,13 +1221,17 @@
       return count[b] - count[a] || a.localeCompare(b, 'ja');
     });
     bar.innerHTML = '';
+    bar.classList.toggle('open', artistsOpen);
 
-    function mk(name, label, n) {
+    function mk(name, label, n, extra) {
       var b = document.createElement('button');
       b.type = 'button';
-      b.className = 'pg-art';
+      b.className = 'pg-art' + (extra ? ' extra' : '');
       b.setAttribute('aria-pressed', String(artistFilter === name));
-      b.textContent = label;
+      if (name) b.title = label + ' · ' + n + ' 首';
+      var sp = document.createElement('span');
+      sp.textContent = label;
+      b.appendChild(sp);
       if (n) { var c = document.createElement('i'); c.textContent = n; b.appendChild(c); }
       b.addEventListener('click', function () {
         artistFilter = (artistFilter === name) ? '' : name;
@@ -1219,12 +1240,40 @@
       });
       bar.appendChild(b);
     }
-    mk('', '全部', 0);
-    names.forEach(function (n) { mk(n, n, count[n]); });
+    mk('', '全部', 0, false);
+    names.forEach(function (n, i) {
+      /* 当前选中的作者即使被折叠也要露出来 */
+      var extra = i >= ART_SHOW && !artistsOpen && n !== artistFilter;
+      mk(n, n, count[n], extra);
+    });
+
+    if (names.length > ART_SHOW) {
+      var t = document.createElement('button');
+      t.type = 'button';
+      t.className = 'pg-art more';
+      var ts = document.createElement('span');
+      ts.textContent = artistsOpen ? '收起' : ('更多作者 +' + (names.length - ART_SHOW));
+      t.appendChild(ts);
+      t.addEventListener('click', function () { artistsOpen = !artistsOpen; renderArtists(); });
+      bar.appendChild(t);
+    }
   }
 
   function renderCatalog() {
     var wrap = $('catalog');
+    var shown = 0;
+    (window.MFHRY_SONGS || []).forEach(function (g) {
+      (g.items || []).forEach(function (h) {
+        if ('divider' in h) return;
+        if (!artistFilter || artistOf(h) === artistFilter) shown++;
+      });
+    });
+    var numEl = $('cat-n'), resetEl = $('cat-reset');
+    if (numEl) numEl.textContent = artistFilter ? (artistFilter + ' · ' + shown + ' 首') : ('共 ' + shown + ' 首');
+    if (resetEl) {
+      resetEl.hidden = !artistFilter;
+      resetEl.onclick = function () { artistFilter = ''; renderArtists(); renderCatalog(); };
+    }
     wrap.classList.remove('pg-skel');
     wrap.removeAttribute('aria-busy');
     wrap.innerHTML = '';
