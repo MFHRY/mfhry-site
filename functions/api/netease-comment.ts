@@ -2,6 +2,7 @@
 // 这里在 Edge 端代取评论，返回清洗后的热评 + 最新评论。
 // GET /api/netease-comment?id=<网易云歌曲ID>&limit=20&offset=0
 //   → { id, total, more, hot:[{user,avatar,content,time,liked,loc}], comments:[...] }
+//   注意 time 是「毫秒」时间戳（网易云原样返回），前端不要再乘 1000
 const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), {
     status,

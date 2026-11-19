@@ -236,7 +236,9 @@
       meta.className = 'ap-cmeta';
       var b = document.createElement('b'); b.textContent = c.user || '匿名';
       var time = document.createElement('time');
-      time.textContent = AP.relTime((c.time || 0) * 1000);                   /* [110] */
+      /* 兼容两种时间单位：网易云给的是毫秒，本地草稿是秒；10^11 以下按秒处理 */
+      var ms = !c.time ? 0 : (c.time > 1e11 ? c.time : c.time * 1000);
+      time.textContent = AP.relTime(ms);                                     /* [110] */
       meta.appendChild(b); meta.appendChild(time);
       body.appendChild(meta);
 
