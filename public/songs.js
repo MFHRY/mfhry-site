@@ -116,7 +116,6 @@ window.MFHRY_SONGS = [
     items: [
       { label: 'Lemon', q: 'kenshi yonezu lemon' , nc: 536622304},
       { label: 'LOSER', q: 'kenshi yonezu loser' },
-      { label: 'KICK BACK', q: 'kenshi yonezu kick back' },
       { label: '春雷', q: 'kenshi yonezu shunrai' , nc: 512359198},
       { label: 'Flamingo', q: 'flamingo kenshi yonezu' },
       { label: '砂の惑星', q: 'sand planet hachi' , nc: 1317505406},
@@ -163,7 +162,6 @@ window.MFHRY_SONGS = [
       { label: 'Crossing Field', q: 'crossing field lisa' },
       { label: '紅蓮の弓矢', q: 'guren no yumiya linked horizon' },
       { label: '99', q: '99 mob choir' },
-      { label: '恋愛サーキュレーション', q: 'renai circulation hanazawa' },
       { label: 'TANK!', q: 'tank cowboy bebop seatbelts' },
       { label: 'Departure!', q: 'departure masatoshi ono hunter' },
       { label: '廻廻奇譚', q: 'kaikai kitan eve jujutsu' },
@@ -185,6 +183,26 @@ window.MFHRY_SONGS = [
       { label: '一途', q: 'ichizu king gnu' },
       { label: '香水', q: 'kousui eito' },
       { label: 'Marigold', q: 'aimyon marigold' },
+    ],
+  },
+  {
+    title: '剧场版 · 热门单曲',
+    items: [
+      { label: '前前前世 (movie ver.)', zh: '前前前世（电影版）', q: 'zenzenzense radwimps', artist: 'RADWIMPS',
+        r2: '/api/r2?key=music/zenzenzense.mp3', cover: '/api/r2?key=music/cover-zenzenzense.jpg',
+        lyrics: '/music/zenzenzense-lyrics.json', nc: 426881487 },
+      { label: '打上花火', zh: '打上花火', q: 'uchiage hanabi daoko', artist: 'DAOKO × 米津玄師',
+        r2: '/api/r2?key=music/uchiage-hanabi.mp3', cover: '/api/r2?key=music/cover-uchiage-hanabi.jpg',
+        lyrics: '/music/uchiage-hanabi-lyrics.json', nc: 496869422 },
+      { label: '恋愛サーキュレーション', zh: '恋爱循环', q: 'renai circulation hanazawa', artist: '花澤香菜',
+        r2: '/api/r2?key=music/renai-circulation.mp3', cover: '/api/r2?key=music/cover-renai-circulation.jpg',
+        lyrics: '/music/renai-circulation-lyrics.json', nc: 461011 },
+      { label: 'KICK BACK', zh: '链锯人 OP', q: 'kick back kenshi yonezu', artist: '米津玄師',
+        r2: '/api/r2?key=music/kick-back.mp3', cover: '/api/r2?key=music/cover-kick-back.jpg',
+        lyrics: '/music/kick-back-lyrics.json', nc: 1986803568 },
+      { label: 'IRIS OUT', zh: '链锯人 蕾塞篇 ED', q: 'iris out kenshi yonezu', artist: '米津玄師',
+        r2: '/api/r2?key=music/iris-out.mp3', cover: '/api/r2?key=music/cover-iris-out.jpg',
+        lyrics: '/music/iris-out-lyrics.json', nc: 2745026895 },
     ],
   }
 ];
