@@ -1,0 +1,287 @@
+{
+ "song": "ワールズエンド・ダンスホール",
+ "artist": "wowaka",
+ "source": "lrclib #32688045 + 机翻",
+ "lines": [
+  {
+   "t": 27.74,
+   "ja": "Jodan majiri no kyoukaisen jou",
+   "zh": "上断真尻的响海战城"
+  },
+  {
+   "t": 30.78,
+   "ja": "Kaidan no sono mata mukou",
+   "zh": "怪谈之园又向往"
+  },
+  {
+   "t": 33.5,
+   "ja": "Zenzen ii koto mo naishi, nee",
+   "zh": "Zenzen ii koto mo naishi, nee"
+  },
+  {
+   "t": 36.49,
+   "ja": "Sono te wo hiitemiyou ka na?",
+   "zh": "Sono te wo hiitemiyou ka na？"
+  },
+  {
+   "t": 39.39,
+   "ja": "Sanzan tsumazuita dance wo",
+   "zh": "三山妻嘴板舞窝"
+  },
+  {
+   "t": 41.55,
+   "ja": "Sou saidan no ue de odoru no?",
+   "zh": "Sou saidan no ue de odoru no？"
+  },
+  {
+   "t": 44.84,
+   "ja": "Bouzen ni me ga kuranjau kara",
+   "zh": "Bouzen ni me ga kuranjau kara"
+  },
+  {
+   "t": 47.69,
+   "ja": "Dou de shou, issho ni koko de!",
+   "zh": "都得受，一所你科科德！"
+  },
+  {
+   "t": 61.54,
+   "ja": "Kandakai koe ga heya wo umeru yo",
+   "zh": "神田凯 koe ga heya wo umeru yo"
+  },
+  {
+   "t": 64.31,
+   "ja": "Saitei na imi wo uzumaite",
+   "zh": "Saitei na imi wo uzumaite"
+  },
+  {
+   "t": 67.19,
+   "ja": "Touzen ii koto mo naishi",
+   "zh": "东禅二琴师"
+  },
+  {
+   "t": 69.65,
+   "ja": "Saa, omoikiri hakidasou ka",
+   "zh": "萨阿，想切哈基达索卡"
+  },
+  {
+   "t": 72.72,
+   "ja": "「Mijikai kotoba de tsunagaru imi wo",
+   "zh": "“Mijikai kotoba de tsunagaru imi wo"
+  },
+  {
+   "t": 73.82,
+   "ja": "Kao mo awasezu ni kegirau wake wo",
+   "zh": "Kao mo awasezu ni kegirauwake wo"
+  },
+  {
+   "t": 75.35,
+   "ja": "Sagashite mo",
+   "zh": "萨加什特莫"
+  },
+  {
+   "t": 76.18,
+   "ja": "Sagashite mo",
+   "zh": "萨加什特莫"
+  },
+  {
+   "t": 76.84,
+   "ja": "Mitsukaranai kedo",
+   "zh": "光内气道"
+  },
+  {
+   "t": 78.39,
+   "ja": "Hanikami nagara okottatte",
+   "zh": "花上长良 okattatte"
+  },
+  {
+   "t": 79.84,
+   "ja": "Me wo fuse nagara warattatte",
+   "zh": "我的保险丝 nagara waratte"
+  },
+  {
+   "t": 81.24,
+   "ja": "Sonna no, douse, tsumaranai wa! 」",
+   "zh": "索纳不，douse，tsumaranai wa！”"
+  },
+  {
+   "t": 83.99,
+   "ja": "Hop step de odorou ka",
+   "zh": "奥多鲁卡跳步"
+  },
+  {
+   "t": 86.59,
+   "ja": "Sekai no sumikko de one, two",
+   "zh": "世界的一、二"
+  },
+  {
+   "t": 89.65,
+   "ja": "Chotto kurattoshi sou ni naru shuumatsu kan wo tanoshin de",
+   "zh": "仓鼠总动员 秋末看我的"
+  },
+  {
+   "t": 95.34,
+   "ja": "Batto furatto kiechaiso na",
+   "zh": "Batto Furatto kiechaiso na"
+  },
+  {
+   "t": 97.71,
+   "ja": "Tsugi no shunkan wo nokosou ka",
+   "zh": "继之春鉴我之所"
+  },
+  {
+   "t": 100.93,
+   "ja": "Kuru kuru kuru kururi mawaru sekai ni you",
+   "zh": "库鲁库鲁库鲁库鲁库鲁里 世界你"
+  },
+  {
+   "t": 117.16,
+   "ja": "Boukansha dake no kuukan",
+   "zh": "博观舍空旷观"
+  },
+  {
+   "t": 119.85,
+   "ja": "Race wo saishuu densha ni nori konde",
+   "zh": "最强电者赛跑"
+  },
+  {
+   "t": 123.15,
+   "ja": "「Zenzen ii koto mo naishi, nee, kono te wo hiite mi you ka? 」",
+   "zh": "“Zenzen ii koto mo naishi，nee，kono te wo hiite mi you ka？”"
+  },
+  {
+   "t": 128.91,
+   "ja": "Nanda ka itsumo to chigau",
+   "zh": "Nanda ka isumo 与 chigau"
+  },
+  {
+   "t": 130.87,
+   "ja": "Unmei no itazura wo shinjite miru",
+   "zh": "命运之梦"
+  },
+  {
+   "t": 134.5,
+   "ja": "Sanzan tsumazuite dance wo",
+   "zh": "三山妻水手舞"
+  },
+  {
+   "t": 137.09,
+   "ja": "Sou, omoi kiri baka ni shiyou ka",
+   "zh": "Sou, omoi kiri baka ni shiyou ka"
+  },
+  {
+   "t": 140.16,
+   "ja": "「Tsumaran ugoki kurikaesu imi wo",
+   "zh": "“Tsumaran ugoki kurikaesu imi wo"
+  },
+  {
+   "t": 141.58,
+   "ja": "Oto ni awasete ashi wo fumu wake wo",
+   "zh": "Oto niawasete ashi wo fumuwake wo"
+  },
+  {
+   "t": 143.07,
+   "ja": "Sagashite mo",
+   "zh": "萨加什特莫"
+  },
+  {
+   "t": 143.62,
+   "ja": "Sagashite mo",
+   "zh": "萨加什特莫"
+  },
+  {
+   "t": 144.12,
+   "ja": "Mitsukaranai kara",
+   "zh": "光内卡拉"
+  },
+  {
+   "t": 145.67,
+   "ja": "Kanashii toki ni odoritai no",
+   "zh": "那时的我"
+  },
+  {
+   "t": 147.06,
+   "ja": "Nakitai toki ni warai tai no」",
+   "zh": "Nakitai toki ni warai tai no”"
+  },
+  {
+   "t": 148.54,
+   "ja": "Sonna wagamama tsukarechau wa!",
+   "zh": "Sonna wagamama tsukarechau wa！"
+  },
+  {
+   "t": 151.26,
+   "ja": "Pop ni sense wo utaou ka",
+   "zh": "流行你感觉我 utaou ka"
+  },
+  {
+   "t": 153.71,
+   "ja": "Sekai, tsumichau mae ni",
+   "zh": "世界，tsumicau 前二"
+  },
+  {
+   "t": 157.06,
+   "ja": "Kyutto shichatta kokoro no ne douzo",
+   "zh": "Kyutto shichatta kokoro no ne douzo"
+  },
+  {
+   "t": 160.28,
+   "ja": "Mada mada wasure nai wa",
+   "zh": "马达马达瓦苏奈瓦"
+  },
+  {
+   "t": 162.66,
+   "ja": "Nante kirei na nagame nandeshou ka!",
+   "zh": "Nante kirei na nagame nandeshou ka！"
+  },
+  {
+   "t": 165.95,
+   "ja": "Koko kara mieru fuukei",
+   "zh": "Koko kara mieru fuukei"
+  },
+  {
+   "t": 168.23,
+   "ja": "Kitto nani hitotsu kawaranai kara",
+   "zh": "Kitto Nani Hitotsu kawaranai kara"
+  },
+  {
+   "t": 171.54,
+   "ja": "Kareta jimen wo hau no",
+   "zh": "卡雷塔·吉门我好没有"
+  },
+  {
+   "t": 173.9,
+   "ja": "Hop step de odorou ka",
+   "zh": "奥多鲁卡跳步"
+  },
+  {
+   "t": 176.38,
+   "ja": "Sekai no sumikko de one, two",
+   "zh": "世界的一、二"
+  },
+  {
+   "t": 179.54,
+   "ja": "Chotto kurattoshi sou ni naru shuumatsu kan wo tanoshinde",
+   "zh": "Chotto kurattoshi sou ni naru shuumatsu kan wo tanoshinde"
+  },
+  {
+   "t": 185.09,
+   "ja": "Batto furatto kiechaiso na",
+   "zh": "Batto Furatto kiechaiso na"
+  },
+  {
+   "t": 187.63,
+   "ja": "Tsugi no shunkan wo nokosou ka",
+   "zh": "继之春鉴我之所"
+  },
+  {
+   "t": 190.88,
+   "ja": "Sayonara ogenki de",
+   "zh": "再见元气"
+  },
+  {
+   "t": 193.21,
+   "ja": "Owaru sekai ni iu.",
+   "zh": "小瓦鲁世界 ni iu。"
+  }
+ ]
+}

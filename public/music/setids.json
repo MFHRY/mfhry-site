@@ -6,7 +6,8 @@
   "r2": "/api/r2?key=music/track-1221343.mp3",
   "cover": "/api/r2?key=music/track-1221343-cover.png",
   "bytes": 5702968,
-  "mb": 5.4
+  "mb": 5.4,
+  "lyrics": "/music/osu-1221343-lyrics.json"
  },
  "Blue Bird": {
   "artist": "Blue Bird",
@@ -15,7 +16,8 @@
   "r2": "/api/r2?key=music/track-1468071.mp3",
   "cover": "",
   "bytes": 4171428,
-  "mb": 4
+  "mb": 4,
+  "lyrics": "/music/osu-1468071-lyrics.json"
  },
  "Butter-Fly": {
   "artist": "Wada Kouji",
@@ -24,7 +26,8 @@
   "r2": "/api/r2?key=music/track-338542.mp3",
   "cover": "/api/r2?key=music/track-338542-cover.jpg",
   "bytes": 9466029,
-  "mb": 9
+  "mb": 9,
+  "lyrics": "/music/osu-338542-lyrics.json"
  },
  "Crossing Field": {
   "artist": "LiSA",
@@ -33,7 +36,8 @@
   "r2": "/api/r2?key=music/track-1969188.mp3",
   "cover": "/api/r2?key=music/track-1969188-cover.jpg",
   "bytes": 6062312,
-  "mb": 5.8
+  "mb": 5.8,
+  "lyrics": "/music/osu-1969188-lyrics.json"
  },
  "Cry Baby": {
   "artist": "Official HIGE DANdism",
@@ -42,7 +46,8 @@
   "r2": "/api/r2?key=music/track-1636657.mp3",
   "cover": "/api/r2?key=music/track-1636657-cover.jpg",
   "bytes": 5768213,
-  "mb": 5.5
+  "mb": 5.5,
+  "lyrics": "/music/osu-1636657-lyrics.json"
  },
  "Departure!": {
   "artist": "Masatoshi Ono",
@@ -51,7 +56,8 @@
   "r2": "/api/r2?key=music/track-97235.mp3",
   "cover": "/api/r2?key=music/track-97235-cover.jpg",
   "bytes": 4130168,
-  "mb": 3.9
+  "mb": 3.9,
+  "lyrics": "/music/osu-97235-lyrics.json"
  },
  "Flamingo": {
   "artist": "Yonezu Kenshi",
@@ -60,7 +66,8 @@
   "r2": "/api/r2?key=music/track-1210565.mp3",
   "cover": "/api/r2?key=music/track-1210565-cover.jpg",
   "bytes": 1759995,
-  "mb": 1.7
+  "mb": 1.7,
+  "lyrics": "/music/osu-1210565-lyrics.json"
  },
  "KICK BACK": {
   "artist": "Kenshi Yonezu",
@@ -69,7 +76,8 @@
   "r2": "/api/r2?key=music/track-1907393.mp3",
   "cover": "/api/r2?key=music/track-1907393-cover.jpg",
   "bytes": 4646352,
-  "mb": 4.4
+  "mb": 4.4,
+  "lyrics": "/music/osu-1907393-lyrics.json"
  },
  "KING": {
   "artist": "Kanaria x Wonerlands x Showtime",
@@ -78,7 +86,8 @@
   "r2": "/api/r2?key=music/track-2077045.mp3",
   "cover": "/api/r2?key=music/track-2077045-cover.png",
   "bytes": 3246381,
-  "mb": 3.1
+  "mb": 3.1,
+  "lyrics": "/music/osu-2077045-lyrics.json"
  },
  "LOSER": {
   "artist": "Kenshi Yonezu",
@@ -87,7 +96,8 @@
   "r2": "/api/r2?key=music/track-1854608.mp3",
   "cover": "/api/r2?key=music/track-1854608-cover.jpg",
   "bytes": 5784192,
-  "mb": 5.5
+  "mb": 5.5,
+  "lyrics": "/music/osu-1854608-lyrics.json"
  },
  "Lemon": {
   "artist": "Yonezu Kenshi",
@@ -96,7 +106,8 @@
   "r2": "/api/r2?key=music/track-861466.mp3",
   "cover": "/api/r2?key=music/track-861466-cover.jpg",
   "bytes": 6564985,
-  "mb": 6.3
+  "mb": 6.3,
+  "lyrics": "/music/osu-861466-lyrics.json"
  },
  "Marigold": {
   "artist": "Aimyon",
@@ -105,7 +116,8 @@
   "r2": "/api/r2?key=music/track-963292.mp3",
   "cover": "/api/r2?key=music/track-963292-cover.jpg",
   "bytes": 12090646,
-  "mb": 11.5
+  "mb": 11.5,
+  "lyrics": "/music/osu-963292-lyrics.json"
  },
  "One Last Kiss": {
   "artist": "Utada Hikaru",
@@ -114,7 +126,8 @@
   "r2": "/api/r2?key=music/track-1565827.mp3",
   "cover": "/api/r2?key=music/track-1565827-cover.jpg",
   "bytes": 6050257,
-  "mb": 5.8
+  "mb": 5.8,
+  "lyrics": "/music/osu-1565827-lyrics.json"
  },
  "Pretender": {
   "artist": "Official HIGE DANdism",
@@ -123,7 +136,8 @@
   "r2": "/api/r2?key=music/track-1821118.mp3",
   "cover": "/api/r2?key=music/track-1821118-cover.jpg",
   "bytes": 8381062,
-  "mb": 8
+  "mb": 8,
+  "lyrics": "/music/osu-1821118-lyrics.json"
  },
  "Silhouette": {
   "artist": "KANA-BOON",
@@ -132,7 +146,8 @@
   "r2": "/api/r2?key=music/track-1879059.mp3",
   "cover": "/api/r2?key=music/track-1879059-cover.jpg",
   "bytes": 5797928,
-  "mb": 5.5
+  "mb": 5.5,
+  "lyrics": "/music/osu-1879059-lyrics.json"
  },
  "TANK!": {
   "artist": "Cowboy Bebop OST",
@@ -150,7 +165,8 @@
   "r2": "/api/r2?key=music/track-403560.mp3",
   "cover": "/api/r2?key=music/track-403560-cover.png",
   "bytes": 2472309,
-  "mb": 2.4
+  "mb": 2.4,
+  "lyrics": "/music/osu-403560-lyrics.json"
  },
  "only my railgun": {
   "artist": "fripSide",
@@ -159,7 +175,8 @@
   "r2": "/api/r2?key=music/track-1358802.mp3",
   "cover": "/api/r2?key=music/track-1358802-cover.jpg",
   "bytes": 6100459,
-  "mb": 5.8
+  "mb": 5.8,
+  "lyrics": "/music/osu-1358802-lyrics.json"
  },
  "unravel": {
   "artist": "Tokyo_Ghoul",
@@ -168,7 +185,8 @@
   "r2": "/api/r2?key=music/track-275875.mp3",
   "cover": "/api/r2?key=music/track-275875-cover.png",
   "bytes": 951989,
-  "mb": 0.9
+  "mb": 0.9,
+  "lyrics": "/music/osu-275875-lyrics.json"
  },
  "アイドル": {
   "artist": "YOASOBI",
@@ -177,7 +195,8 @@
   "r2": "/api/r2?key=music/track-2019183.mp3",
   "cover": "/api/r2?key=music/track-2019183-cover.jpg",
   "bytes": 3622491,
-  "mb": 3.5
+  "mb": 3.5,
+  "lyrics": "/music/osu-2019183-lyrics.json"
  },
  "アンドロメダアンドロメダ": {
   "artist": "Nayutalien",
@@ -186,7 +205,8 @@
   "r2": "/api/r2?key=music/track-1075240.mp3",
   "cover": "",
   "bytes": 5841687,
-  "mb": 5.6
+  "mb": 5.6,
+  "lyrics": "/music/osu-1075240-lyrics.json"
  },
  "アンハッピーリフレイン": {
   "artist": "wowaka",
@@ -195,7 +215,8 @@
   "r2": "/api/r2?key=music/track-1075607.mp3",
   "cover": "/api/r2?key=music/track-1075607-cover.jpg",
   "bytes": 5414870,
-  "mb": 5.2
+  "mb": 5.2,
+  "lyrics": "/music/osu-1075607-lyrics.json"
  },
  "インフェルノ": {
   "artist": "Mrs. GREEN APPLE",
@@ -204,7 +225,8 @@
   "r2": "/api/r2?key=music/track-1005253.mp3",
   "cover": "/api/r2?key=music/track-1005253-cover.jpg",
   "bytes": 5300285,
-  "mb": 5.1
+  "mb": 5.1,
+  "lyrics": "/music/osu-1005253-lyrics.json"
  },
  "エイリアンエイリアン": {
   "artist": "NayutalieN",
@@ -213,7 +235,8 @@
   "r2": "/api/r2?key=music/track-1647839.mp3",
   "cover": "/api/r2?key=music/track-1647839-cover.jpg",
   "bytes": 4371264,
-  "mb": 4.2
+  "mb": 4.2,
+  "lyrics": "/music/osu-1647839-lyrics.json"
  },
  "ゴーストルール": {
   "artist": "DECO*27",
@@ -222,7 +245,8 @@
   "r2": "/api/r2?key=music/track-624218.mp3",
   "cover": "/api/r2?key=music/track-624218-cover.jpg",
   "bytes": 5125882,
-  "mb": 4.9
+  "mb": 4.9,
+  "lyrics": "/music/osu-624218-lyrics.json"
  },
  "ハルジオン": {
   "artist": "YOASOBI",
@@ -231,7 +255,8 @@
   "r2": "/api/r2?key=music/track-1380291.mp3",
   "cover": "/api/r2?key=music/track-1380291-cover.jpg",
   "bytes": 5027149,
-  "mb": 4.8
+  "mb": 4.8,
+  "lyrics": "/music/osu-1380291-lyrics.json"
  },
  "ビターチョコデコレーション": {
   "artist": "25-ji, Nightcord de.",
@@ -240,7 +265,8 @@
   "r2": "/api/r2?key=music/track-1538879.mp3",
   "cover": "/api/r2?key=music/track-1538879-cover.jpg",
   "bytes": 3163392,
-  "mb": 3
+  "mb": 3,
+  "lyrics": "/music/osu-1538879-lyrics.json"
  },
  "マトリョシカ": {
   "artist": "Hachi feat. Hatsune Miku & GUMI",
@@ -249,7 +275,8 @@
   "r2": "/api/r2?key=music/track-470960.mp3",
   "cover": "/api/r2?key=music/track-470960-cover.jpg",
   "bytes": 4798727,
-  "mb": 4.6
+  "mb": 4.6,
+  "lyrics": "/music/osu-470960-lyrics.json"
  },
  "メルト": {
   "artist": "ryo (supercell) x yanaginagi",
@@ -258,7 +285,8 @@
   "r2": "/api/r2?key=music/track-870017.mp3",
   "cover": "/api/r2?key=music/track-870017-cover.jpg",
   "bytes": 7332990,
-  "mb": 7
+  "mb": 7,
+  "lyrics": "/music/osu-870017-lyrics.json"
  },
  "ローリンガール": {
   "artist": "wowaka; (Genjitsu Touhi-P)",
@@ -267,7 +295,8 @@
   "r2": "/api/r2?key=music/track-2038329.mp3",
   "cover": "/api/r2?key=music/track-2038329-cover.jpg",
   "bytes": 7664454,
-  "mb": 7.3
+  "mb": 7.3,
+  "lyrics": "/music/osu-2038329-lyrics.json"
  },
  "ワールズエンド・ダンスホール": {
   "artist": "wowaka",
@@ -276,7 +305,8 @@
   "r2": "/api/r2?key=music/track-1114556.mp3",
   "cover": "/api/r2?key=music/track-1114556-cover.png",
   "bytes": 6744355,
-  "mb": 6.4
+  "mb": 6.4,
+  "lyrics": "/music/osu-1114556-lyrics.json"
  },
  "ヴァンパイア": {
   "artist": "DECO*27",
@@ -285,7 +315,8 @@
   "r2": "/api/r2?key=music/track-2168317.mp3",
   "cover": "/api/r2?key=music/track-2168317-cover.jpg",
   "bytes": 4322304,
-  "mb": 4.1
+  "mb": 4.1,
+  "lyrics": "/music/osu-2168317-lyrics.json"
  },
  "一途": {
   "artist": "King Gnu",
@@ -294,7 +325,8 @@
   "r2": "/api/r2?key=music/track-1768259.mp3",
   "cover": "/api/r2?key=music/track-1768259-cover.jpg",
   "bytes": 4577951,
-  "mb": 4.4
+  "mb": 4.4,
+  "lyrics": "/music/osu-1768259-lyrics.json"
  },
  "世界第一的公主殿下": {
   "artist": "supercell feat. Hatsune Miku",
@@ -303,7 +335,8 @@
   "r2": "/api/r2?key=music/track-1784338.mp3",
   "cover": "/api/r2?key=music/track-1784338-cover.png",
   "bytes": 6192037,
-  "mb": 5.9
+  "mb": 5.9,
+  "lyrics": "/music/osu-1784338-lyrics.json"
  },
  "六兆年と一夜物語": {
   "artist": "IA",
@@ -312,7 +345,8 @@
   "r2": "/api/r2?key=music/track-51959.mp3",
   "cover": "/api/r2?key=music/track-51959-cover.jpg",
   "bytes": 3523009,
-  "mb": 3.4
+  "mb": 3.4,
+  "lyrics": "/music/osu-51959-lyrics.json"
  },
  "唱": {
   "artist": "Ado",
@@ -321,7 +355,8 @@
   "r2": "/api/r2?key=music/track-2098617.mp3",
   "cover": "/api/r2?key=music/track-2098617-cover.jpg",
   "bytes": 4546987,
-  "mb": 4.3
+  "mb": 4.3,
+  "lyrics": "/music/osu-2098617-lyrics.json"
  },
  "夜に駆ける": {
   "artist": "YOASOBI",
@@ -330,7 +365,8 @@
   "r2": "/api/r2?key=music/track-1374931.mp3",
   "cover": "/api/r2?key=music/track-1374931-cover.png",
   "bytes": 6211722,
-  "mb": 5.9
+  "mb": 5.9,
+  "lyrics": "/music/osu-1374931-lyrics.json"
  },
  "太陽系ディスコ": {
   "artist": "Solar System Disco",
@@ -339,7 +375,8 @@
   "r2": "/api/r2?key=music/track-624531.mp3",
   "cover": "/api/r2?key=music/track-624531-cover.jpg",
   "bytes": 2936668,
-  "mb": 2.8
+  "mb": 2.8,
+  "lyrics": "/music/osu-624531-lyrics.json"
  },
  "廻廻奇譚": {
   "artist": "Eve",
@@ -348,7 +385,8 @@
   "r2": "/api/r2?key=music/track-1436571.mp3",
   "cover": "/api/r2?key=music/track-1436571-cover.jpg",
   "bytes": 3755500,
-  "mb": 3.6
+  "mb": 3.6,
+  "lyrics": "/music/osu-1436571-lyrics.json"
  },
  "怪物": {
   "artist": "YOASOBI",
@@ -357,7 +395,8 @@
   "r2": "/api/r2?key=music/track-1343429.mp3",
   "cover": "/api/r2?key=music/track-1343429-cover.jpg",
   "bytes": 3388918,
-  "mb": 3.2
+  "mb": 3.2,
+  "lyrics": "/music/osu-1343429-lyrics.json"
  },
  "恋愛サーキュレーション": {
   "artist": "Sengoku Nadeko (CV: Hanazawa Kana)",
@@ -366,7 +405,8 @@
   "r2": "/api/r2?key=music/track-1650999.mp3",
   "cover": "/api/r2?key=music/track-1650999-cover.jpg",
   "bytes": 2198089,
-  "mb": 2.1
+  "mb": 2.1,
+  "lyrics": "/music/osu-1650999-lyrics.json"
  },
  "惑星ループ": {
   "artist": "Nayutalien",
@@ -375,7 +415,8 @@
   "r2": "/api/r2?key=music/track-1861500.mp3",
   "cover": "/api/r2?key=music/track-1861500-cover.png",
   "bytes": 4688109,
-  "mb": 4.5
+  "mb": 4.5,
+  "lyrics": "/music/osu-1861500-lyrics.json"
  },
  "新時代": {
   "artist": "Ado",
@@ -384,7 +425,8 @@
   "r2": "/api/r2?key=music/track-1830890.mp3",
   "cover": "/api/r2?key=music/track-1830890-cover.jpg",
   "bytes": 5446477,
-  "mb": 5.2
+  "mb": 5.2,
+  "lyrics": "/music/osu-1830890-lyrics.json"
  },
  "春雷": {
   "artist": "Kenshi Yonezu",
@@ -393,7 +435,8 @@
   "r2": "/api/r2?key=music/track-847560.mp3",
   "cover": "/api/r2?key=music/track-847560-cover.jpg",
   "bytes": 9281955,
-  "mb": 8.9
+  "mb": 8.9,
+  "lyrics": "/music/osu-847560-lyrics.json"
  },
  "残酷な天使のテーゼ": {
   "artist": "Itou Shizuka",
@@ -402,7 +445,8 @@
   "r2": "/api/r2?key=music/track-8459.mp3",
   "cover": "/api/r2?key=music/track-8459-cover.jpg",
   "bytes": 6933535,
-  "mb": 6.6
+  "mb": 6.6,
+  "lyrics": "/music/osu-8459-lyrics.json"
  },
  "残響散歌": {
   "artist": "Aimer",
@@ -411,7 +455,8 @@
   "r2": "/api/r2?key=music/track-2079448.mp3",
   "cover": "/api/r2?key=music/track-2079448-cover.jpg",
   "bytes": 4704686,
-  "mb": 4.5
+  "mb": 4.5,
+  "lyrics": "/music/osu-2079448-lyrics.json"
  },
  "白日": {
   "artist": "King Gnu",
@@ -420,7 +465,8 @@
   "r2": "/api/r2?key=music/track-1179387.mp3",
   "cover": "/api/r2?key=music/track-1179387-cover.jpg",
   "bytes": 6710717,
-  "mb": 6.4
+  "mb": 6.4,
+  "lyrics": "/music/osu-1179387-lyrics.json"
  },
  "砂の惑星": {
   "artist": "Hachi feat. Hatsune Miku",
@@ -429,7 +475,8 @@
   "r2": "/api/r2?key=music/track-649710.mp3",
   "cover": "/api/r2?key=music/track-649710-cover.jpg",
   "bytes": 3886555,
-  "mb": 3.7
+  "mb": 3.7,
+  "lyrics": "/music/osu-649710-lyrics.json"
  },
  "紅蓮の弓矢": {
   "artist": "Linked Horizon",
@@ -438,7 +485,8 @@
   "r2": "/api/r2?key=music/track-82988.mp3",
   "cover": "/api/r2?key=music/track-82988-cover.jpg",
   "bytes": 2185830,
-  "mb": 2.1
+  "mb": 2.1,
+  "lyrics": "/music/osu-82988-lyrics.json"
  },
  "紅蓮華": {
   "artist": "LiSA",
@@ -447,7 +495,8 @@
   "r2": "/api/r2?key=music/track-1025171.mp3",
   "cover": "/api/r2?key=music/track-1025171-cover.jpg",
   "bytes": 5728000,
-  "mb": 5.5
+  "mb": 5.5,
+  "lyrics": "/music/osu-1025171-lyrics.json"
  },
  "群青": {
   "artist": "YOASOBI",
@@ -456,7 +505,8 @@
   "r2": "/api/r2?key=music/track-1256369.mp3",
   "cover": "/api/r2?key=music/track-1256369-cover.png",
   "bytes": 6660667,
-  "mb": 6.4
+  "mb": 6.4,
+  "lyrics": "/music/osu-1256369-lyrics.json"
  },
  "裏表ラバーズ": {
   "artist": "wowaka feat. Kagura Mea",
@@ -465,7 +515,8 @@
   "r2": "/api/r2?key=music/track-928455.mp3",
   "cover": "/api/r2?key=music/track-928455-cover.png",
   "bytes": 4069891,
-  "mb": 3.9
+  "mb": 3.9,
+  "lyrics": "/music/osu-928455-lyrics.json"
  },
  "金星のダンス": {
   "artist": "Hatsune Miku feat. NayutalieN",
@@ -474,7 +525,8 @@
   "r2": "/api/r2?key=music/track-925206.mp3",
   "cover": "/api/r2?key=music/track-925206-cover.jpg",
   "bytes": 8360000,
-  "mb": 8
+  "mb": 8,
+  "lyrics": "/music/osu-925206-lyrics.json"
  },
  "香水": {
   "artist": "Kamiyama Yoh",
@@ -483,6 +535,7 @@
   "r2": "/api/r2?key=music/track-1368923.mp3",
   "cover": "/api/r2?key=music/track-1368923-cover.jpg",
   "bytes": 2161817,
-  "mb": 2.1
+  "mb": 2.1,
+  "lyrics": "/music/osu-1368923-lyrics.json"
  }
 }

@@ -1,0 +1,462 @@
+{
+ "song": "世界第一的公主殿下",
+ "artist": "FERG",
+ "source": "lrclib #32251356 + 机翻",
+ "lines": [
+  {
+   "t": 0.01,
+   "ja": "Yeah",
+   "zh": "是啊"
+  },
+  {
+   "t": 3.26,
+   "ja": "Better get the fuck out my face",
+   "zh": "最好滚出我的脸"
+  },
+  {
+   "t": 5.18,
+   "ja": "You always tellin' me I got the world",
+   "zh": "你总是告诉我我拥有了全世界"
+  },
+  {
+   "t": 6.46,
+   "ja": "Talkin' all that shit",
+   "zh": "说着那些狗屎的话"
+  },
+  {
+   "t": 7.25,
+   "ja": "Bitch you better the fuck out my face",
+   "zh": "婊子你最好滚出我的脸"
+  },
+  {
+   "t": 8.93,
+   "ja": "But I don't have half of what I want to achieve",
+   "zh": "但我还没有达到我想要达到的目标的一半"
+  },
+  {
+   "t": 11.34,
+   "ja": "Na-na-na-na-na-na, fuck is you sayin'",
+   "zh": "娜-娜-娜-娜-娜-娜，你他妈是在说吗？"
+  },
+  {
+   "t": 13.1,
+   "ja": "I got to get it",
+   "zh": "我必须得到它"
+  },
+  {
+   "t": 15.78,
+   "ja": "She tried to tell me that the world is mine",
+   "zh": "她试图告诉我世界是我的"
+  },
+  {
+   "t": 18.54,
+   "ja": "I know that ain't true",
+   "zh": "我知道那不是真的"
+  },
+  {
+   "t": 20.69,
+   "ja": "And even though I want it all",
+   "zh": "即使我想要这一切"
+  },
+  {
+   "t": 22.33,
+   "ja": "I'm young, man, and I got everything to lose",
+   "zh": "我还年轻，伙计，我会失去一切"
+  },
+  {
+   "t": 24.48,
+   "ja": "I'm young, man, and I got everything to lose",
+   "zh": "我还年轻，伙计，我会失去一切"
+  },
+  {
+   "t": 26.51,
+   "ja": "I'm young, man, and I got everything to lose",
+   "zh": "我还年轻，伙计，我会失去一切"
+  },
+  {
+   "t": 28.66,
+   "ja": "I'm young, man, and I got everything to lose",
+   "zh": "我还年轻，伙计，我会失去一切"
+  },
+  {
+   "t": 30.75,
+   "ja": "I'm young, man, and I got everything to lose",
+   "zh": "我还年轻，伙计，我会失去一切"
+  },
+  {
+   "t": 32.86,
+   "ja": "She tried to tell me that the world is mine",
+   "zh": "她试图告诉我世界是我的"
+  },
+  {
+   "t": 35.53,
+   "ja": "I know that ain't true",
+   "zh": "我知道那不是真的"
+  },
+  {
+   "t": 37.65,
+   "ja": "And even though I want it all",
+   "zh": "即使我想要这一切"
+  },
+  {
+   "t": 39.33,
+   "ja": "I'm young, man, and I got everything to lose",
+   "zh": "我还年轻，伙计，我会失去一切"
+  },
+  {
+   "t": 41.32,
+   "ja": "I'm young, man, and I got everything to lose",
+   "zh": "我还年轻，伙计，我会失去一切"
+  },
+  {
+   "t": 43.54,
+   "ja": "I'm young, man, and I got everything to lose",
+   "zh": "我还年轻，伙计，我会失去一切"
+  },
+  {
+   "t": 45.6,
+   "ja": "I'm young, man, and I got everything to lose",
+   "zh": "我还年轻，伙计，我会失去一切"
+  },
+  {
+   "t": 47.7,
+   "ja": "I'm young, man, and I got everything to lose",
+   "zh": "我还年轻，伙计，我会失去一切"
+  },
+  {
+   "t": 49.61,
+   "ja": "She tried to tell me that the world is mine",
+   "zh": "她试图告诉我世界是我的"
+  },
+  {
+   "t": 52.82,
+   "ja": "But you know it ain't true, you know it ain't true",
+   "zh": "但你知道这不是真的，你知道这不是真的"
+  },
+  {
+   "t": 55.13,
+   "ja": "I'm tryna make a dollar, get my ass up out of Harlem",
+   "zh": "我想赚点钱，离开哈莱姆区"
+  },
+  {
+   "t": 57.19,
+   "ja": "Cause you know the haters watching and the bullets ain't cool",
+   "zh": "因为你知道仇恨者在观看而子弹并不酷"
+  },
+  {
+   "t": 59.28,
+   "ja": "Ain't you, attracted to a powerful motherfucker",
+   "zh": "你不是被一个强大的混蛋吸引了吗"
+  },
+  {
+   "t": 61.57,
+   "ja": "Don't wanna be compared to these rapper dude motherfuckers",
+   "zh": "不想与这些说唱歌手混蛋相比"
+  },
+  {
+   "t": 63.65,
+   "ja": "Who turnin' so passionate when they battling motherfuckers",
+   "zh": "当他们与混蛋们斗争时，谁变得如此热情"
+  },
+  {
+   "t": 65.7,
+   "ja": "But never get a crib up in Malibu motherfucker",
+   "zh": "但永远不要在马里布放一张婴儿床混蛋"
+  },
+  {
+   "t": 68.33,
+   "ja": "And I don't want to wind up like him",
+   "zh": "我不想像他一样结束"
+  },
+  {
+   "t": 69.94,
+   "ja": "He can't afford that Tom Ford, you won't like that man",
+   "zh": "他买不起汤姆·福特，你不会喜欢那个人"
+  },
+  {
+   "t": 72.26,
+   "ja": "Grinding that old food, no AC or fan",
+   "zh": "研磨旧食物，无需空调或风扇"
+  },
+  {
+   "t": 74.29,
+   "ja": "No trips to Jamaica, babe you gets no tan",
+   "zh": "没有去牙买加旅行，宝贝，你不会晒黑"
+  },
+  {
+   "t": 76.48,
+   "ja": "I wanna pull up pull up in a 4-4 or Benz",
+   "zh": "我想开 4-4 或奔驰"
+  },
+  {
+   "t": 78.5,
+   "ja": "A Sprinter van, with the TVs in",
+   "zh": "一辆配备电视的 Sprinter 货车"
+  },
+  {
+   "t": 80.79,
+   "ja": "Your crew jump in, I'm getting those jeans",
+   "zh": "你的工作人员加入进来，我去买那条牛仔裤"
+  },
+  {
+   "t": 82.86,
+   "ja": "If we keep on, fuckin' fly to Japan",
+   "zh": "如果我们继续下去，他妈的就飞往日本"
+  },
+  {
+   "t": 85.84,
+   "ja": "You say that this shit mami, 'cause you my girl",
+   "zh": "你说这该死，妈妈，因为你是我的女孩"
+  },
+  {
+   "t": 89.29,
+   "ja": "You say you just need me and need no one else",
+   "zh": "你说你只需要我，不需要别人"
+  },
+  {
+   "t": 94.39,
+   "ja": "But I'm full of ambition to take over the world",
+   "zh": "但我却充满了征服世界的野心"
+  },
+  {
+   "t": 100.73,
+   "ja": "She tried to tell me that the world is mine",
+   "zh": "她试图告诉我世界是我的"
+  },
+  {
+   "t": 103.5,
+   "ja": "I know that ain't true",
+   "zh": "我知道那不是真的"
+  },
+  {
+   "t": 105.66,
+   "ja": "And even though I want it all",
+   "zh": "即使我想要这一切"
+  },
+  {
+   "t": 107.39,
+   "ja": "I'm young, man, and I got everything to lose",
+   "zh": "我还年轻，伙计，我会失去一切"
+  },
+  {
+   "t": 109.37,
+   "ja": "I'm young, man, and I got everything to lose",
+   "zh": "我还年轻，伙计，我会失去一切"
+  },
+  {
+   "t": 111.49,
+   "ja": "I'm young, man, and I got everything to lose",
+   "zh": "我还年轻，伙计，我会失去一切"
+  },
+  {
+   "t": 113.64,
+   "ja": "I'm young, man, and I got everything to lose",
+   "zh": "我还年轻，伙计，我会失去一切"
+  },
+  {
+   "t": 115.7,
+   "ja": "I'm young, man, and I got everything to lose",
+   "zh": "我还年轻，伙计，我会失去一切"
+  },
+  {
+   "t": 117.81,
+   "ja": "She tried to tell me that the world is mine",
+   "zh": "她试图告诉我世界是我的"
+  },
+  {
+   "t": 120.59,
+   "ja": "I know that ain't true",
+   "zh": "我知道那不是真的"
+  },
+  {
+   "t": 122.61,
+   "ja": "And even though I want it all",
+   "zh": "即使我想要这一切"
+  },
+  {
+   "t": 124.22,
+   "ja": "I'm young, man, and I got everything to lose",
+   "zh": "我还年轻，伙计，我会失去一切"
+  },
+  {
+   "t": 126.3,
+   "ja": "I'm young, man, and I got everything to lose",
+   "zh": "我还年轻，伙计，我会失去一切"
+  },
+  {
+   "t": 128.43,
+   "ja": "I'm young, man, and I got everything to lose",
+   "zh": "我还年轻，伙计，我会失去一切"
+  },
+  {
+   "t": 130.55,
+   "ja": "I'm young, man, and I got everything to lose",
+   "zh": "我还年轻，伙计，我会失去一切"
+  },
+  {
+   "t": 132.7,
+   "ja": "I'm young, man, and I got everything to lose",
+   "zh": "我还年轻，伙计，我会失去一切"
+  },
+  {
+   "t": 135.62,
+   "ja": "Funny how it all go go, you never could know though",
+   "zh": "有趣的是，这一切是如何发生的，但你永远不会知道"
+  },
+  {
+   "t": 137.92,
+   "ja": "What happened to Tiger was Kobe, you know hoes",
+   "zh": "老虎发生了什么事科比，你知道锄头"
+  },
+  {
+   "t": 140.15,
+   "ja": "Get caught in a photo, lipstick on your polo",
+   "zh": "被照片抓住，你的马球上有口红"
+  },
+  {
+   "t": 142.32,
+   "ja": "And all the trust that you builds right out the door door",
+   "zh": "以及您在门外建立的所有信任"
+  },
+  {
+   "t": 144.56,
+   "ja": "Y'all went from lovebirds to looking like Dodos",
+   "zh": "你们都从爱情鸟变成了渡渡鸟"
+  },
+  {
+   "t": 146.5,
+   "ja": "And that shit gon' last, for months it'll go go",
+   "zh": "那狗屎会持续几个月，它就会消失"
+  },
+  {
+   "t": 148.69,
+   "ja": "And that shit gon' drag, drag on like komodo",
+   "zh": "那该死的东西会拖下去，像科莫多巨蜥一样拖下去"
+  },
+  {
+   "t": 150.95,
+   "ja": "Over a bitch that look like Quasimodo, god!",
+   "zh": "竟然还有一个长得像卡西莫多的贱人，天哪！"
+  },
+  {
+   "t": 153.68,
+   "ja": "Now you calling and checkin' in",
+   "zh": "现在你打电话来登记"
+  },
+  {
+   "t": 155.19,
+   "ja": "All the time like your ass still on parole though",
+   "zh": "一直就像你的屁股还在假释中一样"
+  },
+  {
+   "t": 157.25,
+   "ja": "Wondering if you just better off solo",
+   "zh": "想知道独自一人是否会更好"
+  },
+  {
+   "t": 159.14,
+   "ja": "You paying a price, but is that what it owe though?",
+   "zh": "你付出了代价，但这就是它所欠的吗？"
+  },
+  {
+   "t": 161.44,
+   "ja": "Praying up to god about shit that's not even holy",
+   "zh": "向上帝祈祷那些甚至不神圣的事情"
+  },
+  {
+   "t": 165.44,
+   "ja": "You like \"she tripping over bitches saying that they know me\"",
+   "zh": "你喜欢“她被那些说认识我的母狗绊倒”"
+  },
+  {
+   "t": 170.04,
+   "ja": "Then she put the pussy on me, swear that shit control me",
+   "zh": "然后她把阴户放在我身上，发誓这狗屎控制了我"
+  },
+  {
+   "t": 174.48,
+   "ja": "That shit control me, man that shit control me",
+   "zh": "那该死的东西控制了我，伙计那该死的东西控制了我"
+  },
+  {
+   "t": 177.34,
+   "ja": "She tried to tell me that the world is mine",
+   "zh": "她试图告诉我世界是我的"
+  },
+  {
+   "t": 180.01,
+   "ja": "I know that ain't true",
+   "zh": "我知道那不是真的"
+  },
+  {
+   "t": 182.17,
+   "ja": "And even though I want it all",
+   "zh": "即使我想要这一切"
+  },
+  {
+   "t": 183.72,
+   "ja": "I'm young, man, and I got everything to lose",
+   "zh": "我还年轻，伙计，我会失去一切"
+  },
+  {
+   "t": 185.82,
+   "ja": "I'm young, man, and I got everything to lose",
+   "zh": "我还年轻，伙计，我会失去一切"
+  },
+  {
+   "t": 187.94,
+   "ja": "I'm young, man, and I got everything to lose",
+   "zh": "我还年轻，伙计，我会失去一切"
+  },
+  {
+   "t": 190.06,
+   "ja": "I'm young, man, and I got everything to lose",
+   "zh": "我还年轻，伙计，我会失去一切"
+  },
+  {
+   "t": 192.17,
+   "ja": "I'm young, man, and I got everything to lose",
+   "zh": "我还年轻，伙计，我会失去一切"
+  },
+  {
+   "t": 194.29,
+   "ja": "She tried to tell me that the world is mine",
+   "zh": "她试图告诉我世界是我的"
+  },
+  {
+   "t": 196.98,
+   "ja": "I know that ain't true",
+   "zh": "我知道那不是真的"
+  },
+  {
+   "t": 199.02,
+   "ja": "And even though I want it all",
+   "zh": "即使我想要这一切"
+  },
+  {
+   "t": 200.72,
+   "ja": "I'm young, man, and I got everything to lose",
+   "zh": "我还年轻，伙计，我会失去一切"
+  },
+  {
+   "t": 202.88,
+   "ja": "I'm young, man, and I got everything to lose",
+   "zh": "我还年轻，伙计，我会失去一切"
+  },
+  {
+   "t": 204.98,
+   "ja": "I'm young, man, and I got everything to lose",
+   "zh": "我还年轻，伙计，我会失去一切"
+  },
+  {
+   "t": 207,
+   "ja": "I'm young, man, and I got everything to lose",
+   "zh": "我还年轻，伙计，我会失去一切"
+  },
+  {
+   "t": 209.1,
+   "ja": "I'm young, man, and I got everything to lose",
+   "zh": "我还年轻，伙计，我会失去一切"
+  }
+ ]
+}
