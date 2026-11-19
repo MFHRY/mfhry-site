@@ -153,7 +153,7 @@
       <div><span>手刹漂移</span><k>Shift</k></div>
       <div><span>转视角</span><k>拖动鼠标</k></div>
     </div>
-    <button class="go" id="btnStart">开车进城</button>
+    <button class="go" id="btnStart" disabled>正在加载 3D 引擎…</button>
     <button class="go ghost" id="btnFull2d" style="margin-top:8px">去 2D 版玩 19 章剧情</button>
   </div>
 </div>
@@ -1308,6 +1308,11 @@ window.addEventListener('keydown', (e) => { if (e.key === 'Escape') document.get
 requestAnimationFrame(frame);
 updateHud();
 drawMini();
+{
+  const b = document.getElementById('btnStart');
+  b.disabled = false;
+  b.textContent = '开车进城';
+}
 
 // 调试钩子
 window.__gta3d = {
