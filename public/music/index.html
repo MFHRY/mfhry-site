@@ -1457,7 +1457,7 @@
     return {
       id: src ? ('r2:' + h.label) : ('osu:' + h.label),
       label: h.label, zh: h.zh || h.label, artist: h.artist || ho.artist || '',
-      src: src, cover: h.cover || ho.cover || '', lyrics: h.lyrics || '',
+      src: src, cover: h.cover || ho.cover || '', lyrics: h.lyrics || ho.lyrics || '',
       nc: h.nc || '', mv: h.mv || null, setId: h.setId || ho.id || null
     };
   }
