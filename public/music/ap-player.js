@@ -16,7 +16,7 @@
     /* ---- 头部：封面 + 标题 ---- */
     .ap-head{ display:flex; align-items:center; gap:var(--ap-space-3); min-width:0; }
     .ap-art{
-      position:relative; touch-action:pan-y; will-change:transform; flex:0 0 auto;
+      position:relative; touch-action:pan-y; will-change:transform; cursor:pointer; flex:0 0 auto;
       width:64px; height:64px;                     /* 封面正方形 [61] */
       border-radius:var(--ap-radius-art);          /* 16px [61] */
       overflow:hidden;
@@ -545,7 +545,7 @@
       var onPDown = function (ev) {
         if (ev.button != null && ev.button !== 0) return;
         if (self._tracks.length < 2) return;
-        sw = { id: ev.pointerId, x: ev.clientX, y: ev.clientY, dx: 0, dragging: true };
+        sw = { id: ev.pointerId, x: ev.clientX, y: ev.clientY, dx: 0, t0: Date.now(), dragging: true };
         artEl.style.transition = 'none';
       };
       var onPMove = function (ev) {
@@ -590,8 +590,13 @@
         sw.dragging = false;
         sw.dx = 0;
         try { artEl.releasePointerCapture(ev.pointerId); } catch (e) { }
+        var tapped = Math.abs(dx) < 6 && Date.now() - sw.t0 < 600;
         if (Math.abs(dx) >= SWITCH_AT) settle(dx < 0 ? 1 : -1);
         else settle(0);
+        /* 轻点封面 = 播放/暂停（拖动才切歌） */
+        if (tapped) {
+          if (AP.Store.state.playing) self.pause(); else self.play();
+        }
       };
       artEl.addEventListener('pointerdown', onPDown);
       artEl.addEventListener('pointermove', onPMove);
