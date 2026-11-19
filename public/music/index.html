@@ -130,6 +130,18 @@
     #panel-lyrics{ grid-column:1 / -1; }
   }
 
+
+  /* 作者分类标签 */
+  .pg-artists{ display:flex; flex-wrap:wrap; gap:6px; margin:0 0 12px; }
+  .pg-art{ display:inline-flex; align-items:center; gap:5px; min-height:30px; padding:4px 11px;
+    border-radius:999px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.05);
+    color:rgba(255,255,255,.78); font-size:12px; cursor:pointer; user-select:none;
+    transition:background .18s ease, color .18s ease, border-color .18s ease; }
+  .pg-art:hover{ background:rgba(255,255,255,.11); color:#fff; }
+  .pg-art[aria-pressed="true"]{ background:rgba(10,132,255,.22); border-color:rgba(10,132,255,.55); color:#fff; }
+  .pg-art i{ font-style:normal; font-size:11px; opacity:.62; }
+  .pg-art:focus-visible{ outline:none; box-shadow:0 0 0 2px rgba(10,132,255,.55); }
+
   /* 歌曲目录（保留旧站全部曲单） */
   .pg-catalog{ display:flex; flex-direction:column; gap:12px; }
   .pg-gtitle{ font-size:13px; font-weight:600; letter-spacing:-0.02em;
@@ -459,7 +471,8 @@
           <ap-player id="player" aria-label="播放器"></ap-player>
         </div>
         <section aria-labelledby="cat-ttl">
-          <h2 id="cat-ttl" class="pg-gtitle" style="margin:0 0 12px">曲单</h2>
+          <h2 id="cat-ttl" class="pg-gtitle" style="margin:0 0 8px">曲单</h2>
+          <div class="pg-artists" id="artists" role="group" aria-label="按作者筛选"></div>
           <div class="pg-catalog pg-skel" id="catalog" aria-busy="true">
             <i></i><i></i><i></i>
           </div>
@@ -1170,6 +1183,46 @@
 
 
   /* ------------------------------------------------------------ 曲单渲染 */
+  /* ---------------------------------------------------- 作者标签（筛选） */
+  var artistFilter = '';
+
+  function artistOf(h) { return (h.artist || '').trim(); }
+
+  function renderArtists() {
+    var bar = $('artists');
+    if (!bar) return;
+    var count = Object.create(null);
+    (window.MFHRY_SONGS || []).forEach(function (g) {
+      (g.items || []).forEach(function (h) {
+        if ('divider' in h) return;
+        var a = artistOf(h);
+        if (!a) return;
+        count[a] = (count[a] || 0) + 1;
+      });
+    });
+    var names = Object.keys(count).sort(function (a, b) {
+      return count[b] - count[a] || a.localeCompare(b, 'ja');
+    });
+    bar.innerHTML = '';
+
+    function mk(name, label, n) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'pg-art';
+      b.setAttribute('aria-pressed', String(artistFilter === name));
+      b.textContent = label;
+      if (n) { var c = document.createElement('i'); c.textContent = n; b.appendChild(c); }
+      b.addEventListener('click', function () {
+        artistFilter = (artistFilter === name) ? '' : name;
+        renderArtists();
+        renderCatalog();
+      });
+      bar.appendChild(b);
+    }
+    mk('', '全部', 0);
+    names.forEach(function (n) { mk(n, n, count[n]); });
+  }
+
   function renderCatalog() {
     var wrap = $('catalog');
     wrap.classList.remove('pg-skel');
@@ -1183,9 +1236,14 @@
       title.textContent = g.title;
       wrap.appendChild(title);
 
+      var items = (g.items || []).filter(function (h) {
+        return !artistFilter || ('divider' in h ? false : artistOf(h) === artistFilter);
+      });
+      if (artistFilter && !items.length) return;          /* 该组没有符合条件的歌，整组隐藏 */
+
       var row = document.createElement('div');
       row.className = 'pg-row';
-      (g.items || []).forEach(function (h) {
+      items.forEach(function (h) {
         if ('divider' in h) {                            /* 分隔线（保留） */
           var dv = document.createElement('div');
           dv.className = 'pg-gdiv';
@@ -1228,6 +1286,13 @@
         }
 
         var onPick = function () {
+          var ht = trackFromChip(h);
+          if (ht.src) {                                   /* 站内 R2 直链：点开即播 */
+            var i = addTrack(ht);
+            playIndex(i, true);
+            showToast('正在播放《' + (h.zh || h.label) + '》');
+            return;
+          }
           if (!h.r2 && h.setId) {                         /* 镜像库有谱面：本站内直接播放 */
             var t0 = trackFromChip(h);
             var i0 = addTrack(t0);
@@ -1274,6 +1339,12 @@
     }).catch(function () { });
   function autoResolve(h) {
     var t = trackFromChip(h);
+    if (t.src) {                                       /* 已经有了就直接播 */
+      var i0 = addTrack(t);
+      playIndex(i0, true);
+      showToast('正在播放《' + (h.zh || h.label) + '》');
+      return;
+    }
     var idx = addTrack(t);
     player.currentIndex = idx;
     persist();
@@ -1322,16 +1393,29 @@
     }
   });
 
+  /* setids.json 里带上传进 R2 的直链后，这些曲子就不用再找镜像了 */
+  var hosted = {};
+  (function loadHosted() {
+    fetch('/music/setids.json', { cache: 'no-cache' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (m) { if (m) hosted = m; })
+      .catch(function () { });
+  })();
+
   function trackFromChip(h) {
+    var ho = hosted[h.label] || {};
+    var src = h.r2 || ho.r2 || '';
     return {
-      id: h.r2 ? ('r2:' + h.label) : ('osu:' + h.label),
-      label: h.label, zh: h.zh || h.label, artist: h.artist || '',
-      src: h.r2 || '', cover: h.cover || '', lyrics: h.lyrics || '',
-      nc: h.nc || '', mv: h.mv || null, setId: h.setId || null
+      id: src ? ('r2:' + h.label) : ('osu:' + h.label),
+      label: h.label, zh: h.zh || h.label, artist: h.artist || ho.artist || '',
+      src: src, cover: h.cover || ho.cover || '', lyrics: h.lyrics || '',
+      nc: h.nc || '', mv: h.mv || null, setId: h.setId || ho.id || null
     };
   }
 
   /* --------------------------------------------------------------- 启动 */
+  renderArtists();
+
   var vol = parseFloat(localStorage.getItem(LSV));
   if (!isFinite(vol)) vol = 0.85;
   player.volume = vol;

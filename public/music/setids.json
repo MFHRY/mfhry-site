@@ -1,272 +1,412 @@
 {
-"99": {
-"artist": "MOB CHOIR",
-"id": 1221343,
-"title": "99"
-},
-"Blue Bird": {
-"artist": "Blue Bird",
-"id": 1468071,
-"title": "Naruto Shippuden Opening 3 | Blue Bird (HD)"
-},
-"Butter-Fly": {
-"artist": "Wada Kouji",
-"id": 338542,
-"title": "Butter-Fly"
-},
-"Crossing Field": {
-"artist": "LiSA",
-"id": 1969188,
-"title": "crossing field"
-},
-"Cry Baby": {
-"artist": "Official HIGE DANdism",
-"id": 1636657,
-"title": "Cry Baby"
-},
-"Departure!": {
-"artist": "Masatoshi Ono",
-"id": 97235,
-"title": "Departure!"
-},
-"Flamingo": {
-"artist": "Yonezu Kenshi",
-"id": 1210565,
-"title": "Flamingo"
-},
-"KICK BACK": {
-"artist": "Kenshi Yonezu",
-"id": 1907393,
-"title": "KICK BACK"
-},
-"KING": {
-"artist": "Kanaria x Wonerlands x Showtime",
-"id": 2077045,
-"title": "KING"
-},
-"LOSER": {
-"artist": "Kenshi Yonezu",
-"id": 1854608,
-"title": "LOSER"
-},
-"Lemon": {
-"artist": "Yonezu Kenshi",
-"id": 861466,
-"title": "Lemon"
-},
-"Marigold": {
-"artist": "Aimyon",
-"id": 963292,
-"title": "marigold"
-},
-"One Last Kiss": {
-"artist": "Utada Hikaru",
-"id": 1565827,
-"title": "One Last Kiss"
-},
-"Pretender": {
-"artist": "Official HIGE DANdism",
-"id": 1821118,
-"title": "Pretender"
-},
-"Silhouette": {
-"artist": "KANA-BOON",
-"id": 1879059,
-"title": "Silhouette"
-},
-"TANK!": {
-"artist": "Cowboy Bebop OST",
-"id": 65493,
-"title": "Tank!"
-},
-"THE HERO!!": {
-"artist": "JAM project",
-"id": 403560,
-"title": "The Hero - One punch man Opening"
-},
-"only my railgun": {
-"artist": "fripSide",
-"id": 1358802,
-"title": "only my railgun"
-},
-"unravel": {
-"artist": "Tokyo_Ghoul",
-"id": 275875,
-"title": "Unravel_Tokyo_Ghoul_^^"
-},
-"アイドル": {
-"artist": "YOASOBI",
-"id": 2019183,
-"title": "YOASOBI Idol"
-},
-"アンドロメダアンドロメダ": {
-"artist": "Nayutalien",
-"id": 1075240,
-"title": "Andromeda, Andromeda"
-},
-"アンハッピーリフレイン": {
-"artist": "wowaka",
-"id": 1075607,
-"title": "Unhappy Refrain"
-},
-"インフェルノ": {
-"artist": "Mrs. GREEN APPLE",
-"id": 1005253,
-"title": "Inferno"
-},
-"エイリアンエイリアン": {
-"artist": "NayutalieN",
-"id": 1647839,
-"title": "Alien Alien (feat. Hatsune Miku)"
-},
-"ゴーストルール": {
-"artist": "DECO*27",
-"id": 624218,
-"title": "Ghost Rule"
-},
-"ハルジオン": {
-"artist": "YOASOBI",
-"id": 1380291,
-"title": "Halzion"
-},
-"ビターチョコデコレーション": {
-"artist": "25-ji, Nightcord de.",
-"id": 1538879,
-"title": "Bitter Choco Decoration"
-},
-"マトリョシカ": {
-"artist": "Hachi feat. Hatsune Miku & GUMI",
-"id": 470960,
-"title": "Matryoshka"
-},
-"メルト": {
-"artist": "ryo (supercell) x yanaginagi",
-"id": 870017,
-"title": "Melt 10th ANNIVERSARY MIX"
-},
-"ローリンガール": {
-"artist": "wowaka; (Genjitsu Touhi-P)",
-"id": 2038329,
-"title": "Rolling Girl"
-},
-"ワールズエンド・ダンスホール": {
-"artist": "wowaka",
-"id": 1114556,
-"title": "World's End Dancehall (ROCKETMAN remix)"
-},
-"ヴァンパイア": {
-"artist": "DECO*27",
-"id": 2168317,
-"title": "The Vampire feat. Hatsune Miku"
-},
-"一途": {
-"artist": "King Gnu",
-"id": 1768259,
-"title": "Ichizu"
-},
-"世界第一的公主殿下": {
-"artist": "supercell feat. Hatsune Miku",
-"id": 1784338,
-"title": "World is Mine"
-},
-"六兆年と一夜物語": {
-"artist": "IA",
-"id": 51959,
-"title": "Rokuchounen to Ichiya Monogatari"
-},
-"唱": {
-"artist": "Ado",
-"id": 2098617,
-"title": "Show"
-},
-"夜に駆ける": {
-"artist": "YOASOBI",
-"id": 1374931,
-"title": "Yoru ni Kakeru"
-},
-"太陽系ディスコ": {
-"artist": "Solar System Disco",
-"id": 624531,
-"title": "Nayutalien feat.Miku Hatsune"
-},
-"廻廻奇譚": {
-"artist": "Eve",
-"id": 1436571,
-"title": "Jujutsu Kaisen Opening Full Eve - Kaikai Kitan"
-},
-"怪物": {
-"artist": "YOASOBI",
-"id": 1343429,
-"title": "Beastars Season 2 - Opening Full Kaibutsu by YOASOBI"
-},
-"恋愛サーキュレーション": {
-"artist": "Sengoku Nadeko (CV: Hanazawa Kana)",
-"id": 1650999,
-"title": "Renai Circulation (TV Size)"
-},
-"惑星ループ": {
-"artist": "Nayutalien",
-"id": 1861500,
-"title": "Planet Loop ver. Sou"
-},
-"新時代": {
-"artist": "Ado",
-"id": 1848011,
-"title": "New Genesis"
-},
-"春雷": {
-"artist": "Kenshi Yonezu",
-"id": 847560,
-"title": "Shunrai"
-},
-"残酷な天使のテーゼ": {
-"artist": "Itou Shizuka",
-"id": 8459,
-"title": "Zankoku na Tenshi no Thesis"
-},
-"残響散歌": {
-"artist": "Aimer",
-"id": 2079448,
-"title": "Zankyou Sanka"
-},
-"白日": {
-"artist": "King Gnu",
-"id": 1179387,
-"title": "Hakujitsu"
-},
-"砂の惑星": {
-"artist": "Hachi feat. Hatsune Miku",
-"id": 649710,
-"title": "Sand Planet"
-},
-"紅蓮の弓矢": {
-"artist": "Linked Horizon",
-"id": 82988,
-"title": "Guren no Yumiya (TV Size)"
-},
-"紅蓮華": {
-"artist": "LiSA",
-"id": 1025171,
-"title": "Gurenge"
-},
-"群青": {
-"artist": "YOASOBI",
-"id": 1256369,
-"title": "Gunjou"
-},
-"裏表ラバーズ": {
-"artist": "wowaka feat. Kagura Mea",
-"id": 928455,
-"title": "Ura-omote Lovers"
-},
-"金星のダンス": {
-"artist": "Hatsune Miku feat. NayutalieN",
-"id": 925206,
-"title": "Dance of Venus"
-},
-"香水": {
-"artist": "Kamiyama Yoh",
-"id": 1368923,
-"title": "Iro Kousui (TV Size)"
-}
+ "99": {
+  "artist": "MOB CHOIR",
+  "id": 1221343,
+  "title": "99",
+  "r2": "/api/r2?key=music/track-1221343.mp3",
+  "cover": "/api/r2?key=music/track-1221343-cover.png",
+  "bytes": 5702968,
+  "mb": 5.4
+ },
+ "Blue Bird": {
+  "artist": "Blue Bird",
+  "id": 1468071,
+  "title": "Naruto Shippuden Opening 3 | Blue Bird (HD)",
+  "r2": "/api/r2?key=music/track-1468071.mp3",
+  "cover": "",
+  "bytes": 4171428,
+  "mb": 4
+ },
+ "Butter-Fly": {
+  "artist": "Wada Kouji",
+  "id": 338542,
+  "title": "Butter-Fly",
+  "r2": "/api/r2?key=music/track-338542.mp3",
+  "cover": "/api/r2?key=music/track-338542-cover.jpg",
+  "bytes": 9466029,
+  "mb": 9
+ },
+ "Crossing Field": {
+  "artist": "LiSA",
+  "id": 1969188,
+  "title": "crossing field",
+  "r2": "/api/r2?key=music/track-1969188.mp3",
+  "cover": "/api/r2?key=music/track-1969188-cover.jpg",
+  "bytes": 6062312,
+  "mb": 5.8
+ },
+ "Cry Baby": {
+  "artist": "Official HIGE DANdism",
+  "id": 1636657,
+  "title": "Cry Baby",
+  "r2": "/api/r2?key=music/track-1636657.mp3",
+  "cover": "/api/r2?key=music/track-1636657-cover.jpg",
+  "bytes": 5768213,
+  "mb": 5.5
+ },
+ "Departure!": {
+  "artist": "Masatoshi Ono",
+  "id": 97235,
+  "title": "Departure!",
+  "r2": "/api/r2?key=music/track-97235.mp3",
+  "cover": "/api/r2?key=music/track-97235-cover.jpg",
+  "bytes": 4130168,
+  "mb": 3.9
+ },
+ "Flamingo": {
+  "artist": "Yonezu Kenshi",
+  "id": 1210565,
+  "title": "Flamingo",
+  "r2": "/api/r2?key=music/track-1210565.mp3",
+  "cover": "/api/r2?key=music/track-1210565-cover.jpg",
+  "bytes": 1759995,
+  "mb": 1.7
+ },
+ "KICK BACK": {
+  "artist": "Kenshi Yonezu",
+  "id": 1907393,
+  "title": "KICK BACK",
+  "r2": "/api/r2?key=music/track-1907393.mp3",
+  "cover": "/api/r2?key=music/track-1907393-cover.jpg",
+  "bytes": 4646352,
+  "mb": 4.4
+ },
+ "KING": {
+  "artist": "Kanaria x Wonerlands x Showtime",
+  "id": 2077045,
+  "title": "KING",
+  "r2": "/api/r2?key=music/track-2077045.mp3",
+  "cover": "/api/r2?key=music/track-2077045-cover.png",
+  "bytes": 3246381,
+  "mb": 3.1
+ },
+ "LOSER": {
+  "artist": "Kenshi Yonezu",
+  "id": 1854608,
+  "title": "LOSER",
+  "r2": "/api/r2?key=music/track-1854608.mp3",
+  "cover": "/api/r2?key=music/track-1854608-cover.jpg",
+  "bytes": 5784192,
+  "mb": 5.5
+ },
+ "Lemon": {
+  "artist": "Yonezu Kenshi",
+  "id": 861466,
+  "title": "Lemon",
+  "r2": "/api/r2?key=music/track-861466.mp3",
+  "cover": "/api/r2?key=music/track-861466-cover.jpg",
+  "bytes": 6564985,
+  "mb": 6.3
+ },
+ "Marigold": {
+  "artist": "Aimyon",
+  "id": 963292,
+  "title": "marigold",
+  "r2": "/api/r2?key=music/track-963292.mp3",
+  "cover": "/api/r2?key=music/track-963292-cover.jpg",
+  "bytes": 12090646,
+  "mb": 11.5
+ },
+ "One Last Kiss": {
+  "artist": "Utada Hikaru",
+  "id": 1565827,
+  "title": "One Last Kiss",
+  "r2": "/api/r2?key=music/track-1565827.mp3",
+  "cover": "/api/r2?key=music/track-1565827-cover.jpg",
+  "bytes": 6050257,
+  "mb": 5.8
+ },
+ "Pretender": {
+  "artist": "Official HIGE DANdism",
+  "id": 1821118,
+  "title": "Pretender",
+  "r2": "/api/r2?key=music/track-1821118.mp3",
+  "cover": "/api/r2?key=music/track-1821118-cover.jpg",
+  "bytes": 8381062,
+  "mb": 8
+ },
+ "Silhouette": {
+  "artist": "KANA-BOON",
+  "id": 1879059,
+  "title": "Silhouette",
+  "r2": "/api/r2?key=music/track-1879059.mp3",
+  "cover": "/api/r2?key=music/track-1879059-cover.jpg",
+  "bytes": 5797928,
+  "mb": 5.5
+ },
+ "TANK!": {
+  "artist": "Cowboy Bebop OST",
+  "id": 65493,
+  "title": "Tank!",
+  "r2": "/api/r2?key=music/track-65493.mp3",
+  "cover": "/api/r2?key=music/track-65493-cover.jpg",
+  "bytes": 3375470,
+  "mb": 3.2
+ },
+ "THE HERO!!": {
+  "artist": "JAM project",
+  "id": 403560,
+  "title": "The Hero - One punch man Opening",
+  "r2": "/api/r2?key=music/track-403560.mp3",
+  "cover": "/api/r2?key=music/track-403560-cover.png",
+  "bytes": 2472309,
+  "mb": 2.4
+ },
+ "only my railgun": {
+  "artist": "fripSide",
+  "id": 1358802,
+  "title": "only my railgun",
+  "r2": "/api/r2?key=music/track-1358802.mp3",
+  "cover": "/api/r2?key=music/track-1358802-cover.jpg",
+  "bytes": 6100459,
+  "mb": 5.8
+ },
+ "unravel": {
+  "artist": "Tokyo_Ghoul",
+  "id": 275875,
+  "title": "Unravel_Tokyo_Ghoul_^^",
+  "r2": "/api/r2?key=music/track-275875.mp3",
+  "cover": "/api/r2?key=music/track-275875-cover.png",
+  "bytes": 951989,
+  "mb": 0.9
+ },
+ "アイドル": {
+  "artist": "YOASOBI",
+  "id": 2019183,
+  "title": "YOASOBI Idol",
+  "r2": "/api/r2?key=music/track-2019183.mp3",
+  "cover": "/api/r2?key=music/track-2019183-cover.jpg",
+  "bytes": 3622491,
+  "mb": 3.5
+ },
+ "アンドロメダアンドロメダ": {
+  "artist": "Nayutalien",
+  "id": 1075240,
+  "title": "Andromeda, Andromeda",
+  "r2": "/api/r2?key=music/track-1075240.mp3",
+  "cover": "",
+  "bytes": 5841687,
+  "mb": 5.6
+ },
+ "アンハッピーリフレイン": {
+  "artist": "wowaka",
+  "id": 1075607,
+  "title": "Unhappy Refrain",
+  "r2": "/api/r2?key=music/track-1075607.mp3",
+  "cover": "/api/r2?key=music/track-1075607-cover.jpg",
+  "bytes": 5414870,
+  "mb": 5.2
+ },
+ "インフェルノ": {
+  "artist": "Mrs. GREEN APPLE",
+  "id": 1005253,
+  "title": "Inferno",
+  "r2": "/api/r2?key=music/track-1005253.mp3",
+  "cover": "/api/r2?key=music/track-1005253-cover.jpg",
+  "bytes": 5300285,
+  "mb": 5.1
+ },
+ "エイリアンエイリアン": {
+  "artist": "NayutalieN",
+  "id": 1647839,
+  "title": "Alien Alien (feat. Hatsune Miku)"
+ },
+ "ゴーストルール": {
+  "artist": "DECO*27",
+  "id": 624218,
+  "title": "Ghost Rule",
+  "r2": "/api/r2?key=music/track-624218.mp3",
+  "cover": "/api/r2?key=music/track-624218-cover.jpg",
+  "bytes": 5125882,
+  "mb": 4.9
+ },
+ "ハルジオン": {
+  "artist": "YOASOBI",
+  "id": 1380291,
+  "title": "Halzion",
+  "r2": "/api/r2?key=music/track-1380291.mp3",
+  "cover": "/api/r2?key=music/track-1380291-cover.jpg",
+  "bytes": 5027149,
+  "mb": 4.8
+ },
+ "ビターチョコデコレーション": {
+  "artist": "25-ji, Nightcord de.",
+  "id": 1538879,
+  "title": "Bitter Choco Decoration"
+ },
+ "マトリョシカ": {
+  "artist": "Hachi feat. Hatsune Miku & GUMI",
+  "id": 470960,
+  "title": "Matryoshka"
+ },
+ "メルト": {
+  "artist": "ryo (supercell) x yanaginagi",
+  "id": 870017,
+  "title": "Melt 10th ANNIVERSARY MIX"
+ },
+ "ローリンガール": {
+  "artist": "wowaka; (Genjitsu Touhi-P)",
+  "id": 2038329,
+  "title": "Rolling Girl",
+  "r2": "/api/r2?key=music/track-2038329.mp3",
+  "cover": "/api/r2?key=music/track-2038329-cover.jpg",
+  "bytes": 7664454,
+  "mb": 7.3
+ },
+ "ワールズエンド・ダンスホール": {
+  "artist": "wowaka",
+  "id": 1114556,
+  "title": "World's End Dancehall (ROCKETMAN remix)"
+ },
+ "ヴァンパイア": {
+  "artist": "DECO*27",
+  "id": 2168317,
+  "title": "The Vampire feat. Hatsune Miku"
+ },
+ "一途": {
+  "artist": "King Gnu",
+  "id": 1768259,
+  "title": "Ichizu"
+ },
+ "世界第一的公主殿下": {
+  "artist": "supercell feat. Hatsune Miku",
+  "id": 1784338,
+  "title": "World is Mine"
+ },
+ "六兆年と一夜物語": {
+  "artist": "IA",
+  "id": 51959,
+  "title": "Rokuchounen to Ichiya Monogatari"
+ },
+ "唱": {
+  "artist": "Ado",
+  "id": 2098617,
+  "title": "Show"
+ },
+ "夜に駆ける": {
+  "artist": "YOASOBI",
+  "id": 1374931,
+  "title": "Yoru ni Kakeru"
+ },
+ "太陽系ディスコ": {
+  "artist": "Solar System Disco",
+  "id": 624531,
+  "title": "Nayutalien feat.Miku Hatsune"
+ },
+ "廻廻奇譚": {
+  "artist": "Eve",
+  "id": 1436571,
+  "title": "Jujutsu Kaisen Opening Full Eve - Kaikai Kitan"
+ },
+ "怪物": {
+  "artist": "YOASOBI",
+  "id": 1343429,
+  "title": "Beastars Season 2 - Opening Full Kaibutsu by YOASOBI",
+  "r2": "/api/r2?key=music/track-1343429.mp3",
+  "cover": "/api/r2?key=music/track-1343429-cover.jpg",
+  "bytes": 3388918,
+  "mb": 3.2
+ },
+ "恋愛サーキュレーション": {
+  "artist": "Sengoku Nadeko (CV: Hanazawa Kana)",
+  "id": 1650999,
+  "title": "Renai Circulation (TV Size)"
+ },
+ "惑星ループ": {
+  "artist": "Nayutalien",
+  "id": 1861500,
+  "title": "Planet Loop ver. Sou"
+ },
+ "新時代": {
+  "artist": "Ado",
+  "id": 1848011,
+  "title": "New Genesis"
+ },
+ "春雷": {
+  "artist": "Kenshi Yonezu",
+  "id": 847560,
+  "title": "Shunrai",
+  "r2": "/api/r2?key=music/track-847560.mp3",
+  "cover": "/api/r2?key=music/track-847560-cover.jpg",
+  "bytes": 9281955,
+  "mb": 8.9
+ },
+ "残酷な天使のテーゼ": {
+  "artist": "Itou Shizuka",
+  "id": 8459,
+  "title": "Zankoku na Tenshi no Thesis",
+  "r2": "/api/r2?key=music/track-8459.mp3",
+  "cover": "/api/r2?key=music/track-8459-cover.jpg",
+  "bytes": 6933535,
+  "mb": 6.6
+ },
+ "残響散歌": {
+  "artist": "Aimer",
+  "id": 2079448,
+  "title": "Zankyou Sanka",
+  "r2": "/api/r2?key=music/track-2079448.mp3",
+  "cover": "/api/r2?key=music/track-2079448-cover.jpg",
+  "bytes": 4704686,
+  "mb": 4.5
+ },
+ "白日": {
+  "artist": "King Gnu",
+  "id": 1179387,
+  "title": "Hakujitsu",
+  "r2": "/api/r2?key=music/track-1179387.mp3",
+  "cover": "/api/r2?key=music/track-1179387-cover.jpg",
+  "bytes": 6710717,
+  "mb": 6.4
+ },
+ "砂の惑星": {
+  "artist": "Hachi feat. Hatsune Miku",
+  "id": 649710,
+  "title": "Sand Planet",
+  "r2": "/api/r2?key=music/track-649710.mp3",
+  "cover": "/api/r2?key=music/track-649710-cover.jpg",
+  "bytes": 3886555,
+  "mb": 3.7
+ },
+ "紅蓮の弓矢": {
+  "artist": "Linked Horizon",
+  "id": 82988,
+  "title": "Guren no Yumiya (TV Size)",
+  "r2": "/api/r2?key=music/track-82988.mp3",
+  "cover": "/api/r2?key=music/track-82988-cover.jpg",
+  "bytes": 2185830,
+  "mb": 2.1
+ },
+ "紅蓮華": {
+  "artist": "LiSA",
+  "id": 1025171,
+  "title": "Gurenge",
+  "r2": "/api/r2?key=music/track-1025171.mp3",
+  "cover": "/api/r2?key=music/track-1025171-cover.jpg",
+  "bytes": 5728000,
+  "mb": 5.5
+ },
+ "群青": {
+  "artist": "YOASOBI",
+  "id": 1256369,
+  "title": "Gunjou"
+ },
+ "裏表ラバーズ": {
+  "artist": "wowaka feat. Kagura Mea",
+  "id": 928455,
+  "title": "Ura-omote Lovers"
+ },
+ "金星のダンス": {
+  "artist": "Hatsune Miku feat. NayutalieN",
+  "id": 925206,
+  "title": "Dance of Venus"
+ },
+ "香水": {
+  "artist": "Kamiyama Yoh",
+  "id": 1368923,
+  "title": "Iro Kousui (TV Size)",
+  "r2": "/api/r2?key=music/track-1368923.mp3",
+  "cover": "/api/r2?key=music/track-1368923-cover.jpg",
+  "bytes": 2161817,
+  "mb": 2.1
+ }
 }
