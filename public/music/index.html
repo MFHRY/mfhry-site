@@ -377,6 +377,14 @@
     display:block; height:100%; min-height:0; overflow:hidden; }
   .pg-root[data-fs][data-mod="mv"] #panel-mv ap-mv{
     display:block; height:100%; min-height:0; }
+  /* 全屏看 MV：视频独占整屏——播放卡片（含进度条）和待播条全部让位 */
+  .pg-root[data-fs][data-mod="mv"] #col-player{ display:none; }
+  .pg-root[data-fs][data-mod="mv"] .pg-fs-queue{ display:none; }
+  .pg-root[data-fs][data-mod="mv"] .pg-grid{ gap:0; }
+  .pg-root[data-fs][data-mod="mv"] #col-modules{ height:100%; }
+  .pg-root[data-fs][data-mod="mv"] #panel-mv,
+  .pg-root[data-fs][data-mod="mv"] #panel-mv ap-mv{ height:100%; min-height:0; }
+
   /* 全屏退出按钮：浮层右上角，44px 热区 */
   .pg-fs-exit{
     position:fixed; top:calc(env(safe-area-inset-top,0px) + 16px);
@@ -541,10 +549,10 @@
 <script src="/music/engine.js?v=3"></script>
 <!-- 组件按模块拆分，单文件均 < 1500 行（[216][219]）；ap-core 必须最先加载 -->
 <script src="/music/ap-core.js?v=3"></script>
-<script src="/music/ap-player.js?v=12"></script>
+<script src="/music/ap-player.js?v=13"></script>
 <script src="/music/ap-lyrics.js?v=5"></script>
 <script src="/music/ap-comments.js?v=4"></script>
-<script src="/music/ap-mv.js?v=4"></script>
+<script src="/music/ap-mv.js?v=5"></script>
 <script src="/music/ap-search.js?v=3"></script>
 <script src="/music/ap-cache.js?v=3"></script>
 <script>
@@ -1003,6 +1011,7 @@
     if (isWide()) { ['lyrics', 'comments', 'mv', 'cache'].forEach(modEl); }
     var el = modEl(mod);
     if (mod === 'cache' && el && el.refresh) el.refresh();
+    syncMvFs();                                  /* 进/出 MV 时同步沉浸布局 */
     /* 恢复该模块上次的滚动位置（[183]） */
     if (scrollMemo[mod] != null && !isWide()) {
       window.scrollTo({ top: scrollMemo[mod], behavior: 'auto' });
@@ -1033,6 +1042,15 @@
   var rootEl = $('root');
   var fsOn = false, fsTriggerEl = null, fsListWasOpen = false;
 
+  /* 全屏 + MV 模块时给 <ap-mv> 打 fs，让组件切成沉浸布局（独占整屏） */
+  function syncMvFs() {
+    var mv = null;
+    try { mv = modEl('mv'); } catch (e) { }
+    if (!mv) return;
+    if (fsOn && rootEl.getAttribute('data-mod') === 'mv') mv.setAttribute('fs', '');
+    else mv.removeAttribute('fs');
+  }
+
   function enterFs(trigger) {
     fsTriggerEl = trigger || null;
     /* 字幕用面板里的歌词实例，先确保已挂载 */
@@ -1054,6 +1072,7 @@
       player.setAttribute('playlist-open', 'false');
     } catch (e) { }
     renderFsQueue();
+    syncMvFs();
     document.documentElement.style.overflow = 'hidden';
     var req = rootEl.requestFullscreen ? rootEl.requestFullscreen() : Promise.reject();
     (req || Promise.reject()).then(function () {
@@ -1076,6 +1095,7 @@
     var ly = _mods.lyrics;
     if (ly) ly.removeAttribute('fs');
     try { player.removeAttribute('fs'); } catch (e) { }
+    syncMvFs();
     document.documentElement.style.overflow = '';
     try {
       player.setAttribute('playlist-open', fsListWasOpen ? 'true' : 'false');

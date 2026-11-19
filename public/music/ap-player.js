@@ -233,7 +233,9 @@
       content:''; flex:0 0 100%; order:1; height:0;     /* 换行分隔 */
     }
     :host([fs]) #mode, :host([fs]) .ap-vol,
-    :host([fs]) #mvbtn, :host([fs]) #listbtn, :host([fs]) #fullscreen{ order:2; }
+    :host([fs]) #mvbtn, :host([fs]) #listbtn{ order:2; }
+    /* 全屏里已经有右上角的退出按钮，组件内的全屏按钮收起，避免被当成"退出"误触 */
+    :host([fs]) #fullscreen{ display:none; }
     :host([fs]) .ap-status{ min-height:0; }
     /* 全屏进度条：更细、渐变强调色，悬停才加粗 */
     :host([fs]) .ap-trackline{ height:3px; border-radius:3px; }

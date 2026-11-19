@@ -50,6 +50,22 @@
     .ap-poster:hover .ap-playbig{ transform:scale(1.06); background:rgba(255,255,255,.30); }
     .ap-poster .ap-playbig svg{ width:28px; height:28px; margin-left:3px; }
     /* 控件条：3s 自动隐藏（[120][121]） */
+    /* —— 全屏（页面 data-fs + mv 模块）：视频独占整屏，标题/版本列表让位 —— */
+    :host([fs]) .ap-card{
+      padding:0; background:none; border:0; box-shadow:none; border-radius:0;
+      height:100%; display:flex; flex-direction:column; justify-content:center;
+    }
+    :host([fs]) .ap-mhead{ display:none; }
+    :host([fs]) .ap-mvers{ display:none; }
+    :host([fs]) .ap-stage{
+      aspect-ratio:auto; height:100%; min-height:0; border-radius:0;
+      -webkit-mask-image:none; mask-image:none;
+    }
+    :host([fs]) .ap-vctrl{
+      padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));
+    }
+    :host([fs]) .ap-vtime{ font-size:12px; }
+
     .ap-vctrl{
       position:absolute; left:0; right:0; bottom:0; z-index:2;
       display:flex; align-items:center; gap:var(--ap-space-2);
