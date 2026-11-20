@@ -63,12 +63,13 @@
     ['cherry', '樱花木', '#e6b8ad', '#c48c80'],
     ['bamboo', '竹', '#d9c47a', '#b39f55'],
     ['crimson', '绯红木', '#7a3a56', '#4d2036'],
-    ['warped', '诡异木', '#3a8a80', '#256058']
+    ['warped', '诡异木', '#3a8a80', '#256058'],
+    ['pale_oak', '苍白橡木', '#d8d2c4', '#8a8478']
   ];
   var WOODZ = {
     oak: '橡木', spruce: '云杉木', birch: '白桦木', jungle: '丛林木', acacia: '金合欢木',
     dark_oak: '深色橡木', mangrove: '红树木', cherry: '樱花木', bamboo: '竹',
-    crimson: '绯红木', warped: '诡异木'
+    crimson: '绯红木', warped: '诡异木', pale_oak: '苍白橡木'
   };
 
   /* ================================================================ 自然 */
@@ -353,6 +354,74 @@
    ['Pink Petals', '粉红色花瓣', '#e8a0c0'], ['Short Grass', '矮草丛', '#5aa03a'],
    ['Sea Pickle', '海泡菜', '#4a9a6a'], ['Mangrove Propagule', '红树胎生苗', '#5a7a3a']
   ].forEach(function (p) { add(p[0], p[1], 'plant', p[2], { shape: 'cross', solid: false, group: 'plant' }); });
+
+  /* ---- 珊瑚 ---- */
+  [['Tube', '管状', '#3a6ad8'], ['Brain', '脑纹', '#d85a9a'], ['Bubble', '气泡', '#a858d8'],
+   ['Fire', '火珊瑚', '#d85a3a'], ['Horn', '鹿角', '#d8c03a']].forEach(function (c) {
+    add(c[0] + ' Coral Block', c[1] + '珊瑚块', 'mushroom', c[2], { group: 'plant' });
+    add('Dead ' + c[0] + ' Coral Block', '失活的' + c[1] + '珊瑚块', 'stone', '#8a8a86', { group: 'plant' });
+    add(c[0] + ' Coral', c[1] + '珊瑚', 'plant', c[2], { shape: 'cross', solid: false, group: 'plant' });
+    add(c[0] + ' Coral Fan', c[1] + '珊瑚扇', 'plant', c[2], { shape: 'cross', solid: false, group: 'plant' });
+  });
+
+  /* ---- 头颅 / 蛋 / 其它装饰 ---- */
+  add('Skeleton Skull', '骷髅头颅', 'bone', '#d8d8d0', { group: 'functional' });
+  add('Wither Skeleton Skull', '凋灵骷髅头颅', 'bone', '#3a3a3a', { group: 'functional' });
+  add('Zombie Head', '僵尸头颅', 'bone', '#4a7a5a', { group: 'functional' });
+  add('Creeper Head', '苦力怕头颅', 'bone', '#4a9a3a', { group: 'functional' });
+  add('Player Head', '玩家头颅', 'bone', '#c89a7a', { group: 'functional' });
+  add('Dragon Head', '龙首', 'bone', '#2a2a32', { group: 'functional' });
+  add('Piglin Head', '猪灵头颅', 'bone', '#e8a878', { group: 'functional' });
+  add('Turtle Egg', '海龟蛋', 'bone', '#e8e0c0', { shape: 'slab', group: 'natural' });
+  add('Sniffer Egg', '嗅探兽蛋', 'bone', '#8a4a3a', { shape: 'slab', group: 'natural' });
+  add('Decorated Pot', '饰纹陶罐', 'terracotta', '#a8785a', { shape: 'slab', group: 'functional' });
+  add('Bee Nest', '蜂巢', 'hay', '#c8a03a', { group: 'natural' });
+  add('Beehive', '蜂箱', 'hay', '#c8a03a', { group: 'functional' });
+  add('Reinforced Deepslate', '强化深板岩', 'chiseled', '#4a4a50', { group: 'building' });
+
+  /* ---- 1.21 铜 / 树脂新内容 ---- */
+  add('Chiseled Copper', '雕纹铜块', 'chiseled', '#e07a52', { group: 'building' });
+  add('Copper Grate', '铜格栅', 'pane', '#e07a52', { shape: 'pane', opaque: false, group: 'building' });
+  add('Copper Door', '铜门', 'copper', '#e07a52', { shape: 'pane', opaque: false, group: 'building' });
+  add('Copper Trapdoor', '铜活板门', 'copper', '#e07a52', { shape: 'slab', group: 'building' });
+  add('Copper Bulb', '铜灯', 'froglight', '#e07a52', { group: 'functional', light: 3 });
+  add('Crafter', '合成器', 'furnace', '#8a6a3a', { group: 'functional' });
+  add('Resin Clump', '树脂团', 'honey', '#e08a2a', { shape: 'cross', solid: false, group: 'plant' });
+  add('Resin Bricks', '树脂砖块', 'brick', '#e08a2a', { group: 'building' });
+  add('Chiseled Resin Bricks', '雕纹树脂砖块', 'chiseled', '#e08a2a', { group: 'building' });
+
+  /* ---- 苍白之园 / 1.21.4 ---- */
+  add('Pale Moss Block', '苍白苔藓块', 'leaves', '#b8b2a4', { group: 'natural' });
+  add('Pale Moss Carpet', '苍白苔藓地毯', 'leaves', '#b8b2a4', { shape: 'slab', group: 'natural' });
+  add('Pale Hanging Moss', '苍白垂苔', 'plant', '#a8a294', { shape: 'cross', solid: false, group: 'plant' });
+  add('Creaking Heart', '嘎枝之心', 'sculk', '#6a4a3a', { group: 'natural', light: 2 });
+  add('Eyeblossom', '荧花', 'plant', '#8a7a9a', { shape: 'cross', solid: false, group: 'plant' });
+  add('Open Eyeblossom', '盛开的荧花', 'plant', '#c8b8d8', { shape: 'cross', solid: false, group: 'plant' });
+  add('Short Dry Grass', '矮枯草丛', 'plant', '#b0a070', { shape: 'cross', solid: false, group: 'plant' });
+  add('Tall Dry Grass', '高枯草丛', 'plant', '#b0a070', { shape: 'cross', solid: false, group: 'plant' });
+  add('Leaf Litter', '落叶堆', 'leaves', '#a8843a', { shape: 'slab', group: 'plant' });
+  add('Wildflowers', '野花簇', 'plant', '#e8c040', { shape: 'cross', solid: false, group: 'plant' });
+  add('Firefly Bush', '萤火虫灌木', 'plant', '#5a8a3a', { shape: 'cross', solid: false, group: 'plant', light: 2 });
+  add('Cactus Flower', '仙人掌花', 'plant', '#e8a0c0', { shape: 'cross', solid: false, group: 'plant' });
+  add('Dried Ghast', '干瘪恶魂', 'wool', '#d8ccc0', { shape: 'cross', solid: false, group: 'plant' });
+  add('Azalea', '杜鹃花丛', 'leaves', '#5a8a3a', { shape: 'trans', opaque: false, group: 'plant' });
+  add('Flowering Azalea', '盛开的杜鹃花丛', 'leaves', '#c86a9a', { shape: 'trans', opaque: false, group: 'plant' });
+  add('Azalea Leaves', '杜鹃花叶', 'leaves', '#4a8a2a', { shape: 'trans', opaque: false, group: 'plant' });
+  add('Flowering Azalea Leaves', '盛开的杜鹃花叶', 'leaves', '#c86a9a', { shape: 'trans', opaque: false, group: 'plant' });
+  add('Bamboo Block', '竹块', 'log_side', '#c8b060', { col2: '#e0cc80', group: 'wood' });
+  add('Stripped Bamboo Block', '去皮竹块', 'log_side', '#d8c878', { col2: '#c8b060', group: 'wood' });
+  add('Bamboo Mosaic', '竹马赛克', 'planks', '#c8b060', { group: 'building' });
+  add('Mangrove Roots', '红树根', 'leaves', '#6a4a2a', { shape: 'trans', opaque: false, group: 'plant' });
+  add('Muddy Mangrove Roots', '沾泥的红树根', 'leaves', '#5a4a3a', { shape: 'trans', opaque: false, group: 'plant' });
+  add('Frogspawn', '青蛙卵', 'slime', '#c8d8a8', { shape: 'slab', opaque: false, group: 'plant' });
+  add('Glow Item Frame', '荧光物品展示框', 'planks', '#c8a03a', { shape: 'cross', solid: false, group: 'functional' });
+  add('Item Frame', '物品展示框', 'planks', '#a8843a', { shape: 'cross', solid: false, group: 'functional' });
+  add('Painting', '画', 'planks', '#c8a03a', { shape: 'cross', solid: false, group: 'functional' });
+  add('Ladder', '梯子', 'planks', '#a8843a', { shape: 'pane', opaque: false, group: 'functional' });
+  add('Rail', '铁轨', 'pane', '#8a8a92', { shape: 'slab', opaque: false, group: 'functional' });
+  add('Powered Rail', '充能铁轨', 'pane', '#c8a03a', { shape: 'slab', opaque: false, group: 'functional' });
+  add('Detector Rail', '探测铁轨', 'pane', '#8a8a92', { shape: 'slab', opaque: false, group: 'functional' });
+  add('Activator Rail', '激活铁轨', 'pane', '#a03a2a', { shape: 'slab', opaque: false, group: 'functional' });
 
   add('Brown Mushroom Block', '棕色蘑菇方块', 'mushroom', '#8a6a4a', { group: 'plant' });
   add('Red Mushroom Block', '红色蘑菇方块', 'mushroom', '#c03030', { group: 'plant' });

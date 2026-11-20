@@ -402,6 +402,15 @@
       ctx.fillStyle = rgb2css(c, 0.8); ctx.fillRect(0, 0, 16, 16);
       ctx.fillStyle = rgb2css(shade(c, 1.2), 0.5); ctx.fillRect(2, 2, 5, 5);
     },
+    bone: function (ctx, rng, b, c) {
+      noise(ctx, rng, c, 0.08);
+      ctx.fillStyle = rgb2css(shade(c, 0.55));
+      ctx.fillRect(0, 0, 16, 1); ctx.fillRect(0, 15, 16, 1);
+      ctx.fillStyle = rgb2css([30, 26, 26]);
+      ctx.fillRect(4, 6, 3, 3); ctx.fillRect(9, 6, 3, 3);
+      ctx.fillStyle = rgb2css(shade(c, 0.6));
+      ctx.fillRect(6, 11, 4, 1);
+    },
     cobweb: function (ctx, rng, b, c) {
       ctx.clearRect(0, 0, 16, 16);
       ctx.strokeStyle = rgb2css(c, 0.75); ctx.lineWidth = 1;
