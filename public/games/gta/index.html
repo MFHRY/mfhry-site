@@ -8,13 +8,13 @@
 <title>罪恶都市 · GTA 风格开放世界（超大地图 + 剧情）</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  html,body{width:100%;height:100%;overflow:hidden;background:#0b0d11;
+  html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;background:#0b0d11;
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
     color:#fff;user-select:none}
   #game{position:fixed;inset:0;display:block;touch-action:none}
 
   .hud{position:fixed;inset:0;pointer-events:none;z-index:10;font-variant-numeric:tabular-nums}
-  .tl{position:absolute;left:12px;top:10px;display:flex;flex-direction:column;gap:6px}
+  .tl{position:absolute;left:calc(12px + env(safe-area-inset-left, 0px));top:calc(10px + env(safe-area-inset-top, 0px));display:flex;flex-direction:column;gap:6px}
   .money{font-size:25px;font-weight:900;color:#42d77d;text-shadow:0 2px 10px rgba(0,0,0,.85);letter-spacing:-.5px}
   .stars{display:flex;gap:3px;height:18px}
   .star{width:18px;height:18px;opacity:.2}
@@ -81,7 +81,17 @@
   .tb{width:62px;height:62px;border-radius:50%;border:2px solid rgba(255,255,255,.28);background:rgba(22,26,34,.55);
     color:#fff;font-size:12px;font-weight:900;backdrop-filter:blur(6px);display:grid;place-items:center}
   .tb.fire{background:rgba(255,46,136,.45);border-color:rgba(255,120,170,.7);width:70px;height:70px}
-  .tb:active{transform:scale(.94)}
+  .tb.sm{width:52px;height:52px;font-size:11px;opacity:.9}
+  /* 窄屏：两个次要按钮竖着摞在开火键上方，避免和左下摇杆挤在一起 */
+  @media (max-width:520px){
+    #tMap,#tDrift{position:absolute;right:0;width:46px;height:46px;font-size:10px}
+    #tDrift{bottom:78px}
+    #tMap{bottom:132px}
+  }
+  /* 刘海屏/虚拟 Home 条：控件不要贴着屏幕边缘 */
+  .stick{bottom:calc(24px + env(safe-area-inset-bottom, 0px));left:calc(20px + env(safe-area-inset-left, 0px))}
+  .tbtns{bottom:calc(28px + env(safe-area-inset-bottom, 0px));right:calc(18px + env(safe-area-inset-right, 0px))}
+  .tb:active,.tb.on{transform:scale(.94);background:rgba(255,216,77,.35);border-color:rgba(255,216,77,.8)}
 
   .veil{position:fixed;inset:0;z-index:20;display:none;place-items:center;background:rgba(6,8,12,.86);backdrop-filter:blur(6px);padding:16px}
   .veil.on{display:grid}
@@ -187,6 +197,8 @@
 <div class="touch" id="touch">
   <div class="stick" id="stick"><i></i></div>
   <div class="tbtns">
+    <button class="tb sm" id="tMap">地图</button>
+    <button class="tb sm" id="tDrift">漂移</button>
     <button class="tb" id="tEnter">E</button>
     <button class="tb fire" id="tFire">开火</button>
   </div>
@@ -425,9 +437,10 @@
     const bx0 = Math.floor(x / CELL), bx1 = Math.floor((x + w) / CELL);
     const by0 = Math.floor(y / CELL), by1 = Math.floor((y + h) / CELL);
     for (let i = bx0; i <= bx1; i++) for (let j = by0; j <= by1; j++) {
-      const k = i + ',' + j;
-      if (!gridB.has(k)) gridB.set(k, []);
-      gridB.get(k).push(b);
+      const k = i * 64 + j;                       /* 数字键：比 'i,j' 字符串快得多 */
+      let cell = gridB.get(k);
+      if (!cell) { cell = []; gridB.set(k, cell); }
+      cell.push(b);
     }
     return b;
   }
@@ -543,12 +556,23 @@
   }
   genCity();
 
+  /* 邻域查询是每帧最热的函数（所有车/人/子弹都会调）：复用数组 + O(1) 去重 */
+  let nbStamp = 0;
+  const nbOut = [];
   function nearbyBuildings(x, y) {
-    const out = [];
+    const out = nbOut;
+    out.length = 0;
+    nbStamp++;
     const bx = Math.floor(x / CELL), by = Math.floor(y / CELL);
     for (let i = bx - 1; i <= bx + 1; i++) for (let j = by - 1; j <= by + 1; j++) {
-      const a = gridB.get(i + ',' + j);
-      if (a) for (const b of a) if (out.indexOf(b) < 0) out.push(b);
+      const a = gridB.get(i * 64 + j);
+      if (!a) continue;
+      for (let n = 0; n < a.length; n++) {
+        const b = a[n];
+        if (b._nb === nbStamp) continue;          /* 跨格建筑只算一次 */
+        b._nb = nbStamp;
+        out.push(b);
+      }
     }
     return out;
   }
@@ -1689,25 +1713,42 @@
   const keys = {};
   const mouse = { x: 0, y: 0, down: false, moved: false };
   const touchMode = matchMedia('(pointer: coarse)').matches;
+  const RM = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const knob = document.getElementById('stick').querySelector('i');
   const joy = { active: false, dx: 0, dy: 0, id: -1 };
 
+  /* 交易/兑换面板里有输入框：在里面打字时不能同时操控角色 */
+  function typing(e) {
+    const t = e.target;
+    return !!t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
+  }
   window.addEventListener('keydown', function (e) {
+    if (typing(e)) return;
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].indexOf(e.key) >= 0) {
       if (e.target === document.body) e.preventDefault();
     }
     keys[e.key.toLowerCase()] = true;
+    if (e.repeat) return;                      /* 长按不重复触发交互/地图 */
     const k = e.key.toLowerCase();
     if (k === 'e') interact();
     else if (k === 'm' && game.running && !game.dlgOn) toggleMap();
   });
   window.addEventListener('keyup', function (e) { keys[e.key.toLowerCase()] = false; });
+  /* 窗口失焦时按键收不到 keyup，会变成"按住不放"：统一松开一次 */
+  function releaseAll() {
+    for (const k in keys) keys[k] = false;
+    mouse.down = false;
+    joy.active = false; joy.dx = joy.dy = 0; joy.id = -1;
+    if (knob) knob.style.transform = 'translate(0,0)';
+  }
+  window.addEventListener('blur', releaseAll);
+  document.addEventListener('visibilitychange', function () { if (document.hidden) releaseAll(); });
   cv.addEventListener('mousemove', function (e) { mouse.x = e.clientX; mouse.y = e.clientY; mouse.moved = true; });
   cv.addEventListener('mousedown', function (e) { if (e.button === 0) { mouse.down = true; audioInit(); } });
   window.addEventListener('mouseup', function () { mouse.down = false; });
   cv.addEventListener('contextmenu', function (e) { e.preventDefault(); });
 
   const stickEl = document.getElementById('stick');
-  const knob = stickEl.querySelector('i');
   function stickStart(e) {
     const t = e.changedTouches[0];
     const r = stickEl.getBoundingClientRect();
@@ -1722,7 +1763,11 @@
       let dx = t.clientX - joy.cx, dy = t.clientY - joy.cy;
       const m = Math.hypot(dx, dy), max = 44;
       if (m > max) { dx = dx / m * max; dy = dy / m * max; }
-      joy.dx = dx / max; joy.dy = dy / max;
+      /* 死区：手指微动不该让角色抖 */
+      const dead = 0.16;
+      let nx = dx / max, ny = dy / max;
+      if (Math.hypot(nx, ny) < dead) { nx = 0; ny = 0; }
+      joy.dx = nx; joy.dy = ny;
       knob.style.transform = 'translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) + 'px)';
     }
     e.preventDefault();
@@ -1733,15 +1778,29 @@
       knob.style.transform = 'translate(0,0)';
     }
   }
-  if (touchMode) {
+  /* 触屏 UI：粗指针设备直接显示；带触摸屏的笔记本等第一次摸屏幕时再出现 */
+  let touchUI = false;
+  function initTouchUI() {
+    if (touchUI) return;
+    touchUI = true;
     document.getElementById('touch').classList.add('on');
     stickEl.addEventListener('touchstart', stickStart, { passive: false });
     stickEl.addEventListener('touchmove', stickMove, { passive: false });
     stickEl.addEventListener('touchend', stickEnd);
+    stickEl.addEventListener('touchcancel', stickEnd);
     document.getElementById('tEnter').addEventListener('touchstart', function (e) { e.preventDefault(); interact(); });
     document.getElementById('tFire').addEventListener('touchstart', function (e) { e.preventDefault(); mouse.down = true; audioInit(); });
     document.getElementById('tFire').addEventListener('touchend', function (e) { e.preventDefault(); mouse.down = false; });
+    /* 手机上补上 Shift 漂移和 M 地图 */
+    var tDrift = document.getElementById('tDrift');
+    tDrift.addEventListener('touchstart', function (e) { e.preventDefault(); keys['shift'] = true; tDrift.classList.add('on'); });
+    var driftEnd = function () { keys['shift'] = false; tDrift.classList.remove('on'); };
+    tDrift.addEventListener('touchend', driftEnd);
+    tDrift.addEventListener('touchcancel', driftEnd);
+    document.getElementById('tMap').addEventListener('touchstart', function (e) { e.preventDefault(); if (game.running && !game.dlgOn) toggleMap(); });
   }
+  if (touchMode) initTouchUI();
+  else window.addEventListener('touchstart', function once() { initTouchUI(); window.removeEventListener('touchstart', once); }, { passive: true });
 
   // ===== 音效 =====
   let AC = null, soundOn = true;
@@ -2111,6 +2170,7 @@
 
     for (const p of parts) { p.life -= dt; p.x += p.vx; p.y += p.vy; p.vx *= 0.94; p.vy *= 0.94; }
     parts = parts.filter(function (p) { return p.life > 0; });
+    if (parts.length > 420) parts.splice(0, parts.length - 420);   /* 上限：爆炸连发也不掉帧 */
 
     for (const p of pickups) {
       p.t += dt; p.y += p.vy; p.vy *= 0.9;
@@ -2124,8 +2184,9 @@
 
     const tx = player.x + (player.inCar ? Math.cos(player.ang) * player.inCar.v * 7 : 0);
     const ty = player.y + (player.inCar ? Math.sin(player.ang) * player.inCar.v * 7 : 0);
-    cam.x += (tx - cam.x) * Math.min(1, dt * 6);
-    cam.y += (ty - cam.y) * Math.min(1, dt * 6);
+    const camK = 1 - Math.exp(-8 * dt);            /* 与帧率无关的跟随 */
+    cam.x += (tx - cam.x) * camK;
+    cam.y += (ty - cam.y) * camK;
 
     bankSync(false);
     updateHud();
@@ -2330,7 +2391,7 @@
 
   function draw() {
     if (game.inside) { drawInterior(); return; }
-    const sk = game.shake;
+    const sk = game.shake * (RM ? 0 : 1);          /* 系统开了「减少动态效果」就不震屏 */
     const ox = sk ? rnd(-sk, sk) * 0.5 : 0, oy = sk ? rnd(-sk, sk) * 0.5 : 0;
     ctx.fillStyle = '#0f1116';
     ctx.fillRect(0, 0, W, H);
@@ -2958,14 +3019,27 @@
   // ===== 主循环 =====
   let last = performance.now(), acc = 0;
   const STEP = 1 / 60;
+  /* 帧耗时采样：update / draw 各占多少，调性能时直接读 __gta.prof() */
+  const prof = { up: 0, dr: 0, n: 0, fps: 0, lastT: 0, aUp: 0, aDr: 0 };
   function loop(now) {
     let dt = (now - last) / 1000;
     last = now;
+    if (document.hidden) { requestAnimationFrame(loop); return; }   /* 后台不跑逻辑 */
     acc += Math.min(dt, 0.25);
     let steps = 0;
+    const t0 = performance.now();
     while (acc >= STEP && steps < 5) { update(STEP); acc -= STEP; steps++; }
     if (steps === 5) acc = 0;
+    const t1 = performance.now();
     if (!game.paused || game.inside) draw();
+    const t2 = performance.now();
+    prof.aUp += t1 - t0; prof.aDr += t2 - t1;
+    if (prof.lastT) prof.fps = prof.fps * 0.9 + (1000 / Math.max(1, now - prof.lastT)) * 0.1;
+    prof.lastT = now;
+    if (++prof.n >= 60) {
+      prof.up = prof.aUp / prof.n; prof.dr = prof.aDr / prof.n;
+      prof.aUp = prof.aDr = 0; prof.n = 0;
+    }
     requestAnimationFrame(loop);
   }
   requestAnimationFrame(loop);
@@ -3001,6 +3075,7 @@
     wantedNow: function () { return game.wanted; },
     goalNow: function () { const g = currentChapter().goal || {}; return { type: g.type, sec: g.sec, n: g.n, amount: g.amount, target: g.target }; },
     perf: function () { return { staticMs: Math.round(perfStatic * 100) / 100, tiles: tileCache.size, tileScale: tileScale, buildings: buildings.length, props: props.length }; },
+    prof: function () { return { updateMs: Math.round(prof.up * 100) / 100, drawMs: Math.round(prof.dr * 100) / 100, fps: Math.round(prof.fps) }; },
     resetTiles: function () { tileCache.clear(); },
   };
 })();
