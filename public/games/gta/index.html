@@ -1481,7 +1481,8 @@
 
   let bankTimer = 0;
   function bankSync(force) {
-    if (!game.running) return Promise.resolve();
+    if (!game.running || walletPending) return Promise.resolve();   /* 存档未到，别拿 0 元覆盖服务器 */
+
     if (!force && Date.now() - bankTimer < 6000) return Promise.resolve();
     bankTimer = Date.now();
     return fetch('/api/gta', {
@@ -2949,37 +2950,50 @@
     if (fresh) startChapter(1);
   }
 
-  document.getElementById('btnStart').addEventListener('click', async function () {
+  /* 存档接口冷启动偶尔要 6 秒（D1 唤醒），不能让它卡住"进入"按钮：
+     先开玩，存档 2 秒内没回来就继续玩，回来时若玩家还没动作再套上进度 */
+  let walletPending = false;
+  function applyProgress(d) {
+    if (!d || !d.missions || !d.missions.length) return false;
+    game.money = typeof d.cash === 'number' ? d.cash : game.money;
+    game.missions = d.missions || [];
+    const done = game.missions.filter(function (m) { return /^ch\d+$/.test(m); }).length;
+    game.chapter = clamp(Math.max(d.chapter || 1, done + 1), 1, STORY.length);
+    moneyEl.textContent = money(game.money);
+    state.netWorth = game.money + state.fxUsd * state.rate;
+    updateBars(); setObjective();
+    if (done >= STORY.length) {
+      setObjectiveDone();
+      chapterCard('全剧终', '城市归你了');
+      toast('全部剧情都打完了，随便玩');
+    } else {
+      chapterCard('继续 · 第 ' + game.chapter + ' 章', currentChapter().title);
+      toast('欢迎回来，钱和进度都还在');
+      if (currentChapter().goal.type === 'choice') {
+        setTimeout(function () { playDialogue(currentChapter().lines); }, 900);
+      }
+    }
+    return true;
+  }
+
+  document.getElementById('btnStart').addEventListener('click', function () {
     const btn = this;
     if (btn.disabled) return;
     btn.disabled = true;
-    const old = btn.textContent;
-    btn.textContent = '读取存档…';
     audioInit();
-    const d = await loadWallet();
-    btn.disabled = false;
-    btn.textContent = old;
-    if (d && d.missions && d.missions.length) {
-      game.money = d.cash;
-      game.missions = d.missions || [];
-      const done = game.missions.filter(function (m) { return /^ch\d+$/.test(m); }).length;
-      game.chapter = clamp(Math.max(d.chapter || 1, done + 1), 1, STORY.length);
-      resetGame(false);
-      if (done >= STORY.length) {
-        setObjectiveDone();
-        chapterCard('全剧终', '城市归你了');
-        toast('全部剧情都打完了，随便玩');
-      } else {
-        chapterCard('继续 · 第 ' + game.chapter + ' 章', currentChapter().title);
-        setObjective();
-        toast('欢迎回来，钱和进度都还在');
-        if (currentChapter().goal.type === 'choice') {
-          setTimeout(function () { playDialogue(currentChapter().lines); }, 900);
-        }
-      }
-    } else {
-      resetGame(true);
-    }
+    resetGame(true);                                   /* 立刻进游戏，不等网络 */
+    document.getElementById('veil').classList.remove('on');
+    walletPending = true;
+    const done = function () { walletPending = false; };
+    loadWallet().then(function (d) {
+      done();
+      /* 玩家已经开打了（花钱/赚钱/推进）就别回滚进度，只补钱 */
+      const untouched = game.money === 0 && game.missions.length === 0 && game.chapter === 1;
+      if (d && untouched) applyProgress(d);
+      else if (d && typeof d.cash === 'number' && d.cash > game.money) { game.money = d.cash; moneyEl.textContent = money(game.money); updateBars(); }
+    }).catch(function () { done(); });
+    /* 兜底：3 秒还没回来就当新档继续玩，回来再悄悄补 */
+    setTimeout(function () { walletPending = false; }, 3000);
   });
 
   document.getElementById('btnRetry').addEventListener('click', function () {
