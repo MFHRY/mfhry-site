@@ -1,5 +1,15 @@
 [
   {
+    "slug": "minecraft",
+    "title": "方块世界",
+    "desc": "浏览器里的体素沙盒：无边界地形、671 种方块、54 种会走路的生物。左键挖、右键放，能存档。",
+    "tag": "沙盒",
+    "emoji": "🧱",
+    "href": "/games/minecraft/",
+    "status": "play",
+    "note": "WebGL · 桌面端体验最佳"
+  },
+  {
     "slug": "gold-miner",
     "title": "黄金矿工",
     "desc": "经典甩钩玩法：60 秒内抓金块、钻石和福袋冲分，抓石头会拖慢你。",

@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>方块世界 · 沙盒</title>
+<style>
+  :root{
+    --bg:#0b0e11; --panel:#14181dd9; --text:#e8f0ec; --muted:#8a9a92; --accent:#7fd1b0;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
+    user-select:none}
+  #app{position:fixed;inset:0}
+  canvas{display:block;width:100%;height:100%;touch-action:none;cursor:crosshair}
+
+  .hud{position:fixed;inset:0;pointer-events:none;z-index:5}
+  .cross{position:absolute;left:50%;top:50%;width:20px;height:20px;margin:-10px 0 0 -10px;opacity:.85}
+  .cross:before,.cross:after{content:"";position:absolute;background:#fff;box-shadow:0 0 2px #000}
+  .cross:before{left:9px;top:2px;width:2px;height:16px}
+  .cross:after{top:9px;left:2px;height:2px;width:16px}
+
+  .topbar{position:absolute;left:12px;top:12px;display:flex;gap:8px;align-items:center;pointer-events:auto}
+  .pill{background:var(--panel);backdrop-filter:blur(8px);border:1px solid #ffffff14;border-radius:9px;
+    padding:6px 11px;font-size:12px;color:#cfe0d8;display:flex;gap:10px;align-items:center}
+  .pill b{color:var(--accent);font-variant-numeric:tabular-nums}
+  a.back{color:#cfe0d8;text-decoration:none}
+  a.back:hover{color:var(--accent)}
+
+  .hotbar{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);display:flex;gap:5px;
+    background:#0d1116cc;backdrop-filter:blur(10px);padding:6px;border-radius:12px;border:1px solid #ffffff14}
+  .slot{width:52px;height:52px;border-radius:8px;background:#1a2028;border:2px solid #ffffff10;
+    display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer}
+  .slot.on{border-color:var(--accent);box-shadow:0 0 0 2px #7fd1b033}
+  .slot canvas{width:34px;height:34px;image-rendering:pixelated;pointer-events:none}
+  .slot .n{position:absolute;left:3px;top:1px;font-size:10px;color:#ffffff70}
+  .slot .lb{position:absolute;bottom:-1px;left:0;right:0;text-align:center;font-size:9px;color:#a8b8b0;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 2px}
+
+  .hint{position:absolute;right:12px;top:12px;background:var(--panel);backdrop-filter:blur(8px);
+    border:1px solid #ffffff14;border-radius:9px;padding:8px 11px;font-size:11px;line-height:1.7;color:#a8b8b0;
+    pointer-events:auto;max-width:230px}
+  .hint kbd{background:#ffffff18;border-radius:4px;padding:1px 5px;font:inherit;font-size:10px;color:#dfeee6}
+
+  .overlay{position:fixed;inset:0;z-index:20;display:none;background:#05080ad9;backdrop-filter:blur(6px)}
+  .overlay.show{display:block}
+  .panel{position:absolute;inset:24px;background:#0f1419f2;border:1px solid #ffffff14;border-radius:14px;
+    display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px #000a}
+  .panel header{display:flex;gap:12px;align-items:center;padding:12px 14px;border-bottom:1px solid #ffffff10}
+  .panel h2{font-size:15px;color:var(--accent);font-weight:700;letter-spacing:1px}
+  .panel input{flex:1;min-width:120px;background:#1a2028;border:1px solid #ffffff18;border-radius:8px;
+    color:var(--text);padding:8px 11px;font-size:13px;outline:none}
+  .panel input:focus{border-color:var(--accent)}
+  .panel .close{background:#1a2028;border:1px solid #ffffff18;color:#cfe0d8;border-radius:8px;padding:7px 12px;
+    font-size:12px;cursor:pointer}
+  .tabs{display:flex;gap:6px;padding:8px 14px;flex-wrap:wrap;border-bottom:1px solid #ffffff10}
+  .tabs button{background:#161c22;border:1px solid #ffffff12;color:#a8b8b0;border-radius:7px;padding:5px 10px;
+    font-size:12px;cursor:pointer}
+  .tabs button.on{background:#1f3a30;border-color:#7fd1b060;color:var(--accent)}
+  .grid{flex:1;overflow:auto;padding:12px;display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:8px;align-content:start}
+  .item{background:#141a20;border:1px solid #ffffff10;border-radius:9px;padding:8px 4px 6px;text-align:center;
+    cursor:pointer;position:relative}
+  .item:hover{border-color:#7fd1b060;background:#182028}
+  .item canvas{width:38px;height:38px;image-rendering:pixelated}
+  .item .nm{font-size:10px;color:#cfe0d8;margin-top:3px;line-height:1.25;word-break:break-all}
+  .item .en{font-size:8px;color:#6b7a73;margin-top:1px;line-height:1.2;word-break:break-all}
+  .count{font-size:11px;color:var(--muted);padding:0 14px}
+  .mobs{flex:1;overflow:auto;padding:12px;display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;align-content:start}
+  .mobcard{background:#141a20;border:1px solid #ffffff10;border-radius:9px;padding:10px;cursor:pointer}
+  .mobcard:hover{border-color:#7fd1b060}
+  .mobcard b{display:block;font-size:12px;color:#dfeee6}
+  .mobcard span{font-size:10px;color:#6b7a73}
+  .mobcard em{font-style:normal;font-size:10px;padding:1px 5px;border-radius:5px;margin-left:4px}
+  .t-passive{background:#2a4a2a;color:#9ae09a}.t-hostile{background:#4a1a1a;color:#f09090}.t-neutral{background:#4a3a1a;color:#f0d090}
+  .start{position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(circle at 50% 30%,#16281f,#05080a 70%)}
+  .start .box{text-align:center;max-width:560px;padding:28px}
+  .start h1{font-size:30px;letter-spacing:8px;color:var(--accent);margin-bottom:8px;text-shadow:0 4px 20px #7fd1b040}
+  .start p{color:#a8b8b0;font-size:13px;line-height:1.9;margin-bottom:20px}
+  .start .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+  .start button{background:linear-gradient(180deg,#2a5c47,#1d3f31);border:1px solid #7fd1b060;color:#dff5ea;
+    border-radius:10px;padding:11px 22px;font-size:14px;cursor:pointer;letter-spacing:2px}
+  .start button:hover{filter:brightness(1.15)}
+  .start button.ghost{background:#141a20;border-color:#ffffff20;color:#cfe0d8}
+  .start .meta{margin-top:16px;font-size:11px;color:#5f6f68;line-height:1.8}
+  .toast{position:fixed;left:50%;bottom:88px;transform:translateX(-50%);background:#0f1419ee;border:1px solid #ffffff20;
+    border-radius:9px;padding:8px 14px;font-size:12px;color:#dfeee6;opacity:0;transition:opacity .25s;z-index:25;pointer-events:none}
+  .toast.show{opacity:1}
+  .loading{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);color:var(--accent);font-size:13px;z-index:35}
+  @media (max-width:640px){ .hint{display:none} .slot{width:42px;height:42px} .slot canvas{width:26px;height:26px} }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<div class="hud">
+  <div class="cross"></div>
+  <div class="topbar">
+    <div class="pill"><a class="back" href="/games/">← 小游戏</a></div>
+    <div class="pill">FPS <b id="fps">0</b></div>
+    <div class="pill">XYZ <b id="pos">0 0 0</b></div>
+    <div class="pill" id="modePill">行走</div>
+  </div>
+  <div class="hint">
+    <kbd>WASD</kbd> 移动 · <kbd>空格</kbd> 跳<br>
+    <kbd>左键</kbd> 挖 · <kbd>右键</kbd> 放<br>
+    <kbd>1-9</kbd> 选方块 · <kbd>E</kbd> 方块目录<br>
+    <kbd>F</kbd> 飞行 · <kbd>Shift</kbd> 下降/加速<br>
+    <kbd>M</kbd> 生物图鉴 · <kbd>Esc</kbd> 暂停
+  </div>
+  <div class="hotbar" id="hotbar"></div>
+</div>
+
+<div class="overlay" id="catalog">
+  <div class="panel">
+    <header>
+      <h2>方块目录</h2>
+      <input id="search" placeholder="搜索方块（中文 / 英文）…" autocomplete="off">
+      <span class="count" id="count"></span>
+      <button class="close" data-close>关闭 (E)</button>
+    </header>
+    <div class="tabs" id="tabs"></div>
+    <div class="grid" id="grid"></div>
+  </div>
+</div>
+
+<div class="overlay" id="mobdex">
+  <div class="panel">
+    <header>
+      <h2>生物图鉴</h2>
+      <span class="count" id="mobcount"></span>
+      <button class="close" data-close>关闭 (M)</button>
+    </header>
+    <div class="mobs" id="mobgrid"></div>
+  </div>
+</div>
+
+<div class="start" id="start">
+  <div class="box">
+    <h1>方块世界</h1>
+    <p>无限地形 · 全方块目录 · 会走路的生物<br>
+      左键挖、右键放，掉进水里记得按空格往上游。</p>
+    <div class="row">
+      <button id="btnPlay">进入世界</button>
+      <button class="ghost" id="btnNew">重新生成</button>
+    </div>
+    <div class="meta" id="startMeta"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="loading" id="loading" style="display:none">正在生成地形…</div>
+
+<script src="blocks.js"></script>
+<script src="atlas.js"></script>
+<script src="world.js"></script>
+<script src="mobs.js"></script>
+<script type="module">
+import * as THREE from './three.module.min.js';
+
+const $ = (s) => document.querySelector(s);
+const toast = (t) => { const el = $('#toast'); el.textContent = t; el.classList.add('show'); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('show'), 1500); };
+
+/* ---------------------------------------------------------------- 资源 */
+const BLOCKS = window.MC_BLOCKS;
+const ATLAS = window.MC_TEX.build(BLOCKS);
+const WORLD = new window.MC_WORLD.World(BLOCKS, 20261120);
+const { CX, CY, CZ, SEA } = window.MC_WORLD;
+
+/* ---------------------------------------------------------------- 渲染器 */
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
+} catch (err) {
+  document.querySelector('#start .box').innerHTML =
+    '<h1>方块世界</h1><p style="color:#f09090">这个浏览器没能创建 WebGL 上下文，游戏跑不起来。<br>' +
+    '请用 chrome / edge 打开，或在设置里打开「硬件加速」后重试。</p>' +
+    '<div class="row"><a href="/games/"><button class="ghost">← 回小游戏</button></a></div>';
+  throw err;
+}
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+$('#app').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x8ec5ea);
+scene.fog = new THREE.Fog(0x9fd0ee, 60, 128);
+
+const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.1, 400);
+
+const hemi = new THREE.HemisphereLight(0xdfefff, 0x6a7a5a, 1.05);
+scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff3d8, 1.15);
+sun.position.set(60, 120, 40);
+scene.add(sun);
+
+const atlasTex = new THREE.CanvasTexture(ATLAS.canvas);
+atlasTex.magFilter = THREE.NearestFilter;
+atlasTex.minFilter = THREE.NearestFilter;
+atlasTex.generateMipmaps = false;
+atlasTex.colorSpace = THREE.SRGBColorSpace;
+
+const matOpaque = new THREE.MeshLambertMaterial({ map: atlasTex, vertexColors: true });
+const matTrans = new THREE.MeshLambertMaterial({ map: atlasTex, vertexColors: true, transparent: true, alphaTest: 0.35, side: THREE.DoubleSide, depthWrite: true });
+
+/* ---------------------------------------------------------------- 区块流式加载 */
+const RENDER_DIST = 4;
+const chunkMeshes = new Map();
+const buildQueue = [];
+
+function chunkMesh(key) { return chunkMeshes.get(key); }
+
+function buildChunk(cx, cz) {
+  const key = cx + ',' + cz;
+  const chunk = WORLD.getChunk(cx, cz);
+  const buckets = WORLD.buildMesh(chunk, ATLAS);
+  const old = chunkMeshes.get(key);
+  if (old) { scene.remove(old.opaque); old.opaque.geometry.dispose(); if (old.trans) { scene.remove(old.trans); old.trans.geometry.dispose(); } }
+
+  function toGeom(b) {
+    if (!b.pos.length) return null;
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(b.pos, 3));
+    g.setAttribute('normal', new THREE.Float32BufferAttribute(b.nor, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(b.uv, 2));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(b.col, 3));
+    g.setIndex(b.idx);
+    g.computeBoundingSphere();
+    return g;
+  }
+  const gOp = toGeom(buckets.opaque);
+  const gTr = toGeom(buckets.trans);
+  const rec = { opaque: null, trans: null };
+  if (gOp) {
+    const m = new THREE.Mesh(gOp, matOpaque);
+    m.frustumCulled = true;
+    scene.add(m); rec.opaque = m;
+  }
+  if (gTr) {
+    const m = new THREE.Mesh(gTr, matTrans);
+    m.renderOrder = 2;
+    scene.add(m); rec.trans = m;
+  }
+  chunkMeshes.set(key, rec);
+  chunk.dirty = false;
+}
+
+/* 单点改动只重建受影响的区块（含跨边界的邻块） */
+function rebuildAround(wx, wy, wz) {
+  const cx = Math.floor(wx / CX), cz = Math.floor(wz / CZ);
+  const lx = wx - cx * CX, lz = wz - cz * CZ;
+  const set = new Set([cx + ',' + cz]);
+  if (lx === 0) set.add((cx - 1) + ',' + cz);
+  if (lx === CX - 1) set.add((cx + 1) + ',' + cz);
+  if (lz === 0) set.add(cx + ',' + (cz - 1));
+  if (lz === CZ - 1) set.add(cx + ',' + (cz + 1));
+  set.forEach(k => { const p = k.split(','); buildChunk(+p[0], +p[1]); });
+}
+
+let lastPCX = 1e9, lastPCZ = 1e9;
+function updateChunks(force) {
+  const pcx = Math.floor(camera.position.x / CX), pcz = Math.floor(camera.position.z / CZ);
+  if (!force && pcx === lastPCX && pcz === lastPCZ) {
+    // 只重建脏区块
+    for (let dz = -RENDER_DIST; dz <= RENDER_DIST; dz++) for (let dx = -RENDER_DIST; dx <= RENDER_DIST; dx++) {
+      const c = WORLD.chunks[(pcx + dx) + ',' + (pcz + dz)];
+      if (c && c.dirty) buildChunk(pcx + dx, pcz + dz);
+    }
+    return;
+  }
+  lastPCX = pcx; lastPCZ = pcz;
+  // 移除远处
+  for (const [key, rec] of chunkMeshes) {
+    const [kx, kz] = key.split(',').map(Number);
+    if (Math.abs(kx - pcx) > RENDER_DIST + 1 || Math.abs(kz - pcz) > RENDER_DIST + 1) {
+      if (rec.opaque) { scene.remove(rec.opaque); rec.opaque.geometry.dispose(); }
+      if (rec.trans) { scene.remove(rec.trans); rec.trans.geometry.dispose(); }
+      chunkMeshes.delete(key);
+    }
+  }
+  buildQueue.length = 0;
+  for (let dz = -RENDER_DIST; dz <= RENDER_DIST; dz++) for (let dx = -RENDER_DIST; dx <= RENDER_DIST; dx++) {
+    const d2 = dx * dx + dz * dz;
+    if (d2 > (RENDER_DIST + 0.5) * (RENDER_DIST + 0.5)) continue;
+    buildQueue.push([pcx + dx, pcz + dz, d2]);
+  }
+  buildQueue.sort((a, b) => a[2] - b[2]);
+}
+
+function pumpBuild(budget) {
+  let n = 0;
+  while (buildQueue.length && n < budget) {
+    const [cx, cz] = buildQueue.shift();
+    buildChunk(cx, cz); n++;
+  }
+  return buildQueue.length;
+}
+
+/* ---------------------------------------------------------------- 玩家 */
+const player = {
+  pos: new THREE.Vector3(8, 40, 8),
+  vel: new THREE.Vector3(),
+  yaw: 0, pitch: 0,
+  onGround: false, fly: false, sprint: false, inWater: false,
+  width: 0.3, height: 1.8, eye: 1.62,
+  speed: 4.6, sprintSpeed: 7.2, jump: 8.6
+};
+
+function blockTopHeight(id) {
+  const b = WORLD.byId[id];
+  if (!b) return 1;
+  if (b.shape === 'slab') return 0.5;
+  return 1;
+}
+
+function collides(px, py, pz) {
+  const w = player.width, h = player.height;
+  const x0 = Math.floor(px - w), x1 = Math.floor(px + w);
+  const y0 = Math.floor(py), y1 = Math.floor(py + h - 0.001);
+  const z0 = Math.floor(pz - w), z1 = Math.floor(pz + w);
+  for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) for (let z = z0; z <= z1; z++) {
+    const id = WORLD.get(x, y, z);
+    if (!id) continue;
+    const b = WORLD.byId[id];
+    if (!b || !b.solid) continue;
+    const top = blockTopHeight(id);
+    // 只与方块的实体部分相交
+    if (py + h <= y || py >= y + top) continue;
+    if (px + w <= x || px - w >= x + 1) continue;
+    if (pz + w <= z || pz - w >= z + 1) continue;
+    return true;
+  }
+  return false;
+}
+
+function moveAxis(axis, amount) {
+  if (!amount) return;
+  const p = player.pos;
+  const np = p.clone();
+  np[axis] += amount;
+  if (!collides(np.x, np.y, np.z)) { p[axis] = np[axis]; }
+  else if (axis !== 'y' && !player.fly && !collides(np.x, np.y + 1.02, np.z)) {
+    /* 自动跨上 1 格台阶（草坡不该把人卡住） */
+    p.y += 1.02;
+    p[axis] = np[axis];
+    player.onGround = true;
+  }
+  else {
+    if (axis === 'y') {
+      if (amount < 0) { player.onGround = true; p.y = Math.floor(p.y) + 1; }
+      player.vel.y = 0;
+    }
+  }
+}
+
+/* ---------------------------------------------------------------- 输入 */
+const keys = {};
+let pointerLocked = false;
+const el = renderer.domElement;
+
+addEventListener('keydown', (e) => {
+  if (e.code === 'Escape') { if (pointerLocked) document.exitPointerLock(); return; }
+  if (e.target && (e.target.tagName === 'INPUT')) return;
+  keys[e.code] = true;
+  if (e.code === 'KeyE') { e.preventDefault(); toggleCatalog(); }
+  if (e.code === 'KeyM') { e.preventDefault(); toggleMobdex(); }
+  if (e.code === 'KeyF') { player.fly = !player.fly; player.vel.y = 0; $('#modePill').textContent = player.fly ? '飞行' : '行走'; toast(player.fly ? '飞行模式' : '行走模式'); }
+  if (e.code.startsWith('Digit')) {
+    const n = +e.code.slice(5);
+    if (n >= 1 && n <= 9) { hotbarSel = n - 1; renderHotbar(); }
+  }
+}, { passive: false });
+addEventListener('keyup', (e) => { keys[e.code] = false; });
+
+el.addEventListener('click', () => { if (!pointerLocked && !overlayOpen) el.requestPointerLock(); });
+document.addEventListener('pointerlockchange', () => { pointerLocked = document.pointerLockElement === el; });
+document.addEventListener('mousemove', (e) => {
+  if (!pointerLocked) return;
+  player.yaw -= e.movementX * 0.0022;
+  player.pitch -= e.movementY * 0.0022;
+  player.pitch = Math.max(-1.55, Math.min(1.55, player.pitch));
+});
+el.addEventListener('mousedown', (e) => {
+  if (!pointerLocked) return;
+  if (e.button === 0) breakBlock();
+  if (e.button === 2) placeBlock();
+});
+el.addEventListener('contextmenu', (e) => e.preventDefault());
+
+let overlayOpen = false;
+function toggleCatalog() {
+  const o = $('#catalog');
+  overlayOpen = !o.classList.contains('show');
+  o.classList.toggle('show', overlayOpen);
+  if (overlayOpen) { document.exitPointerLock(); renderCatalog(); $('#search').focus(); }
+}
+function toggleMobdex() {
+  const o = $('#mobdex');
+  overlayOpen = !o.classList.contains('show');
+  o.classList.toggle('show', overlayOpen);
+  if (overlayOpen) { document.exitPointerLock(); renderMobdex(); }
+}
+document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => {
+  overlayOpen = false; $('#catalog').classList.remove('show'); $('#mobdex').classList.remove('show');
+}));
+
+/* ---------------------------------------------------------------- 挖掘 / 放置 */
+const raycaster = new THREE.Raycaster();
+function lookDir() {
+  const cy = Math.cos(player.pitch);
+  return new THREE.Vector3(-Math.sin(player.yaw) * cy, Math.sin(player.pitch), -Math.cos(player.yaw) * cy);
+}
+function currentHit() {
+  const origin = new THREE.Vector3(player.pos.x, player.pos.y + player.eye, player.pos.z);
+  return WORLD.raycast(origin, lookDir(), 6);
+}
+
+function breakBlock() {
+  const hit = currentHit();
+  if (!hit) return;
+  const b = WORLD.byId[hit.id];
+  if (!b || b.key === 'bedrock') return;
+  WORLD.set(hit.x, hit.y, hit.z, 0);
+  rebuildAround(hit.x, hit.y, hit.z);
+  toast('挖掉 ' + b.zh);
+}
+
+function placeBlock() {
+  const hit = currentHit();
+  if (!hit) return;
+  const slots = hotbarItems;
+  const item = slots[hotbarSel];
+  if (!item) return;
+  let tx = hit.x, ty = hit.y, tz = hit.z;
+  if (hit.face) { tx += hit.face[0]; ty += hit.face[1]; tz += hit.face[2]; }
+  else { ty += 1; }
+  if (WORLD.get(tx, ty, tz)) return;
+  // 别把自己埋了
+  if (tx === Math.floor(player.pos.x) && (ty === Math.floor(player.pos.y) || ty === Math.floor(player.pos.y + 1)) && tz === Math.floor(player.pos.z)) return;
+  WORLD.set(tx, ty, tz, item.id);
+  rebuildAround(tx, ty, tz);
+}
+
+/* ---------------------------------------------------------------- 物品栏 / 目录 */
+let hotbarSel = 0;
+const DEFAULT_HOTBAR = ['stone', 'cobblestone', 'dirt', 'grass_block', 'oak_planks', 'oak_log', 'glass', 'sand', 'torch'];
+let hotbarItems = DEFAULT_HOTBAR.map(k => WORLD.byKey[k]).filter(Boolean);
+
+function renderHotbar() {
+  const hb = $('#hotbar');
+  hb.innerHTML = '';
+  hotbarItems.forEach((b, i) => {
+    const d = document.createElement('div');
+    d.className = 'slot' + (i === hotbarSel ? ' on' : '');
+    const n = document.createElement('span'); n.className = 'n'; n.textContent = i + 1;
+    const lb = document.createElement('span'); lb.className = 'lb'; lb.textContent = b ? b.zh : '';
+    if (b) d.appendChild(window.MC_TEX.icon(b, 34));
+    d.appendChild(n); d.appendChild(lb);
+    d.addEventListener('click', () => { hotbarSel = i; renderHotbar(); });
+    hb.appendChild(d);
+  });
+}
+
+const GROUPS = [
+  ['all', '全部'], ['natural', '自然'], ['building', '建筑'], ['ore', '矿石'],
+  ['wood', '木材'], ['color', '颜色'], ['plant', '植物'], ['functional', '功能']
+];
+let curGroup = 'all', curSearch = '';
+
+function renderCatalog() {
+  const tabs = $('#tabs');
+  if (!tabs.dataset.done) {
+    tabs.dataset.done = '1';
+    GROUPS.forEach(([k, label]) => {
+      const b = document.createElement('button');
+      b.textContent = label; b.dataset.g = k;
+      b.addEventListener('click', () => { curGroup = k; renderCatalog(); });
+      tabs.appendChild(b);
+    });
+  }
+  tabs.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.g === curGroup));
+
+  const q = curSearch.trim().toLowerCase();
+  const list = BLOCKS.filter(b => {
+    if (curGroup !== 'all' && b.group !== curGroup) return false;
+    if (!q) return true;
+    return b.en.toLowerCase().includes(q) || b.zh.includes(q) || b.key.includes(q);
+  });
+  $('#count').textContent = list.length + ' / ' + BLOCKS.length;
+
+  const grid = $('#grid');
+  grid.innerHTML = '';
+  const frag = document.createDocumentFragment();
+  list.slice(0, 800).forEach(b => {
+    const d = document.createElement('div');
+    d.className = 'item';
+    d.title = b.en;
+    d.appendChild(window.MC_TEX.icon(b, 38));
+    const nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = b.zh;
+    const en = document.createElement('div'); en.className = 'en'; en.textContent = b.en;
+    d.appendChild(nm); d.appendChild(en);
+    d.addEventListener('click', () => {
+      hotbarItems[hotbarSel] = b;
+      renderHotbar();
+      toast('已放到第 ' + (hotbarSel + 1) + ' 格：' + b.zh);
+    });
+    frag.appendChild(d);
+  });
+  grid.appendChild(frag);
+}
+
+$('#search').addEventListener('input', (e) => { curSearch = e.target.value; renderCatalog(); });
+
+function renderMobdex() {
+  const grid = $('#mobgrid');
+  grid.innerHTML = '';
+  $('#mobcount').textContent = window.MC_MOBS.MOBS.length + ' 种';
+  const frag = document.createDocumentFragment();
+  window.MC_MOBS.MOBS.forEach(m => {
+    const d = document.createElement('div');
+    d.className = 'mobcard';
+    const t = m.type === 'passive' ? 'passive' : m.type === 'hostile' ? 'hostile' : 'neutral';
+    const tn = m.type === 'passive' ? '被动' : m.type === 'hostile' ? '敌对' : '中立';
+    d.innerHTML = '<b>' + m.zh + '<em class="t-' + t + '">' + tn + '</em></b><span>' + m.en + '</span>';
+    d.addEventListener('click', () => {
+      const dir = lookDir();
+      const px = player.pos.x + dir.x * 4, pz = player.pos.z + dir.z * 4;
+      const h = WORLD.heightAt(Math.floor(px), Math.floor(pz));
+      mobs.spawn(m.key, px, h + 1, pz);
+      toast('召唤了 ' + m.zh);
+      overlayOpen = false; $('#mobdex').classList.remove('show');
+      el.requestPointerLock();
+    });
+    frag.appendChild(d);
+  });
+  grid.appendChild(frag);
+}
+
+/* ---------------------------------------------------------------- 生物 */
+const mobs = new window.MC_MOBS.MobMgr(THREE, scene, WORLD);
+let mobTimer = 0;
+
+/* ---------------------------------------------------------------- 存档 */
+const SAVE_KEY = 'mc-sandbox-v1';
+let saveTimer = 0;
+function save() {
+  try {
+    const data = {
+      seed: WORLD.seed,
+      edits: WORLD.serialize().edits,
+      player: { x: player.pos.x, y: player.pos.y, z: player.pos.z, yaw: player.yaw, pitch: player.pitch },
+      hotbar: hotbarItems.map(b => b ? b.key : null)
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+  } catch (e) { }
+}
+function load() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return false;
+    const d = JSON.parse(raw);
+    if (d.seed !== WORLD.seed) return false;
+    WORLD.applySave({ edits: d.edits });
+    if (d.player) {
+      player.pos.set(d.player.x, d.player.y, d.player.z);
+      player.yaw = d.player.yaw || 0; player.pitch = d.player.pitch || 0;
+    }
+    if (d.hotbar) {
+      const arr = d.hotbar.map(k => k ? WORLD.byKey[k] : null);
+      if (arr.some(Boolean)) hotbarItems = arr;
+    }
+    return true;
+  } catch (e) { return false; }
+}
+addEventListener('beforeunload', save);
+
+/* ---------------------------------------------------------------- 主循环 */
+let running = false;
+let last = performance.now(), fpsAcc = 0, fpsN = 0;
+
+function resize() {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+}
+addEventListener('resize', resize);
+
+function physics(dt) {
+  const p = player.pos;
+  const dirF = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw));
+  const dirR = new THREE.Vector3(Math.cos(player.yaw), 0, -Math.sin(player.yaw));
+  let mx = 0, mz = 0;
+  if (keys['KeyW']) { mx += dirF.x; mz += dirF.z; }
+  if (keys['KeyS']) { mx -= dirF.x; mz -= dirF.z; }
+  if (keys['KeyD']) { mx += dirR.x; mz += dirR.z; }
+  if (keys['KeyA']) { mx -= dirR.x; mz -= dirR.z; }
+  const len = Math.hypot(mx, mz);
+  player.sprint = !!(keys['ShiftLeft'] || keys['ShiftRight']);
+  let spd = player.sprint ? player.sprintSpeed : player.speed;
+  if (player.fly) spd = player.sprint ? 22 : 10;
+  if (len > 0) { mx = mx / len * spd; mz = mz / len * spd; }
+
+  const eyeBlock = WORLD.get(Math.floor(p.x), Math.floor(p.y + player.eye * 0.6), Math.floor(p.z));
+  player.inWater = eyeBlock && WORLD.byId[eyeBlock] && WORLD.byId[eyeBlock].key === 'water';
+
+  if (player.fly) {
+    const vy = (keys['Space'] ? 1 : 0) - ((keys['ShiftLeft'] || keys['ShiftRight']) ? 1 : 0);
+    moveAxis('x', mx * dt); moveAxis('z', mz * dt);
+    moveAxis('y', vy * spd * dt);
+    player.vel.y = 0;
+  } else {
+    moveAxis('x', mx * dt);
+    moveAxis('z', mz * dt);
+    // 重力
+    if (player.inWater) {
+      player.vel.y -= 6 * dt;
+      if (keys['Space']) player.vel.y = 3.2;
+      player.vel.y = Math.max(player.vel.y, -4);
+    } else {
+      player.vel.y -= 26 * dt;
+      if (keys['Space'] && player.onGround) { player.vel.y = player.jump; player.onGround = false; }
+    }
+    player.onGround = false;
+    moveAxis('y', player.vel.y * dt);
+    player.vel.y = Math.max(player.vel.y, -50);
+  }
+  // 掉出世界
+  if (p.y < -12) { p.set(8, 42, 8); toast('掉出世界了，已传回出生点'); }
+
+  camera.position.set(p.x, p.y + player.eye, p.z);
+  camera.rotation.set(0, 0, 0);
+  camera.rotateY(player.yaw);
+  camera.rotateX(player.pitch);
+}
+
+function loop(now) {
+  requestAnimationFrame(loop);
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+  if (!running) return;
+
+  physics(dt);
+  pumpBuild(2);
+  updateChunks(false);
+  mobs.update(dt, player.pos);
+
+  // 生物补充
+  mobTimer -= dt;
+  if (mobTimer <= 0) {
+    mobTimer = 8;
+    if (mobs.list.length < 26) mobs.spawnAround(player.pos, 2);
+  }
+
+  // 存盘
+  saveTimer += dt;
+  if (saveTimer > 12) { saveTimer = 0; save(); }
+
+  // HUD
+  fpsAcc += dt; fpsN++;
+  if (fpsAcc > 0.4) {
+    $('#fps').textContent = Math.round(fpsN / fpsAcc);
+    fpsAcc = 0; fpsN = 0;
+    const p = player.pos;
+    $('#pos').textContent = p.x.toFixed(0) + ' ' + p.y.toFixed(0) + ' ' + p.z.toFixed(0);
+  }
+
+  renderer.render(scene, camera);
+}
+
+/* ---------------------------------------------------------------- 启动 */
+function startWorld(withSave) {
+  $('#loading').style.display = 'block';
+  if (withSave) load();
+  const h = WORLD.heightAt(Math.floor(player.pos.x), Math.floor(player.pos.z));
+  if (player.pos.y < SEA) player.pos.y = h + 2;
+  const cx = Math.floor(player.pos.x / CX), cz = Math.floor(player.pos.z / CZ);
+  // 出生点周围先铺平一小块
+  const gx = Math.floor(player.pos.x), gz = Math.floor(player.pos.z);
+  for (let dx = -2; dx <= 2; dx++) for (let dz = -2; dz <= 2; dz++) {
+    const hh = WORLD.heightAt(gx + dx, gz + dz);
+    WORLD.set(gx + dx, hh + 1, gz + dz, 0);
+    WORLD.set(gx + dx, hh + 2, gz + dz, 0);
+  }
+  player.pos.set(gx + 0.5, WORLD.heightAt(gx, gz) + 2, gz + 0.5);
+
+  // 首屏区块
+  lastPCX = 1e9;
+  updateChunks(true);
+  pumpBuild(5);
+
+  mobs.spawnAround(player.pos, 14);
+
+  $('#start').style.display = 'none';
+  $('#loading').style.display = 'none';
+  running = true;
+  renderHotbar();
+  el.requestPointerLock();
+  toast('左键挖方块 · 右键放方块 · E 打开目录');
+}
+
+$('#btnPlay').addEventListener('click', () => startWorld(true));
+$('#btnNew').addEventListener('click', () => {
+  if (!confirm('重新生成会清掉当前世界的改动，确定吗？')) return;
+  try { localStorage.removeItem(SAVE_KEY); } catch (e) { }
+  location.reload();
+});
+
+let saved = false;
+try { saved = !!localStorage.getItem(SAVE_KEY); } catch (e) { }
+$('#startMeta').textContent = '方块 ' + BLOCKS.length + ' 种 · 生物 ' + window.MC_MOBS.MOBS.length +
+  ' 种' + (saved ? ' · 检测到本地存档' : '');
+
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
