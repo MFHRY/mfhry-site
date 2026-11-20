@@ -6,3 +6,6 @@
 
 /downloads/*
   Cache-Control: public, max-age=31536000, immutable
+
+/games/*
+  Cache-Control: no-cache, must-revalidate
