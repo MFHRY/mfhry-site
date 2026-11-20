@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+<script>window.__errs=[];addEventListener('error',function(e){__errs.push((e.message||'')+' @'+(e.filename||'')+':'+(e.lineno||0)+':'+(e.colno||0));});addEventListener('unhandledrejection',function(e){__errs.push('REJ '+(e.reason&&e.reason.message||e.reason));});</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>罪恶都市 3D · 开车进城</title>
@@ -144,7 +145,7 @@
 <div class="veil on" id="veil">
   <div class="panel">
     <h1>罪恶都市 <em>3D</em></h1>
-    <p>第三人称俯冲视角，开着车横穿 30×30 街区：海滩、山丘、市中心、机场、港口。<br>抢车、开枪、甩警察，钱和 2D 版、炒股、外汇**同一个账户**。</p>
+    <p>第三人称追车视角，30×30 街区全部立体建模：玻璃幕墙、砖楼、港口仓库、棕榈树、警车和行人都有独立模型与贴图。<br><b>8 章任务线</b>：抢车、送货、抢银行、甩警车、清场，每章有目标、时限和失败重来。<br>赚到的钱和 2D 版、炒股、外汇**同一个账户**。</p>
     <div class="keys">
       <div><span>油门 / 倒车</span><k>W S</k></div>
       <div><span>转向</span><k>A D</k></div>
@@ -154,15 +155,15 @@
       <div><span>转视角</span><k>拖动鼠标</k></div>
     </div>
     <button class="go" id="btnStart" disabled>正在加载 3D 引擎…</button>
-    <button class="go ghost" id="btnFull2d" style="margin-top:8px">去 2D 版玩 19 章剧情</button>
+    <button class="go ghost" id="btnFull2d" style="margin-top:8px">去 2D 版玩 19 章完整剧情</button>
   </div>
 </div>
 
 <div class="veil" id="dead">
   <div class="panel">
-    <h1>你倒下了</h1>
-    <p id="deadTxt">这一局赚到的钱已经存进账户。</p>
-    <button class="go" id="btnRetry">再来一次</button>
+    <h1 id="deadTitle">任务失败</h1>
+    <p id="deadTxt">这一章没完成，重来一次。</p>
+    <button class="go" id="btnRetry">重试本章</button>
   </div>
 </div>
 
@@ -250,6 +251,7 @@ const LANDMARKS = [
 const POIS = [
   { id: 'port_wh', name: '港口仓库', icon: '📦', bx: 8, by: 27, color: 0x7fd1ff },
   { id: 'club', name: '布兰登夜店', icon: '🎵', bx: 20, by: 19, color: 0xb78bff },
+  { id: 'bank_federal', name: '联邦银行', icon: '🏛', bx: 16, by: 8, color: 0xffd166 },
 ];
 for (const L of [...LANDMARKS, ...POIS]) {
   L.x = L.bx * C + BLOCK / 2;
@@ -265,17 +267,217 @@ const rim = new THREE.DirectionalLight(0x6f9bff, 0.5);
 rim.position.set(-90, 60, -70);
 scene.add(rim);
 
+// ====== 贴图（程序化 canvas，不上外部图片）======
+function mkCanvas(w, h) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  return c;
+}
+function mkTex(c, rx, ry) {
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(rx || 1, ry || 1);
+  t.anisotropy = 4;
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+function noiseOn(g, w, h, n, alpha) {
+  for (let i = 0; i < n; i++) {
+    g.fillStyle = 'rgba(0,0,0,' + (alpha * Math.random()).toFixed(3) + ')';
+    g.fillRect(Math.random() * w, Math.random() * h, 2 + Math.random() * 7, 2 + Math.random() * 7);
+  }
+}
+
+// 楼体外墙：底噪 + 窗格；同时出一张只亮窗的发光图
+function facadeTex(base, rows, cols, litColor, litChance, mullion) {
+  const W = 256, H = 256;
+  const c = mkCanvas(W, H), g = c.getContext('2d');
+  const e = mkCanvas(W, H), eg = e.getContext('2d');
+  g.fillStyle = base; g.fillRect(0, 0, W, H);
+  noiseOn(g, W, H, 500, 0.07);
+  eg.fillStyle = '#000'; eg.fillRect(0, 0, W, H);
+  const cw = W / cols, ch = H / rows;
+  for (let r = 0; r < rows; r++) {
+    for (let k = 0; k < cols; k++) {
+      const x = k * cw + cw * 0.16, y = r * ch + ch * 0.2;
+      const w = cw * 0.68, h = ch * 0.46;
+      g.fillStyle = '#0d1117';
+      g.fillRect(x, y, w, h);
+      if (mullion) {
+        g.fillStyle = 'rgba(255,255,255,.14)';
+        g.fillRect(x + w / 2 - 0.8, y, 1.6, h);
+      }
+      g.strokeStyle = 'rgba(255,255,255,.1)';
+      g.lineWidth = 1.4;
+      g.strokeRect(x, y, w, h);
+      if (Math.random() < litChance) {
+        eg.fillStyle = litColor;
+        eg.fillRect(x, y, w, h);
+        eg.fillStyle = 'rgba(255,255,255,.25)';
+        eg.fillRect(x, y + h * 0.55, w, h * 0.45);
+      }
+    }
+  }
+  g.fillStyle = 'rgba(0,0,0,.3)';
+  g.fillRect(0, 0, W, 7);
+  g.fillStyle = 'rgba(255,255,255,.05)';
+  g.fillRect(0, 7, W, 2);
+  return { map: mkTex(c), emissive: mkTex(e) };
+}
+
+const ARCH = {
+  office:     function (rows) { return facadeTex('#2b3652', rows, 5, '#ffe9b0', 0.55, true); },
+  glass:      function (rows) { return facadeTex('#243c55', rows, 6, '#cfe6ff', 0.45, true); },
+  brick:      function (rows) { return facadeTex('#5a4034', rows, 4, '#ffd9a0', 0.32, false); },
+  concrete:   function (rows) { return facadeTex('#3c4047', rows, 4, '#cfd6e2', 0.25, false); },
+  industrial: function (rows) { return facadeTex('#42474b', rows, 5, '#bfe0ff', 0.2, false); },
+  pale:       function (rows) { return facadeTex('#8a7c68', rows, 4, '#fff0c8', 0.3, false); },
+};
+const archMats = new Map();
+function archMaterial(name, rows) {
+  const key = name + '_' + rows;
+  if (archMats.has(key)) return archMats.get(key);
+  const t = ARCH[name](rows);
+  const m = new THREE.MeshLambertMaterial({
+    map: t.map,
+    emissive: new THREE.Color(0xffffff),
+    emissiveMap: t.emissive,
+    emissiveIntensity: 0.85,
+  });
+  archMats.set(key, m);
+  return m;
+}
+
+// 沥青
+function asphaltTex() {
+  const W = 256, H = 256;
+  const c = mkCanvas(W, H), g = c.getContext('2d');
+  g.fillStyle = '#22252b'; g.fillRect(0, 0, W, H);
+  for (let i = 0; i < 2600; i++) {
+    const v = 28 + Math.random() * 26;
+    g.fillStyle = 'rgba(' + v + ',' + (v + 2) + ',' + (v + 6) + ',.5)';
+    g.fillRect(Math.random() * W, Math.random() * H, 1 + Math.random() * 2, 1 + Math.random() * 2);
+  }
+  for (let i = 0; i < 40; i++) {
+    g.fillStyle = 'rgba(0,0,0,.18)';
+    g.beginPath();
+    g.arc(Math.random() * W, Math.random() * H, 6 + Math.random() * 18, 0, 6.2832);
+    g.fill();
+  }
+  return mkTex(c, 40, 40);
+}
+
+// 人行道：水泥板 + 缝
+function sidewalkTex() {
+  const W = 128, H = 128;
+  const c = mkCanvas(W, H), g = c.getContext('2d');
+  g.fillStyle = '#6d6f74'; g.fillRect(0, 0, W, H);
+  noiseOn(g, W, H, 260, 0.1);
+  g.strokeStyle = 'rgba(0,0,0,.28)'; g.lineWidth = 3;
+  g.beginPath();
+  g.moveTo(0, H / 2); g.lineTo(W, H / 2);
+  g.moveTo(W / 2, 0); g.lineTo(W / 2, H);
+  g.stroke();
+  g.strokeStyle = 'rgba(255,255,255,.09)'; g.lineWidth = 1.5;
+  g.strokeRect(1.5, 1.5, W - 3, H - 3);
+  return mkTex(c, 1, 1);
+}
+
+// 车漆：渐变 + 一条腰线
+function paintTex(hex, stripe) {
+  const W = 128, H = 128;
+  const c = mkCanvas(W, H), g = c.getContext('2d');
+  const base = '#' + hex.toString(16).padStart(6, '0');
+  const grad = g.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, '#ffffff');
+  grad.addColorStop(0.18, base);
+  grad.addColorStop(0.82, base);
+  grad.addColorStop(1, '#ffffff');
+  g.fillStyle = grad; g.fillRect(0, 0, W, H);
+  g.globalAlpha = 0.18;
+  g.fillStyle = '#000'; g.fillRect(0, H * 0.62, W, H * 0.3);
+  g.globalAlpha = 1;
+  if (stripe) {
+    g.fillStyle = 'rgba(255,255,255,.75)';
+    g.fillRect(0, H * 0.46, W, H * 0.1);
+  }
+  return mkTex(c, 1, 1);
+}
+
+// 轮胎
+function tireTex() {
+  const W = 64, H = 64;
+  const c = mkCanvas(W, H), g = c.getContext('2d');
+  g.fillStyle = '#15171b'; g.fillRect(0, 0, W, H);
+  for (let i = 0; i < 40; i++) {
+    g.fillStyle = 'rgba(255,255,255,.06)';
+    g.fillRect(0, i * 1.6, W, 0.8);
+  }
+  return mkTex(c, 1, 1);
+}
+
+// 树皮 / 树叶
+function barkTex() {
+  const c = mkCanvas(64, 64), g = c.getContext('2d');
+  g.fillStyle = '#4b3a28'; g.fillRect(0, 0, 64, 64);
+  for (let i = 0; i < 90; i++) {
+    g.fillStyle = 'rgba(0,0,0,' + (0.05 + Math.random() * 0.16) + ')';
+    g.fillRect(Math.random() * 64, Math.random() * 64, 2, 6 + Math.random() * 10);
+  }
+  return mkTex(c, 1, 2);
+}
+function leafTex(hex) {
+  const c = mkCanvas(64, 64), g = c.getContext('2d');
+  g.fillStyle = '#' + hex.toString(16).padStart(6, '0');
+  g.fillRect(0, 0, 64, 64);
+  for (let i = 0; i < 220; i++) {
+    const a = Math.random();
+    g.fillStyle = a > 0.5 ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.2)';
+    g.beginPath();
+    g.arc(Math.random() * 64, Math.random() * 64, 1 + Math.random() * 3, 0, 6.2832);
+    g.fill();
+  }
+  return mkTex(c, 1, 1);
+}
+
+// 人脸（低模用）
+function faceTex() {
+  const c = mkCanvas(64, 64), g = c.getContext('2d');
+  g.fillStyle = '#e8bd97'; g.fillRect(0, 0, 64, 64);
+  g.fillStyle = '#241a14';
+  g.fillRect(0, 0, 64, 16);
+  g.fillStyle = '#1b1b1f';
+  g.beginPath(); g.arc(22, 32, 3.4, 0, 6.2832); g.fill();
+  g.beginPath(); g.arc(42, 32, 3.4, 0, 6.2832); g.fill();
+  g.strokeStyle = '#8d5a45'; g.lineWidth = 2;
+  g.beginPath(); g.moveTo(26, 47); g.lineTo(38, 47); g.stroke();
+  return mkTex(c, 1, 1);
+}
+
+// 衣服
+function shirtTex(hex) {
+  const c = mkCanvas(64, 64), g = c.getContext('2d');
+  g.fillStyle = '#' + hex.toString(16).padStart(6, '0'); g.fillRect(0, 0, 64, 64);
+  for (let i = 0; i < 120; i++) {
+    g.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.09)';
+    g.fillRect(Math.random() * 64, Math.random() * 64, 3, 3);
+  }
+  g.strokeStyle = 'rgba(0,0,0,.25)'; g.lineWidth = 2;
+  g.beginPath(); g.moveTo(32, 0); g.lineTo(32, 64); g.stroke();
+  return mkTex(c, 1, 1);
+}
+
 // ====== 地面 / 人行道 / 车道线 ======
 const groundGeo = new THREE.PlaneGeometry(WORLD + 120, WORLD + 120);
-const groundMat = new THREE.MeshLambertMaterial({ color: 0x24272e });
+const groundMat = new THREE.MeshLambertMaterial({ map: asphaltTex() });
 const ground = new THREE.Mesh(groundGeo, groundMat);
 ground.rotation.x = -Math.PI / 2;
 ground.position.set(WORLD / 2, -0.02, WORLD / 2);
 scene.add(ground);
 
-// 街区块（人行道 + 地面色）
+// 人行道（每个街区一块，水泥贴图）
+const padMat = new THREE.MeshLambertMaterial({ map: sidewalkTex() });
 const padGeo = new THREE.BoxGeometry(BLOCK, 0.5, BLOCK);
-const padMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
 const padMesh = new THREE.InstancedMesh(padGeo, padMat, G * G);
 padMesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
 {
@@ -287,7 +489,7 @@ padMesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
       const d = DIST[districtAt(bx, by)];
       m.makeTranslation(bx * C + BLOCK / 2, 0.22, by * C + BLOCK / 2);
       padMesh.setMatrixAt(i, m);
-      padMesh.setColorAt(i, col.setHex(d.pad));
+      padMesh.setColorAt(i, col.setHex(d.pad).lerp(new THREE.Color(0xffffff), 0.35));
       i++;
     }
   }
@@ -296,25 +498,22 @@ padMesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
 }
 scene.add(padMesh);
 
-// 车道虚线（沿每条路中线，两向）
-const dashGeo = new THREE.PlaneGeometry(0.28, 5.2);
-const dashMat = new THREE.MeshBasicMaterial({ color: 0xcfd8e6, transparent: true, opacity: 0.16, depthWrite: false });
+// 车道虚线
 const DASH_STEP = 10;
-const dashes = new THREE.InstancedMesh(dashGeo, dashMat, (G + 1) * Math.floor(WORLD / DASH_STEP) * 2);
+const dashMat = new THREE.MeshBasicMaterial({ color: 0xd8e2f0, transparent: true, opacity: 0.22, depthWrite: false });
+const dashes = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.26, 5.2), dashMat,
+  (G + 1) * Math.floor(WORLD / DASH_STEP) * 2);
 {
   const m = new THREE.Matrix4();
-  const q = new THREE.Quaternion();
   let i = 0;
   const horiz = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0));
   const vert = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, Math.PI / 2));
   for (let k = 0; k <= G; k++) {
-    for (let s = 0; s < Math.floor(WORLD / DASH_STEP); s++) {
+    for (let s2 = 0; s2 < Math.floor(WORLD / DASH_STEP); s2++) {
       if (i + 2 > dashes.count) break;
-      // 横向路
-      m.compose(new THREE.Vector3(k * C, 0.06, s * 10 + 5), horiz, new THREE.Vector3(1, 1, 1));
+      m.compose(new THREE.Vector3(k * C, 0.06, s2 * DASH_STEP + 5), horiz, new THREE.Vector3(1, 1, 1));
       dashes.setMatrixAt(i++, m);
-      // 纵向路
-      m.compose(new THREE.Vector3(s * 10 + 5, 0.06, k * C), vert, new THREE.Vector3(1, 1, 1));
+      m.compose(new THREE.Vector3(s2 * DASH_STEP + 5, 0.06, k * C), vert, new THREE.Vector3(1, 1, 1));
       dashes.setMatrixAt(i++, m);
     }
   }
@@ -323,78 +522,183 @@ const dashes = new THREE.InstancedMesh(dashGeo, dashMat, (G + 1) * Math.floor(WO
 }
 scene.add(dashes);
 
-// ====== 建筑（实例化）======
-const buildings = [];           // {x,z,w,d,h,cell}
-const buildingGeo = new THREE.BoxGeometry(1, 1, 1);
-const buildingMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
-const MAXB = 2600;
-const bMesh = new THREE.InstancedMesh(buildingGeo, buildingMat, MAXB);
-bMesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
-const roofGeo = new THREE.BoxGeometry(1, 1, 1);
-const roofMesh = new THREE.InstancedMesh(roofGeo, new THREE.MeshLambertMaterial({ color: 0xffffff }), MAXB);
-roofMesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
-
+// 斑马线（每个路口四边）
+const zebraMat = new THREE.MeshBasicMaterial({ color: 0xe6edf7, transparent: true, opacity: 0.5, depthWrite: false });
+const zebra = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.55, 4.4), zebraMat, (G + 1) * (G + 1) * 4 * 3);
 {
   const m = new THREE.Matrix4();
-  const col = new THREE.Color();
-  let bi = 0, ri = 0;
+  const flat = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0));
+  let i = 0;
+  for (let ix = 0; ix <= G; ix++) {
+    for (let iz = 0; iz <= G; iz++) {
+      for (let k = 0; k < 3; k++) {
+        const off = 3.6 + k * 1.1;
+        if (i + 4 <= zebra.count) {
+          m.compose(new THREE.Vector3(ix * C + off, 0.05, iz * C - BLOCK * 0.3), flat, new THREE.Vector3(1, 1, 1));
+          zebra.setMatrixAt(i++, m);
+          m.compose(new THREE.Vector3(ix * C + off, 0.05, iz * C + BLOCK * 0.3), flat, new THREE.Vector3(1, 1, 1));
+          zebra.setMatrixAt(i++, m);
+          m.compose(new THREE.Vector3(ix * C - BLOCK * 0.3, 0.05, iz * C + off), flat, new THREE.Vector3(1, 1, 1));
+          zebra.setMatrixAt(i++, m);
+          m.compose(new THREE.Vector3(ix * C + BLOCK * 0.3, 0.05, iz * C + off), flat, new THREE.Vector3(1, 1, 1));
+          zebra.setMatrixAt(i++, m);
+        }
+      }
+    }
+  }
+  zebra.count = i;
+  zebra.instanceMatrix.needsUpdate = true;
+}
+scene.add(zebra);
+
+// ====== 建筑（按外立面贴图分组实例化）======
+const buildings = [];
+const bld = [];
+const ARCH_BY_DIST = {
+  downtown: ['office', 'glass'],
+  commercial: ['glass', 'office'],
+  residential: ['brick', 'pale'],
+  hood: ['brick'],
+  port: ['industrial'],
+  industry: ['industrial'],
+  airport: ['concrete'],
+  beach: ['pale'],
+  hills: ['brick'],
+  park: ['pale'],
+};
+function rowsFor(h) { return h < 12 ? 3 : h < 30 ? 5 : h < 60 ? 8 : 10; }
+
+{
   for (let bx = 0; bx < G; bx++) {
     for (let by = 0; by < G; by++) {
       const dk = districtAt(bx, by);
       const D = DIST[dk];
-      const isLandmarkBlock = LANDMARKS.some(l => l.bx === bx && l.by === by) || POIS.some(p => p.bx === bx && p.by === by);
+      const lm = [...LANDMARKS, ...POIS].find((l) => l.bx === bx && l.by === by);
       const x0 = bx * C + ROAD / 2 + 1.4, z0 = by * C + ROAD / 2 + 1.4;
       const area = BLOCK - 2.8;
-      const count = dk === 'downtown' ? 3 : dk === 'park' ? 1 : (rand() < 0.55 ? 2 : 1);
+      const count = lm ? 1 : dk === 'downtown' ? 3 : dk === 'park' ? 1 : (rand() < 0.55 ? 2 : 1);
       for (let k = 0; k < count; k++) {
-        const w = rnd(area * 0.36, area * 0.62) * (count === 1 ? 1.25 : 1);
-        const dd = rnd(area * 0.36, area * 0.62) * (count === 1 ? 1.25 : 1);
-        const px = x0 + rnd(w / 2, Math.max(w / 2 + 0.1, area - w / 2));
-        const pz = z0 + rnd(dd / 2, Math.max(dd / 2 + 0.1, area - dd / 2));
-        const h = rnd(D.h[0], D.h[1]) * (dk === 'downtown' && rand() < 0.25 ? 1.35 : 1);
-        if (bi >= MAXB) break;
-        m.compose(new THREE.Vector3(px, h / 2 + 0.4, pz), new THREE.Quaternion(), new THREE.Vector3(w, h, dd));
-        bMesh.setMatrixAt(bi, m);
-        col.setHex(D.wall[(rand() * D.wall.length) | 0]);
-        bMesh.setColorAt(bi, col);
-        buildings.push({ x: px, z: pz, hw: w / 2, hd: dd / 2, h: h, cell: bx * G + by });
-        bi++;
-        // 屋顶设备箱
-        if (rand() < 0.6 && ri < MAXB) {
-          const rw = w * rnd(0.18, 0.34), rd = dd * rnd(0.18, 0.34), rh = rnd(0.6, 2.2);
-          m.compose(new THREE.Vector3(px + rnd(-w / 4, w / 4), h + rh / 2 + 0.4, pz + rnd(-dd / 4, dd / 4)),
-            new THREE.Quaternion(), new THREE.Vector3(rw, rh, rd));
-          roofMesh.setMatrixAt(ri, m);
-          roofMesh.setColorAt(ri, col.setHex(0x2c3038));
-          ri++;
+        let w, dd, px, pz, h;
+        if (lm) {
+          w = area * 0.78; dd = area * 0.78; px = lm.x; pz = lm.z; h = 16;
+        } else {
+          w = rnd(area * 0.36, area * 0.6) * (count === 1 ? 1.3 : 1);
+          dd = rnd(area * 0.36, area * 0.6) * (count === 1 ? 1.3 : 1);
+          px = x0 + rnd(w / 2, Math.max(w / 2 + 0.1, area - w / 2));
+          pz = z0 + rnd(dd / 2, Math.max(dd / 2 + 0.1, area - dd / 2));
+          h = rnd(D.h[0], D.h[1]) * (dk === 'downtown' && rand() < 0.25 ? 1.35 : 1);
         }
-      }
-      if (isLandmarkBlock) {
-        // 地标占位：一块醒目的矮楼，稍后加标签
-        const lm = [...LANDMARKS, ...POIS].find(l => l.bx === bx && l.by === by);
-        m.compose(new THREE.Vector3(lm.x, 7, lm.z), new THREE.Quaternion(), new THREE.Vector3(area * 0.72, 14, area * 0.72));
-        bMesh.setMatrixAt(bi, m);
-        bMesh.setColorAt(bi, col.setHex(lm.color).multiplyScalar(0.72));
-        buildings.push({ x: lm.x, z: lm.z, hw: area * 0.36, hd: area * 0.36, h: 14, cell: bx * G + by });
-        bi++;
+        const pool = ARCH_BY_DIST[dk] || ['concrete'];
+        const arch = lm ? 'concrete' : pool[(rand() * pool.length) | 0];
+        bld.push({ x: px, z: pz, w: w, d: dd, h: h, arch: arch, lm: lm || null });
+        buildings.push({ x: px, z: pz, hw: w / 2, hd: dd / 2, h: h, cell: bx * G + by });
       }
     }
   }
-  bMesh.count = bi;
-  bMesh.instanceMatrix.needsUpdate = true;
-  bMesh.instanceColor.needsUpdate = true;
+}
+
+// 按 材质 + 窗行数 分组实例化（每栋楼窗格密度合适，不会拉成一片）
+{
+  const groups = new Map();
+  for (const b of bld) {
+    const rows = b.lm ? 8 : rowsFor(b.h);
+    const key = b.arch + '_' + rows;
+    let g = groups.get(key);
+    if (!g) { g = { arch: b.arch, rows: rows, items: [] }; groups.set(key, g); }
+    g.items.push(b);
+  }
+  const geo = new THREE.BoxGeometry(1, 1, 1);
+  const m4 = new THREE.Matrix4();
+  const col = new THREE.Color();
+  for (const g of groups.values()) {
+    const inst = new THREE.InstancedMesh(geo, archMaterial(g.arch, g.rows), g.items.length);
+    inst.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+    g.items.forEach((b, i) => {
+      m4.compose(new THREE.Vector3(b.x, b.h / 2 + 0.4, b.z), new THREE.Quaternion(),
+        new THREE.Vector3(b.w, b.h, b.d));
+      inst.setMatrixAt(i, m4);
+      if (b.lm) inst.setColorAt(i, col.setHex(b.lm.color).lerp(new THREE.Color(0xffffff), 0.25));
+      else inst.setColorAt(i, col.setScalar(0.86 + rand() * 0.22));
+    });
+    inst.instanceMatrix.needsUpdate = true;
+    if (inst.instanceColor) inst.instanceColor.needsUpdate = true;
+    inst.frustumCulled = false;
+    scene.add(inst);
+  }
+}
+
+// 屋顶设备箱（有贴图的小箱子，让天际线不那么秃）
+{
+  const roofTexC = mkCanvas(64, 64), rg = roofTexC.getContext('2d');
+  rg.fillStyle = '#4d525a'; rg.fillRect(0, 0, 64, 64);
+  for (let i = 0; i < 26; i++) {
+    rg.fillStyle = 'rgba(255,255,255,.06)';
+    rg.fillRect(0, i * 2.6, 64, 1);
+  }
+  const roofMat = new THREE.MeshLambertMaterial({ map: mkTex(roofTexC, 1, 1) });
+  const roofMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), roofMat, 900);
+  const m4 = new THREE.Matrix4();
+  const col = new THREE.Color();
+  let ri = 0;
+  for (const b of bld) {
+    if (ri >= 900) break;
+    if (rand() > 0.62) continue;
+    const rw = b.w * rnd(0.18, 0.34), rd = b.d * rnd(0.18, 0.34), rh = rnd(0.7, 2.4);
+    m4.compose(new THREE.Vector3(b.x + rnd(-b.w / 5, b.w / 5), b.h + rh / 2 + 0.4, b.z + rnd(-b.d / 5, b.d / 5)),
+      new THREE.Quaternion(), new THREE.Vector3(rw, rh, rd));
+    roofMesh.setMatrixAt(ri, m4);
+    roofMesh.setColorAt(ri, col.setScalar(0.7 + rand() * 0.35));
+    ri++;
+  }
   roofMesh.count = ri;
   roofMesh.instanceMatrix.needsUpdate = true;
-  roofMesh.instanceColor.needsUpdate = true;
+  if (roofMesh.instanceColor) roofMesh.instanceColor.needsUpdate = true;
+  scene.add(roofMesh);
 }
-scene.add(bMesh, roofMesh);
 
-// ====== 树 / 棕榈（实例化）======
-const treeCount = 240;
-const trunkMesh = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.28, 0.36, 4, 6),
-  new THREE.MeshLambertMaterial({ color: 0x5d4a33 }), treeCount);
-const leafMesh = new THREE.InstancedMesh(new THREE.ConeGeometry(2.4, 5.2, 7),
-  new THREE.MeshLambertMaterial({ color: 0x2f6a41 }), treeCount);
+// ====== 路灯 / 霓虹（有建模有贴图）======
+{
+  const spots = [];
+  for (let ix = 0; ix <= G; ix += 2) {
+    for (let iz = 0; iz <= G; iz += 2) {
+      if (rand() < 0.55) spots.push([ix * C + 3.6, iz * C + 3.6, 1]);
+      if (rand() < 0.45) spots.push([ix * C - 3.6, iz * C - 3.6, -1]);
+    }
+  }
+  const poleMat = new THREE.MeshLambertMaterial({ color: 0x2a2f36 });
+  const pole = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.11, 0.15, 7.2, 6), poleMat, spots.length);
+  const arm = new THREE.InstancedMesh(new THREE.BoxGeometry(1.7, 0.12, 0.12), poleMat, spots.length);
+  const lampMat = new THREE.MeshBasicMaterial({ color: 0xffe2a6 });
+  const lamp = new THREE.InstancedMesh(new THREE.BoxGeometry(0.62, 0.16, 0.3), lampMat, spots.length);
+  const m = new THREE.Matrix4();
+  const q = new THREE.Quaternion();
+  const qz = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2);
+  spots.forEach(([x, z, dir], i) => {
+    q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), dir > 0 ? 0 : Math.PI);
+    m.compose(new THREE.Vector3(x, 3.6, z), q, new THREE.Vector3(1, 1, 1));
+    pole.setMatrixAt(i, m);
+    m.compose(new THREE.Vector3(x + 0.86 * dir, 7.1, z), q, new THREE.Vector3(1, 1, 1));
+    arm.setMatrixAt(i, m);
+    m.compose(new THREE.Vector3(x + 1.6 * dir, 7.02, z), q, new THREE.Vector3(1, 1, 1));
+    lamp.setMatrixAt(i, m);
+    // 地面光斑（贴图感）
+    m.compose(new THREE.Vector3(x + 1.6 * dir, 0.09, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0)), new THREE.Vector3(1, 1, 1));
+  });
+  pole.count = arm.count = lamp.count = spots.length;
+  pole.instanceMatrix.needsUpdate = true;
+  arm.instanceMatrix.needsUpdate = true;
+  lamp.instanceMatrix.needsUpdate = true;
+  scene.add(pole, arm, lamp);
+}
+
+// ====== 树 / 棕榈 ======
+const TREE_MAX = 320;
+const trunkMesh = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.26, 0.36, 4, 7),
+  new THREE.MeshLambertMaterial({ map: barkTex() }), TREE_MAX);
+const leafMat1 = new THREE.MeshLambertMaterial({ map: leafTex(0x2f6a41) });
+const leafMat2 = new THREE.MeshLambertMaterial({ map: leafTex(0x3f7a4f) });
+const leafMesh = new THREE.InstancedMesh(new THREE.ConeGeometry(2.5, 4.6, 8), leafMat1, TREE_MAX);
+const leafMesh2 = new THREE.InstancedMesh(new THREE.ConeGeometry(1.9, 3.4, 8), leafMat2, TREE_MAX);
 {
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();
@@ -403,25 +707,29 @@ const leafMesh = new THREE.InstancedMesh(new THREE.ConeGeometry(2.4, 5.2, 7),
   for (let bx = 0; bx < G; bx++) for (let by = 0; by < G; by++) {
     const dk = districtAt(bx, by);
     if (dk !== 'beach' && dk !== 'hills' && dk !== 'residential' && dk !== 'park') continue;
-    if (rand() > 0.55) continue;
+    if (rand() > 0.6) continue;
     spots.push([bx, by, dk]);
   }
   for (const [bx, by, dk] of spots) {
-    if (i >= treeCount) break;
-    const x = bx * C + rnd(ROAD / 2 + 2, C - ROAD / 2 - 2);
-    const z = by * C + rnd(ROAD / 2 + 2, C - ROAD / 2 - 2);
-    const s = dk === 'beach' ? rnd(0.9, 1.3) : rnd(0.7, 1.15);
-    m.compose(new THREE.Vector3(x, 2.6 * s, z), q, new THREE.Vector3(s, s, s));
+    if (i >= TREE_MAX) break;
+    const x = bx * C + rnd(ROAD / 2 + 2.2, C - ROAD / 2 - 2.2);
+    const z = by * C + rnd(ROAD / 2 + 2.2, C - ROAD / 2 - 2.2);
+    const sc = dk === 'beach' ? rnd(0.95, 1.35) : rnd(0.7, 1.2);
+    q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.random() * 6.28);
+    m.compose(new THREE.Vector3(x, 2.4 * sc, z), q, new THREE.Vector3(sc, sc, sc));
     trunkMesh.setMatrixAt(i, m);
-    m.compose(new THREE.Vector3(x, 5.6 * s, z), q, new THREE.Vector3(s, s, s));
+    m.compose(new THREE.Vector3(x, 4.6 * sc, z), q, new THREE.Vector3(sc, sc, sc));
     leafMesh.setMatrixAt(i, m);
+    m.compose(new THREE.Vector3(x, 6.6 * sc, z), q, new THREE.Vector3(sc * 0.75, sc * 0.75, sc * 0.75));
+    leafMesh2.setMatrixAt(i, m);
     i++;
   }
-  trunkMesh.count = i; leafMesh.count = i;
+  trunkMesh.count = i; leafMesh.count = i; leafMesh2.count = i;
   trunkMesh.instanceMatrix.needsUpdate = true;
   leafMesh.instanceMatrix.needsUpdate = true;
+  leafMesh2.instanceMatrix.needsUpdate = true;
 }
-scene.add(trunkMesh, leafMesh);
+scene.add(trunkMesh, leafMesh, leafMesh2);
 
 // ====== 建筑碰撞查询 ======
 const cellMap = new Map();
@@ -468,58 +776,115 @@ for (const L of [...LANDMARKS, ...POIS]) {
   labelSprites.push(sp);
 }
 
-// ====== 玩家 / 车 ======
+// ====== 玩家 / 车（分件模型 + 贴图）======
 const carGroup = new THREE.Group();
 {
-  const bodyMat = new THREE.MeshLambertMaterial({ color: 0xff2e88 });
-  const glassMat = new THREE.MeshLambertMaterial({ color: 0x22303f });
-  const wheelMat = new THREE.MeshLambertMaterial({ color: 0x14171c });
-  const body = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.85, 4.5), bodyMat);
-  body.position.y = 0.95;
-  const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.7, 2.1), glassMat);
-  cabin.position.set(0, 1.65, -0.15);
-  const hood = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.22, 1.5), bodyMat);
-  hood.position.set(0, 1.28, 1.5);
-  carGroup.add(body, cabin, hood);
-  const wheelGeo = new THREE.CylinderGeometry(0.48, 0.48, 0.42, 12);
-  for (const [wx, wz] of [[-1.02, 1.45], [1.02, 1.45], [-1.02, -1.45], [1.02, -1.45]]) {
-    const w = new THREE.Mesh(wheelGeo, wheelMat);
+  const paint = new THREE.MeshLambertMaterial({ map: paintTex(0xff2e88, true) });
+  const paintDark = new THREE.MeshLambertMaterial({ map: paintTex(0xc01f6a, false) });
+  const glass = new THREE.MeshLambertMaterial({ color: 0x1a2633, transparent: true, opacity: 0.9 });
+  const trim = new THREE.MeshLambertMaterial({ color: 0x14171c });
+  const tyre = new THREE.MeshLambertMaterial({ map: tireTex() });
+
+  // 底盘 + 车身
+  const chassis = new THREE.Mesh(new THREE.BoxGeometry(2.05, 0.42, 4.5), trim);
+  chassis.position.y = 0.55;
+  const body = new THREE.Mesh(new THREE.BoxGeometry(2.02, 0.62, 4.42), paint);
+  body.position.y = 0.98;
+  const skirt = new THREE.Mesh(new THREE.BoxGeometry(2.08, 0.22, 4.2), paintDark);
+  skirt.position.y = 0.72;
+  // 机盖 / 尾箱 / 车顶
+  const hood = new THREE.Mesh(new THREE.BoxGeometry(1.94, 0.18, 1.5), paint);
+  hood.position.set(0, 1.3, 1.42);
+  const trunk = new THREE.Mesh(new THREE.BoxGeometry(1.94, 0.18, 1.15), paint);
+  trunk.position.set(0, 1.3, -1.62);
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(1.72, 0.16, 1.9), paintDark);
+  roof.position.set(0, 1.86, -0.18);
+  // 车厢玻璃
+  const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.78, 0.62, 2.0), glass);
+  cabin.position.set(0, 1.55, -0.18);
+  const windshield = new THREE.Mesh(new THREE.BoxGeometry(1.76, 0.56, 0.14), glass);
+  windshield.position.set(0, 1.5, 0.86);
+  windshield.rotation.x = -0.42;
+  carGroup.add(chassis, body, skirt, hood, trunk, roof, cabin, windshield);
+
+  // 轮子（胎 + 轮毂）
+  const wheelGeo = new THREE.CylinderGeometry(0.54, 0.54, 0.4, 14);
+  const hubGeo = new THREE.CylinderGeometry(0.26, 0.26, 0.42, 10);
+  const hubMat = new THREE.MeshLambertMaterial({ color: 0x8d95a3 });
+  for (const [wx, wz] of [[-1.06, 1.42], [1.06, 1.42], [-1.06, -1.42], [1.06, -1.42]]) {
+    const w = new THREE.Mesh(wheelGeo, tyre);
     w.rotation.z = Math.PI / 2;
-    w.position.set(wx, 0.48, wz);
-    carGroup.add(w);
+    w.position.set(wx, 0.54, wz);
+    const hub = new THREE.Mesh(hubGeo, hubMat);
+    hub.rotation.z = Math.PI / 2;
+    hub.position.set(wx, 0.54, wz);
+    carGroup.add(w, hub);
   }
-  const lightMat = new THREE.MeshBasicMaterial({ color: 0xfff3c4 });
-  const hl = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.18, 0.12), lightMat);
-  hl.position.set(0, 1.05, 2.28);
-  carGroup.add(hl);
-  const tail = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.16, 0.12), new THREE.MeshBasicMaterial({ color: 0xff4444 }));
-  tail.position.set(0, 1.05, -2.28);
-  carGroup.add(tail);
+  // 灯
+  const hlMat = new THREE.MeshBasicMaterial({ color: 0xfff4cf });
+  for (const hx of [-0.62, 0.62]) {
+    const hl = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.16, 0.1), hlMat);
+    hl.position.set(hx, 1.12, 2.24);
+    carGroup.add(hl);
+    const tl = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.14, 0.1), new THREE.MeshBasicMaterial({ color: 0xff3b3b }));
+    tl.position.set(hx, 1.12, -2.24);
+    carGroup.add(tl);
+  }
+  // 保险杠
+  const bump = new THREE.Mesh(new THREE.BoxGeometry(1.95, 0.22, 0.16), trim);
+  bump.position.set(0, 0.66, 2.3);
+  const bump2 = bump.clone();
+  bump2.position.z = -2.3;
+  carGroup.add(bump, bump2);
 }
 scene.add(carGroup);
 
+// 主角（有脸、有衣服贴图的分件人体）
 const foot = new THREE.Group();
 {
-  const skin = new THREE.MeshLambertMaterial({ color: 0xf0c9a8 });
-  const shirt = new THREE.MeshLambertMaterial({ color: 0xff2e88 });
-  const pants = new THREE.MeshLambertMaterial({ color: 0x2b3340 });
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.0, 0.5), shirt);
-  torso.position.y = 1.35;
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.34, 12, 10), skin);
-  head.position.y = 2.05;
-  const legs = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.85, 0.45), pants);
-  legs.position.y = 0.62;
-  foot.add(torso, head, legs);
+  const shirtMat = new THREE.MeshLambertMaterial({ map: shirtTex(0xff2e88) });
+  const pantsMat = new THREE.MeshLambertMaterial({ map: shirtTex(0x2b3340) });
+  const skinMat = new THREE.MeshLambertMaterial({ color: 0xe8bd97 });
+  const faceMat = new THREE.MeshLambertMaterial({ map: faceTex() });
+  const shoeMat = new THREE.MeshLambertMaterial({ color: 0x15181d });
+
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.95, 0.44), shirtMat);
+  torso.position.y = 1.42;
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.16, 8), skinMat);
+  neck.position.y = 1.95;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 14, 12), skinMat);
+  head.position.y = 2.16;
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(0.44, 0.44), faceMat);
+  face.position.set(0, 2.17, 0.26);
+  const armL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.78, 0.22), shirtMat);
+  armL.position.set(-0.5, 1.42, 0);
+  const armR = armL.clone(); armR.position.x = 0.5;
+  const handL = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.16, 0.2), skinMat);
+  handL.position.set(-0.5, 1.02, 0);
+  const handR = handL.clone(); handR.position.x = 0.5;
+  const legL = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.9, 0.3), pantsMat);
+  legL.position.set(-0.19, 0.5, 0);
+  const legR = legL.clone(); legR.position.x = 0.19;
+  const shoeL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.14, 0.44), shoeMat);
+  shoeL.position.set(-0.19, 0.07, 0.06);
+  const shoeR = shoeL.clone(); shoeR.position.x = 0.19;
+  foot.add(torso, neck, head, face, armL, armR, handL, handR, legL, legR, shoeL, shoeR);
   foot.visible = false;
 }
 scene.add(foot);
 
 // ====== 交通车 / 警车 / 行人 ======
 const CAR_N = 34;
-const trafficBody = new THREE.InstancedMesh(new THREE.BoxGeometry(2, 0.9, 4.3),
-  new THREE.MeshLambertMaterial({ color: 0xffffff }), CAR_N);
-const trafficTop = new THREE.InstancedMesh(new THREE.BoxGeometry(1.7, 0.65, 1.9),
-  new THREE.MeshLambertMaterial({ color: 0x1b2430 }), CAR_N);
+const trafficBody = new THREE.InstancedMesh(new THREE.BoxGeometry(2.02, 0.72, 4.36),
+  new THREE.MeshLambertMaterial({ map: paintTex(0xffffff, false) }), CAR_N + 8);
+const trafficTop = new THREE.InstancedMesh(new THREE.BoxGeometry(1.66, 0.6, 1.86),
+  new THREE.MeshLambertMaterial({ color: 0x1a2431, transparent: true, opacity: 0.92 }), CAR_N + 8);
+const trafficWheel = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.36, 0.36, 1.9, 10),
+  new THREE.MeshLambertMaterial({ map: tireTex() }), CAR_N + 8);
+for (const m of [trafficBody, trafficTop, trafficWheel]) {
+  m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  m.frustumCulled = false;
+}
 trafficBody.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
 trafficTop.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
 {
@@ -528,19 +893,57 @@ trafficTop.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   for (let i = 0; i < CAR_N; i++) trafficBody.setColorAt(i, col.setHex(palette[(Math.random() * palette.length) | 0]));
   trafficBody.instanceColor.needsUpdate = true;
 }
-scene.add(trafficBody, trafficTop);
+scene.add(trafficBody, trafficTop, trafficWheel);
 
-const PED_N = 70;
-const pedMesh = new THREE.InstancedMesh(new THREE.CapsuleGeometry(0.32, 1.0, 4, 8),
-  new THREE.MeshLambertMaterial({ color: 0xffffff }), PED_N);
-pedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+const PED_N = 90;
+const PED_MAX = PED_N + 40;   // 留位置给任务里的敌人
+const pedBody = new THREE.InstancedMesh(
+  new THREE.BoxGeometry(0.66, 0.86, 0.4),
+  new THREE.MeshLambertMaterial({ map: shirtTex(0xffffff) }), PED_MAX);
+const pedHead = new THREE.InstancedMesh(
+  new THREE.SphereGeometry(0.25, 12, 10),
+  new THREE.MeshLambertMaterial({ map: faceTex() }), PED_MAX);
+const pedLegs = new THREE.InstancedMesh(
+  new THREE.BoxGeometry(0.56, 0.8, 0.34),
+  new THREE.MeshLambertMaterial({ map: shirtTex(0x33384a) }), PED_MAX);
+for (const m of [pedBody, pedHead, pedLegs]) {
+  m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  m.frustumCulled = false;
+}
 {
   const col = new THREE.Color();
-  const palette = [0xd8dde6, 0xcf9a6a, 0x8f9fb5, 0xb58fc0, 0x9ab58f, 0xd0b38f];
-  for (let i = 0; i < PED_N; i++) pedMesh.setColorAt(i, col.setHex(palette[(Math.random() * palette.length) | 0]));
-  pedMesh.instanceColor.needsUpdate = true;
+  const palette = [0xd8dde6, 0xcf9a6a, 0x8f9fb5, 0xb58fc0, 0x9ab58f, 0xd0b38f, 0x6f8fc0, 0xc07f7f];
+  for (let i = 0; i < PED_MAX; i++) pedBody.setColorAt(i, col.setHex(palette[i % palette.length]));
+  pedBody.instanceColor.needsUpdate = true;
 }
-scene.add(pedMesh);
+const _pm = new THREE.Matrix4();
+const _pq = new THREE.Quaternion();
+const _pe = new THREE.Euler();
+const _pv = new THREE.Vector3();
+const _p1 = new THREE.Vector3(1, 1, 1);
+function setPed(i, x, z, h, dead) {
+  if (dead) {
+    _pe.set(-Math.PI / 2, 0, h);
+    _pv.set(x, 0.35, z);
+    _pq.setFromEuler(_pe);
+    _pm.compose(_pv, _pq, _p1);
+    pedBody.setMatrixAt(i, _pm);
+    pedHead.setMatrixAt(i, _pm);
+    _pe.set(-Math.PI / 2, 0, h);
+    _pq.setFromEuler(_pe);
+    _pm.compose(new THREE.Vector3(x, 0.3, z), _pq, _p1);
+    pedLegs.setMatrixAt(i, _pm);
+    return;
+  }
+  _pq.setFromAxisAngle(new THREE.Vector3(0, 1, 0), h);
+  _pm.compose(new THREE.Vector3(x, 1.34, z), _pq, _p1);
+  pedBody.setMatrixAt(i, _pm);
+  _pm.compose(new THREE.Vector3(x, 1.98, z), _pq, _p1);
+  pedHead.setMatrixAt(i, _pm);
+  _pm.compose(new THREE.Vector3(x, 0.52, z), _pq, _p1);
+  pedLegs.setMatrixAt(i, _pm);
+}
+scene.add(pedBody, pedHead, pedLegs);
 
 const traffic = [];
 for (let i = 0; i < CAR_N; i++) {
@@ -572,23 +975,28 @@ for (let i = 0; i < PED_N; i++) {
 
 // 警车（最多 6 辆）
 let copCars = [];
-const copBody = new THREE.InstancedMesh(new THREE.BoxGeometry(2.1, 0.95, 4.4),
-  new THREE.MeshLambertMaterial({ color: 0x1b2a4a }), 8);
-const copTop = new THREE.InstancedMesh(new THREE.BoxGeometry(1.8, 0.6, 1.8),
-  new THREE.MeshLambertMaterial({ color: 0xdfe8f6 }), 8);
+const copBody = new THREE.InstancedMesh(new THREE.BoxGeometry(2.06, 0.74, 4.42),
+  new THREE.MeshLambertMaterial({ map: paintTex(0x1b2a4a, true) }), 8);
+const copTop = new THREE.InstancedMesh(new THREE.BoxGeometry(1.7, 0.58, 1.86),
+  new THREE.MeshLambertMaterial({ color: 0x1a2431, transparent: true, opacity: 0.92 }), 8);
 const copLight = new THREE.InstancedMesh(new THREE.BoxGeometry(1.6, 0.2, 0.5),
   new THREE.MeshBasicMaterial({ color: 0xff2b2b }), 8);
+const copWheel = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.4, 0.4, 1.96, 10),
+  new THREE.MeshLambertMaterial({ map: tireTex() }), 8);
+const copSign = new THREE.InstancedMesh(new THREE.BoxGeometry(1.2, 0.5, 0.36),
+  new THREE.MeshLambertMaterial({ color: 0xe8eef7 }), 8);
+for (const m of [copWheel, copSign]) m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
 copBody.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
 copTop.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
 copLight.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-scene.add(copBody, copTop, copLight);
+scene.add(copBody, copTop, copLight, copWheel, copSign);
 
 // ====== 状态 ======
 const game = {
   running: false, over: false, paused: false,
   money: 0, wanted: 0, time: 0, crimeAt: -99, quiet: 0,
   kills: 0, shake: 0, dlgOn: false, dlgQueue: [], dlgDone: null,
-  chapter: 1, missions: [], surviveT: 0, chapterDone: false,
+  chapter: 1, missions: [], surviveT: 0, chapterDone: false, missionT: 0, missionKills: 0, failReason: '',
   hp: 100, inCar: false, speed: 0, camYaw: 0, camPitch: 0,
   bullets: [], parts: [],
 };
@@ -657,53 +1065,81 @@ const CHARCOLOR = { '老麦': '#ffd84d', '你': '#ff2e88', '阿丽': '#7fd1ff', 
 const STORY = [
   {
     id: 'c1', title: '出狱', lines: [
-      ['老麦', '出来了？街边那辆车归你了，直接开走。'],
+      ['老麦', '出来了？街边那辆车归你了，走过去按 E 开走。'],
       ['你', '就这样？没人拦？'],
       ['老麦', '有人拦就踩油门。'],
     ],
-    goal: { type: 'steal', text: '抢一辆车（按 E 上车）' },
-    done: [['老麦', '行，先开到市中心的证券交易所。']], reward: 300,
+    goal: { type: 'steal', text: '走到车边按 E 上车' },
+    done: [['老麦', '行。现在把车开到市中心的证券交易所。']], reward: 300,
   },
   {
     id: 'c2', title: '送货', lines: [
       ['老麦', '证券交易所有个箱子，送到门口。别问里面是什么。'],
       ['你', '不问。'],
+      ['老麦', '限时两分钟，超时那箱子就不值钱了。'],
     ],
-    goal: { type: 'goto', x: LANDMARKS[0].x, z: LANDMARKS[0].z, text: '开到 🏦 证券交易所门口' },
-    done: [['老麦', '箱子有人接了。现在去惹点事，让他们知道这条街换人了。']], reward: 2500,
+    goal: { type: 'goto', x: LANDMARKS[0].x, z: LANDMARKS[0].z, limit: 120, text: '开 🏦 证券交易所门口' },
+    done: [['老麦', '箱子有人接了。现在去银行，把他们的现金搬出来。']], reward: 2500,
   },
   {
-    id: 'c3', title: '立威', lines: [
-      ['老麦', '把通缉顶到 2 星，撑住 30 秒，警车会追你。'],
-      ['你', '这算哪门子立威？'],
-      ['老麦', '能甩掉警车的人，才配谈生意。'],
+    id: 'c3', title: '抢银行', lines: [
+      ['老麦', '联邦银行后门开着，进去拿钱，出来会有警车。'],
+      ['你', '你这计划只有两句？'],
+      ['老麦', '计划越长越容易出错。'],
     ],
-    goal: { type: 'survive', stars: 2, sec: 30, text: '通缉 2 星，撑住 30 秒' },
-    done: [['老麦', '不错。这座城市开始记住你的名字了。'], ['老麦', '下一站，贫民区的地下钱庄。']], reward: 12000,
+    goal: { type: 'goto', x: POIS[2].x, z: POIS[2].z, limit: 150, text: '开 🏛 联邦银行后门（会惊动警察）' },
+    done: [['老麦', '拿到就行。现在把警车甩掉，别停。']], reward: 9000, wanted: 2,
   },
   {
-    id: 'c4', title: '跑腿钱庄', lines: [
+    id: 'c4', title: '甩警车', lines: [
+      ['老麦', '两星通缉，撑住 40 秒别被抓，让我把账转走。'],
+      ['你', '你就不能自己转？'],
+      ['老麦', '我在数钱。'],
+    ],
+    goal: { type: 'survive', stars: 2, sec: 40, text: '通缉 2 星，撑住 40 秒' },
+    done: [['老麦', '账清了。去贫民区的地下钱庄，把美元换成现金。']], reward: 6000,
+  },
+  {
+    id: 'c5', title: '钱庄', lines: [
       ['老陈', '老麦介绍来的？美元最近涨得凶。'],
       ['你', '我只是来送个信封。'],
-      ['老陈', '送信封的人，最后都成了客户。'],
+      ['老陈', '布兰登的人一直在找我，你得替我把门口清干净。'],
     ],
-    goal: { type: 'goto', x: LANDMARKS[1].x, z: LANDMARKS[1].z, text: '开到 💱 地下钱庄门口' },
-    done: [['老陈', '回去告诉老麦，账我记下了。']], reward: 3000,
+    goal: { type: 'goto', x: LANDMARKS[1].x, z: LANDMARKS[1].z, limit: 120, text: '开 💱 地下钱庄门口' },
+    done: [['老陈', '门口那几个打手，替我清掉。']], reward: 3000,
   },
   {
-    id: 'c5', title: '决战', lines: [
-      ['老麦', '布兰登的人今晚会来找你。把通缉顶到 4 星，撑住 45 秒。'],
-      ['你', '为什么每次都要我当诱饵？'],
-      ['老麦', '因为你开车最快。'],
+    id: 'c6', title: '清场', lines: [
+      ['老陈', '四个打手，都带了枪。按 J 或左键开枪。'],
+      ['你', '你躲好。'],
     ],
-    goal: { type: 'survive', stars: 4, sec: 45, text: '通缉 4 星，撑住 45 秒（按 J 或左键还击）' },
+    goal: { type: 'kill', n: 4, text: '清掉 4 个打手（按 J / 左键开枪）' },
+    done: [['老陈', '干净。港口那边还有一批，布兰登亲自盯着。']], reward: 8000,
+  },
+  {
+    id: 'c7', title: '港口', lines: [
+      ['老麦', '港口仓库有六个，布兰登的人。这次不用留手。'],
+      ['你', '这次有报酬吗？'],
+      ['老麦', '港口那批货的三成。'],
+    ],
+    goal: { type: 'kill', n: 6, text: '清掉港口 6 个人' },
+    done: [['老麦', '布兰登要亲自来见你。别开车，等他。']], reward: 16000,
+  },
+  {
+    id: 'c8', title: '最后一单', lines: [
+      ['布兰登', '你替老麦干了这么多，他给你多少？'],
+      ['你', '够我离开这座城。'],
+      ['布兰登', '那就看你能不能活着开出五条街。'],
+    ],
+    goal: { type: 'survive', stars: 5, sec: 60, text: '通缉 5 星，撑住 60 秒开出包围' },
     done: [
-      ['老麦', '车不错，人也不错。'],
-      ['你', '这就完了？'],
-      ['老麦', '3D 版先到这。真正的大城市在 2D 版，那儿有 19 章。'],
-    ], reward: 30000, final: true,
+      ['老麦', '上车，我送你出城。'],
+      ['你', '这城市还有别的活干吗？'],
+      ['老麦', '3D 版就这八章。要 19 章正片，去 2D 版。'],
+    ], reward: 40000, final: true,
   },
 ];
+
 function currentChapter() { return STORY[Math.min(game.chapter - 1, STORY.length - 1)]; }
 
 // ====== 对话 ======
@@ -848,11 +1284,8 @@ function damage(n) {
   if (game.hp <= 0) die();
 }
 function die() {
-  game.over = true; game.running = false;
-  bankSync(true);
   try { if (window.mfhryScore) window.mfhryScore('gta-3d', Math.round(game.money)); } catch (e) {}
-  document.getElementById('deadTxt').textContent = '这一局赚到 ' + money(game.money) + '，已经存进账户。';
-  document.getElementById('dead').classList.add('on');
+  missionFail('你被打倒了');
 }
 
 // ====== 射击 ======
@@ -877,7 +1310,13 @@ function shoot() {
   const hx = src.x + fx * (best ? bd : 40), hz = src.z + fz * (best ? bd : 40);
   game.bullets.push({ x0: src.x, z0: src.z, x1: hx, z1: hz, life: 0.08 });
   if (best) {
-    if (best.hp !== undefined) { best.hp -= 34; if (best.hp <= 0) { best.dead = 1; addWanted(1); game.kills++; reward(300); } }
+    if (best.hp !== undefined) {
+      best.hp -= 34;
+      if (best.hp <= 0) {
+        best.dead = 1; addWanted(1); game.kills++; reward(best.enemy ? 600 : 300);
+        if (best.enemy) game.missionKills++;
+      }
+    }
     else { best.dead = 1; addWanted(1); game.kills++; reward(200); }
   }
 }
@@ -968,16 +1407,57 @@ function useKey() {
 function submitScore() {
   try { if (window.mfhryScore) window.mfhryScore('gta-3d', Math.round(game.money)); } catch (e) {}
 }
+function clearEnemies() {
+  for (let i = peds.length - 1; i >= 0; i--) if (peds[i].enemy) peds.splice(i, 1);
+}
+function spawnEnemies(n) {
+  const ap = activePos();
+  for (let k = 0; k < n; k++) {
+    let x = 0, z = 0, ok = false;
+    for (let tries = 0; tries < 40 && !ok; tries++) {
+      const a = Math.random() * 6.2832, r = 50 + Math.random() * 60;
+      x = clamp(ap.x + Math.cos(a) * r, 20, WORLD - 20);
+      z = clamp(ap.z + Math.sin(a) * r, 20, WORLD - 20);
+      ok = !collideCar(x, z, 1.2);
+    }
+    peds.push({
+      x: x, z: z, h: Math.random() * 6.28, vx: 0, vz: 0, hp: 3,
+      enemy: true, dead: 0, flee: 0, cool: 1 + Math.random() * 2,
+    });
+  }
+}
 function startChapter(n) {
   game.chapter = clamp(n, 1, STORY.length);
   game.surviveT = 0;
+  game.missionKills = 0;
   game.chapterDone = false;
+  game.failReason = '';
+  clearEnemies();
+  const _ch = currentChapter();
+  game.missionT = _ch.goal.limit || 0;
+  if (_ch.goal.type === 'kill') spawnEnemies(_ch.goal.n * 3);
+  if (_ch.wanted) game.wanted = Math.max(game.wanted, _ch.wanted);
   localStorage.setItem(SAVE_CHAPTER, String(game.chapter));
   const ch = currentChapter();
   setObjective();
   setTimeout(() => {
     playDialogue(ch.lines);
   }, 500);
+}
+function objectiveLine() {
+  const ch = currentChapter();
+  let t = ch.goal.text;
+  if (game.missionT > 0) t += ' · 剩余 ' + Math.ceil(game.missionT) + ' 秒';
+  if (ch.goal.type === 'kill') t += ' · 还剩 ' + Math.max(0, ch.goal.n - game.missionKills) + ' 人';
+  return '第 ' + game.chapter + ' 章 · ' + ch.title + '：' + t;
+}
+function updateObjectiveTimer() {
+  const el = document.getElementById('objTxt');
+  if (!el) return;
+  const ch = currentChapter();
+  if (game.missions.indexOf(ch.id) >= 0) return;
+  const txt = objectiveLine();
+  if (el.textContent !== txt) el.textContent = txt;
 }
 function setObjective() {
   const ch = currentChapter();
@@ -987,17 +1467,18 @@ function setObjective() {
     return;
   }
   el.classList.add('show');
-  document.getElementById('objTxt').textContent = '第 ' + game.chapter + ' 章 · ' + ch.title + '：' + ch.goal.text;
+  document.getElementById('objTxt').textContent = objectiveLine();
 }
 function completeGoal() {
   const ch = currentChapter();
   if (game.missions.indexOf(ch.id) >= 0) return;
+  clearEnemies();
   playDialogue(ch.done, () => {
     game.missions.push(ch.id);
     if (ch.reward) { game.money += ch.reward; toast('+' + money(ch.reward)); }
     localStorage.setItem('gta3d.missions', JSON.stringify(game.missions));
     if (ch.final) {
-      toast('🎬 3D 试炼通过，去 2D 版接 19 章正片');
+      toast('🎬 3D 八章通关，去 2D 版接 19 章正片');
       submitScore();
       setObjective();
       return;
@@ -1021,7 +1502,21 @@ function checkGoal(dt) {
       game.surviveT += dt;
       if (game.surviveT >= g.sec) completeGoal();
     }
+  } else if (g.type === 'kill') {
+    if (game.missionKills >= g.n) completeGoal();
   }
+}
+
+function missionFail(reason) {
+  if (game.over) return;
+  game.over = true; game.running = false;
+  game.failReason = reason;
+  bankSync(true);
+  const t = document.getElementById('deadTitle');
+  const p2 = document.getElementById('deadTxt');
+  if (t) t.textContent = '任务失败';
+  if (p2) p2.textContent = reason + '。钱还在账户里，重试本章从这一章开头来。';
+  document.getElementById('dead').classList.add('on');
 }
 
 // ====== 主循环 ======
@@ -1041,12 +1536,17 @@ function frame(now) {
     slowFrames = 0;
   }
   if (game.running && !game.paused) update(dt);
+  if (game.running) updateObjectiveTimer();
   render();
   requestAnimationFrame(frame);
 }
 
 function update(dt) {
   game.time += dt;
+  if (game.missionT > 0) {
+    game.missionT -= dt;
+    if (game.missionT <= 0) { game.missionT = 0; missionFail('时间到了'); return; }
+  }
 
   // 车 / 人
   if (game.inCar) {
@@ -1127,27 +1627,48 @@ function update(dt) {
     tq.setFromAxisAngle(new THREE.Vector3(0, 1, 0), h);
     tm.compose(new THREE.Vector3(x, 0.95, z), tq, new THREE.Vector3(1, 1, 1));
     trafficBody.setMatrixAt(i, tm);
-    tm.compose(new THREE.Vector3(x, 1.75, z), tq, new THREE.Vector3(1, 1, 1));
+    tm.compose(new THREE.Vector3(x, 1.72, z), tq, new THREE.Vector3(1, 1, 1));
     trafficTop.setMatrixAt(i, tm);
+    tq.setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2);
+    tm.compose(new THREE.Vector3(x, 0.36, z), tq, new THREE.Vector3(1, 1, 1));
+    trafficWheel.setMatrixAt(i, tm);
     if (game.inCar && dist2(x, z, car.x, car.z) < 4.6 && Math.abs(car.v) > 6) {
       car.v *= 0.5; damage(4); t.pos += 6;
     }
   }
   trafficBody.instanceMatrix.needsUpdate = true;
   trafficTop.instanceMatrix.needsUpdate = true;
+  trafficWheel.instanceMatrix.needsUpdate = true;
 
   // 行人
-  const pm = new THREE.Matrix4();
-  const pq = new THREE.Quaternion();
   for (let i = 0; i < peds.length; i++) {
     const p = peds[i];
     if (p.dead) {
-      pm.compose(new THREE.Vector3(p.x, 0.15, p.z), pq, new THREE.Vector3(1.6, 0.25, 1.6));
-      pedMesh.setMatrixAt(i, pm);
+      setPed(i, p.x, p.z, p.h, true);
       continue;
     }
     const ap = activePos();
     const dPlayer = dist2(p.x, p.z, ap.x, ap.z);
+    if (p.enemy) {
+      const dx = ap.x - p.x, dz = ap.z - p.z;
+      const d = Math.hypot(dx, dz) || 1;
+      p.h = Math.atan2(dx, dz);
+      if (d > 6.5) {
+        const nx2 = p.x + (dx / d) * 4.6 * dt;
+        const nz2 = p.z + (dz / d) * 4.6 * dt;
+        const hit = collideCar(nx2, nz2, 0.5);
+        if (!hit) { p.x = nx2; p.z = nz2; }
+      }
+      p.cool -= dt;
+      if (d < 28 && p.cool <= 0) {
+        p.cool = 1.6 + Math.random();
+        game.bullets.push({ x0: p.x, z0: p.z + 1.2, x1: ap.x, z1: ap.z, life: 0.1 });
+        damage(4);
+        beep(240, 0.05, 'square', 0.03);
+      }
+      setPed(i, p.x, p.z, p.h, false);
+      continue;
+    }
     p.flee = Math.max(0, p.flee - dt);
     if (dPlayer < 22 && game.inCar) p.flee = Math.max(p.flee, 0.6);
     const sp = p.flee > 0 ? 4.2 : p.speed;
@@ -1157,12 +1678,16 @@ function update(dt) {
     if (p.x < 6 || p.x > WORLD - 6 || p.z < 6 || p.z > WORLD - 6) p.h += Math.PI;
     if (game.inCar && dPlayer < 2.6 && Math.abs(car.v) > 5) {
       p.dead = 1; addWanted(1); game.kills++; reward(120); beep(180, 0.12, 'sawtooth', 0.05);
+      if (p.enemy) game.missionKills++;
     }
-    pq.setFromAxisAngle(new THREE.Vector3(0, 1, 0), p.h);
-    pm.compose(new THREE.Vector3(p.x, 0.95, p.z), pq, new THREE.Vector3(1, 1, 1));
-    pedMesh.setMatrixAt(i, pm);
+    setPed(i, p.x, p.z, p.h, false);
   }
-  pedMesh.instanceMatrix.needsUpdate = true;
+  pedBody.count = peds.length;
+  pedHead.count = peds.length;
+  pedLegs.count = peds.length;
+  pedBody.instanceMatrix.needsUpdate = true;
+  pedHead.instanceMatrix.needsUpdate = true;
+  pedLegs.instanceMatrix.needsUpdate = true;
 
   // 警车
   if (copCars.length) {
@@ -1176,11 +1701,19 @@ function update(dt) {
       const blink = (Math.sin(game.time * 12 + i) > 0) ? 1 : 0.25;
       tm.compose(new THREE.Vector3(c.x, 2.12, c.z), tq, new THREE.Vector3(blink, 1, 1));
       copLight.setMatrixAt(i, tm);
+      tm.compose(new THREE.Vector3(c.x, 1.7, c.z - 0.1), tq, new THREE.Vector3(1, 1, 1));
+      copSign.setMatrixAt(i, tm);
+      tq.setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2);
+      tm.compose(new THREE.Vector3(c.x, 0.4, c.z), tq, new THREE.Vector3(1, 1, 1));
+      copWheel.setMatrixAt(i, tm);
     }
     copBody.count = copCars.length; copTop.count = copCars.length; copLight.count = copCars.length;
     copBody.instanceMatrix.needsUpdate = true;
     copTop.instanceMatrix.needsUpdate = true;
     copLight.instanceMatrix.needsUpdate = true;
+    copWheel.count = copCars.length; copSign.count = copCars.length;
+    copWheel.instanceMatrix.needsUpdate = true;
+    copSign.instanceMatrix.needsUpdate = true;
   }
 
   updateTrafficAI();
@@ -1264,6 +1797,8 @@ function reset() {
   player.x = car.x - 3.4; player.z = car.z; player.h = 0;
   game.hp = 100; game.wanted = 0; game.over = false; game.time = 0;
   game.surviveT = 0; game.inCar = false; game.kills = 0;
+  game.missionT = 0; game.missionKills = 0; game.failReason = '';
+  clearEnemies();
   game.camYaw = 0; game.camPitch = 0;
   game.missions = JSON.parse(localStorage.getItem('gta3d.missions') || '[]');
   game.chapter = clamp(+(localStorage.getItem(SAVE_CHAPTER) || 1), 1, STORY.length);
@@ -1324,6 +1859,20 @@ window.__gta3d = {
   tp: (x, z) => { car.x = x; car.z = z; },
   step: (n) => { for (let i = 0; i < n; i++) update(1 / 60); },
   camPos: () => ({ x: camera.position.x, y: camera.position.y, z: camera.position.z }),
+  story: () => STORY.length,
+  goChapter: (n) => { game.missions = []; game.wanted = 0; game.hp = 100; startChapter(n); },
+  enemies: () => peds.filter((p) => p.enemy && !p.dead).length,
+  texStats: () => {
+    let meshes = 0, mapped = 0, inst = 0;
+    scene.traverse((o) => {
+      if (o.isMesh || o.isInstancedMesh) {
+        meshes++; if (o.isInstancedMesh) inst++;
+        if (o.material && o.material.map) mapped++;
+      }
+    });
+    return { meshes, mapped, inst };
+  },
+  fail: (why) => missionFail(why || '测试失败'),
 };
 window.__gta3dReady = true;
 </script>
