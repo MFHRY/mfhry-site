@@ -342,17 +342,36 @@ function moveAxis(axis, amount) {
   const p = player.pos;
   const np = p.clone();
   np[axis] += amount;
-  if (!collides(np.x, np.y, np.z)) { p[axis] = np[axis]; }
-  else if (axis !== 'y' && !player.fly && !collides(np.x, np.y + 1.02, np.z)) {
-    /* 自动跨上 1 格台阶（草坡不该把人卡住） */
-    p.y += 1.02;
-    p[axis] = np[axis];
-    player.onGround = true;
+
+  if (!collides(np.x, np.y, np.z)) { p[axis] = np[axis]; return; }
+
+  if (axis === 'y') {
+    /* 竖直：二分出「刚好不碰撞」的位置，避免整数吸附导致的上下弹跳 */
+    let lo = np.y, hi = p.y;               // lo = 碰撞侧，hi = 安全侧
+    if (amount > 0) { lo = p.y; hi = np.y; }
+    for (let i = 0; i < 14; i++) {
+      const mid = (lo + hi) * 0.5;
+      const bad = collides(p.x, mid, p.z);
+      if (amount > 0) { if (bad) hi = mid; else lo = mid; }
+      else { if (bad) lo = mid; else hi = mid; }
+    }
+    p.y = amount > 0 ? lo : hi;
+    if (amount < 0) player.onGround = true;
+    player.vel.y = 0;
+    return;
   }
-  else {
-    if (axis === 'y') {
-      if (amount < 0) { player.onGround = true; p.y = Math.floor(p.y) + 1; }
-      player.vel.y = 0;
+
+  /* 水平：在目标位置从脚下往上扫，找到第一个不碰撞的高度（就是台阶顶面） */
+  if (!player.fly) {
+    let found = -1;
+    for (let k = 0; k <= 53; k++) {
+      const y = p.y + k * 0.02;
+      if (!collides(np.x, y, np.z)) { found = y; break; }
+    }
+    if (found >= 0 && found - p.y <= 1.06) {
+      p.y = found;
+      p[axis] = np[axis];
+      player.onGround = false;
     }
   }
 }
