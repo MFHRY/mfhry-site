@@ -1,10 +1,10 @@
-﻿<!DOCTYPE html>
-<!-- build-marker: cs16 self-hosted fps v2 -->
+<!DOCTYPE html>
+<!-- build-marker: cs16 self-hosted fps v3 -->
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>CS 1.6 路 缃戦〉鐗堝皬娓告垙</title>
+<title>CS 1.6 · 网页版小游戏</title>
 <style>
   :root{ --bg:#0b0e11; --panel:#12161c; --text:#e8eef2; --muted:#8b959f; --accent:#8fd6b4; --sand:#c9a76a; }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -41,22 +41,22 @@
   <div id="hint" class="hide"></div>
   <div id="boot">
     <div class="panel">
-      <h1>CS 1.6 路 缃戦〉鐗?/h1>
-      <div class="sub">de_dust 椋庢牸鐨勬祻瑙堝櫒鍐?FPS锛氬皠绾挎姇灏勬覆鏌撱€佹満鍣ㄤ汉瀵规姉銆佹鍣ㄥ悗鍧愬姏銆?/div>
+      <h1>CS 1.6 · 网页版</h1>
+      <div class="sub">de_dust 风格的浏览器内 FPS：射线投射渲染、机器人对抗、武器后坐力。</div>
       <div class="keys">
-        <b>W A S D</b><span>绉诲姩銆€路銆€<b>榧犳爣</b>杞韩</span>
-        <b>宸﹂敭</b><span>寮€鐏€€路銆€<b>鍙抽敭</b>鐐瑰皠锛堝崟鍙戯級</span>
-        <b>1 2 3</b><span>鍒囨崲 鎵嬫灙 / 姝ユ灙 / 鐙?/span>
-        <b>R</b><span>鎹㈠脊銆€路銆€<b>Shift</b>闈欐</span>
-        <b>Esc</b><span>閲婃斁榧犳爣</span>
+        <b>W A S D</b><span>移动　·　<b>鼠标</b>转身</span>
+        <b>左键</b><span>开火　·　<b>右键</b>点射（单发）</span>
+        <b>1 2 3</b><span>切换 手枪 / 步枪 / 狙</span>
+        <b>R</b><span>换弹　·　<b>Shift</b>静步</span>
+        <b>Esc</b><span>释放鼠标</span>
       </div>
       <div class="row">
-        <button class="btn" id="start">寮€濮嬫父鎴?/button>
-        <button class="btn ghost" id="full">鍏ㄥ睆</button>
+        <button class="btn" id="start">开始游戏</button>
+        <button class="btn ghost" id="full">全屏</button>
       </div>
       <div class="drop" id="drop">
-        鏈?CS 1.6 鍘熺増璐村浘锛熸妸 <b>cstrike.wad</b> 鎷栬繘鏉ワ紙鍙€夛紝鍚屾椂鎷?<b>palette.lmp</b> 鏁堟灉鏈€濂斤級銆?
-        <div class="file" id="dropinfo">鏈姞杞斤細浣跨敤鍐呯疆鐨?dust 椋庢牸鑷粯璐村浘</div>
+        有 CS 1.6 原版贴图？把 <b>cstrike.wad</b> 拖进来（可选，同时拖 <b>palette.lmp</b> 效果最好）。
+        <div class="file" id="dropinfo">未加载：使用内置的 dust 风格自绘贴图</div>
       </div>
     </div>
   </div>
@@ -65,45 +65,45 @@
 <script>
 'use strict';
 /* =========================================================================
-   CS 1.6 椋庢牸缃戦〉 FPS 鈥斺€?灏勭嚎鎶曞皠锛坮aycasting锛夋覆鏌?
-   璐村浘鏉ユ簮锛氫紭鍏?WAD3锛堢敤鎴疯嚜宸辨彁渚涚殑 cstrike.wad / halflife.wad + palette.lmp锛夛紝
-            娌℃湁鏃剁敤鍐呯疆绋嬪簭鍖栬创鍥撅紙鍘熷鍍忕礌鑷粯锛屼笉渚濊禆浠讳綍澶栭儴璧勬簮锛?
+   CS 1.6 风格网页 FPS —— 射线投射（raycasting）渲染
+   贴图来源：优先 WAD3（用户自己提供的 cstrike.wad / halflife.wad + palette.lmp），
+            没有时用内置程序化贴图（原始像素自绘，不依赖任何外部资源）
    ========================================================================= */
 
-// ---------------------------------------------------------------- 甯搁噺
-const W = 480, H = 270;                 // 鍐呴儴娓叉煋鍒嗚鲸鐜囷紙鏀惧ぇ鍒板睆骞曪紝淇濇寔鍍忕礌鎰燂級
-const FOV = Math.PI / 3;                // 60掳
-const TEX = 64;                         // 璐村浘杈归暱
+// ---------------------------------------------------------------- 常量
+const W = 480, H = 270;                 // 内部渲染分辨率（放大到屏幕，保持像素感）
+const FOV = Math.PI / 3;                // 60°
+const TEX = 64;                         // 贴图边长
 const MAP_W = 28, MAP_H = 24;
 
-// 澧欎綋绫诲瀷 鈫?璐村浘绱㈠紩锛?..5锛夛紝0 = 绌哄湴
-// 1 娌欏 2 鏈ㄧ 3 閾侀棬 4 绾㈢爾 5 姘存偿
+// 墙体类型 → 贴图索引（1..5），0 = 空地
+// 1 沙墙 2 木箱 3 铁门 4 红砖 5 水泥
 const MAP = (() => {
   const w = MAP_W, h = MAP_H;
   const m = new Uint8Array(w * h).fill(1);
   const set = (x, y, v) => { if (x >= 0 && y >= 0 && x < w && y < h) m[y * w + x] = v; };
-  // 澶栧洿娓呯┖锛屽仛鎴愪竴涓皝闂満鍦?
+  // 外围清空，做成一个封闭场地
   for (let x = 1; x < w - 1; x++) for (let y = 1; y < h - 1; y++) set(x, y, 0);
-  // 鍐呴儴缁撴瀯锛氫竴涓弻灞傞暱閫氶亾 + 鑻ュ共鎺╀綋锛坉ust2 涓棬鐨勫懗閬擄級
+  // 内部结构：一个双层长通道 + 若干掩体（dust2 中门的味道）
   for (let y = 4; y <= 19; y++) { set(10, y, 4); set(17, y, 4); }
   for (let x = 10; x <= 17; x++) { set(x, 4, 3); }
-  set(13, 4, 0); set(14, 4, 0);            // 涓棬
-  // 鏈ㄧ鎺╀綋
+  set(13, 4, 0); set(14, 4, 0);            // 中门
+  // 木箱掩体
   const box = (x, y) => { set(x, y, 2); };
   box(5, 7); box(6, 7); box(5, 8); box(6, 8);
   box(21, 14); box(22, 14); box(21, 15);
   box(13, 11); box(14, 11);
   box(4, 16); box(5, 16);
   box(23, 6); box(24, 6);
-  // 杈硅灏忔埧闂?
+  // 边角小房间
   for (let x = 2; x <= 7; x++) { set(x, 3, 5); }
   for (let y = 3; y <= 6; y++) { set(8, y, 5); }
   set(4, 3, 0);
   return m;
 })();
 
-// ---------------------------------------------------------------- 璐村浘
-const textures = [];        // 姣忛」 { canvas, ctx, data, w, h }
+// ---------------------------------------------------------------- 贴图
+const textures = [];        // 每项 { canvas, ctx, data, w, h }
 let usingWad = false;
 
 function mkTexCanvas() {
@@ -112,7 +112,7 @@ function mkTexCanvas() {
   return { canvas: c, ctx: c.getContext('2d') };
 }
 
-// ------- 绋嬪簭鍖栬创鍥撅紙鏃犲閮ㄨ祫婧愶紱妯′豢 dust 鐨勬矙澧?鏈ㄧ/閾佺毊鑹茶皟锛?-------
+// ------- 程序化贴图（无外部资源；模仿 dust 的沙墙/木箱/铁皮色调） -------
 function rndSeed(s) { return () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; }; }
 
 function genSandWall(seed, base) {
@@ -123,22 +123,22 @@ function genSandWall(seed, base) {
   for (let y = 0; y < TEX; y++) {
     for (let x = 0; x < TEX; x++) {
       const i = (y * TEX + x) * 4;
-      // 鐮栧潡鎺掑垪锛? 琛?脳 2 鍒楋紝閿欑紳
+      // 砖块排列：4 行 × 2 列，错缝
       const row = (y / 16) | 0;
       const off = row % 2 ? 16 : 0;
       const bx = ((x + off) % 32), by = y % 16;
       const mortar = (bx < 2) || (by < 2);
       let n = (r() - 0.5) * 22;
-      const shade = 1 - (y / TEX) * 0.18;         // 椤堕儴寰寒
+      const shade = 1 - (y / TEX) * 0.18;         // 顶部微亮
       let v = mortar ? base * 0.62 : base * shade;
       v += n;
-      // 姘存偿缂濈殑娌欑矑
+      // 水泥缝的沙粒
       if (!mortar && r() > 0.93) v += 16;
       d[i] = v * 1.02; d[i + 1] = v * 0.88; d[i + 2] = v * 0.66; d[i + 3] = 255;
     }
   }
   ctx.putImageData(img, 0, 0);
-  // 鐮栫紳鍔犳繁
+  // 砖缝加深
   ctx.strokeStyle = 'rgba(40,30,18,.55)';
   ctx.lineWidth = 1;
   for (let y = 0; y < TEX; y += 16) { ctx.beginPath(); ctx.moveTo(0, y + .5); ctx.lineTo(TEX, y + .5); ctx.stroke(); }
@@ -152,7 +152,7 @@ function genSandWall(seed, base) {
 function genCrate(seed) {
   const { canvas, ctx } = mkTexCanvas();
   const r = rndSeed(seed);
-  // 鏈ㄧ锛氬妗?+ 鏂滄拺 + 鏈ㄧ汗
+  // 木箱：外框 + 斜撑 + 木纹
   ctx.fillStyle = '#8a6a3f'; ctx.fillRect(0, 0, TEX, TEX);
   const img = ctx.getImageData(0, 0, TEX, TEX), d = img.data;
   for (let y = 0; y < TEX; y++) for (let x = 0; x < TEX; x++) {
@@ -178,7 +178,7 @@ function genMetalDoor(seed) {
   const img = ctx.getImageData(0, 0, TEX, TEX), d = img.data;
   for (let i = 0; i < d.length; i += 4) { const n = (r() - .5) * 12; d[i] += n; d[i + 1] += n; d[i + 2] += n; }
   ctx.putImageData(img, 0, 0);
-  // 閾嗛拤涓庢í绛?
+  // 铆钉与横筋
   ctx.fillStyle = 'rgba(20,26,30,.75)';
   for (let x = 8; x < TEX; x += 16) for (let y = 8; y < TEX; y += 16) { ctx.beginPath(); ctx.arc(x, y, 1.6, 0, 7); ctx.fill(); }
   ctx.fillStyle = 'rgba(220,235,240,.10)'; ctx.fillRect(0, 14, TEX, 2); ctx.fillRect(0, 46, TEX, 2);
@@ -226,19 +226,19 @@ function buildProceduralTextures() {
   textures[3] = { canvas: genMetalDoor(3) };
   textures[4] = { canvas: genBrickRed(5) };
   textures[5] = { canvas: genConcrete(19) };
-  // 棰勫彇 1px 瀹界殑鍒楀垏鐗囦笉鏂逛究锛屾敼涓虹洿鎺ユ寜鍒?drawImage 婧愮煩褰紙瑙?render锛?
+  // 预取 1px 宽的列切片不方便，改为直接按列 drawImage 源矩形（见 render）
 }
 buildProceduralTextures();
 
-// ---------------------------------------------------------------- WAD3 瑙ｆ瀽
-// 缁撴瀯锛氬ご 'WAD3' + int32 numlumps + int32 infotableofs
-// lump 鐩綍椤?32 瀛楄妭锛歩nt32 filepos, int32 disksize, int32 size, byte type, byte compression, 2 pad, char name[16]
-// type 0x43 = miptex锛堣创鍥撅級锛歝har name[16], uint32 width, height, uint32 offsets[4], 鐒跺悗鍚?mip 鐨?8bit 绱㈠紩鍍忕礌
+// ---------------------------------------------------------------- WAD3 解析
+// 结构：头 'WAD3' + int32 numlumps + int32 infotableofs
+// lump 目录项 32 字节：int32 filepos, int32 disksize, int32 size, byte type, byte compression, 2 pad, char name[16]
+// type 0x43 = miptex（贴图）：char name[16], uint32 width, height, uint32 offsets[4], 然后各 mip 的 8bit 索引像素
 function parseWad(buf, palette) {
   if (buf instanceof ArrayBuffer) buf = new Uint8Array(buf);
   const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
   const fourcc = String.fromCharCode(buf[0], buf[1], buf[2], buf[3]);
-  if (fourcc !== 'WAD3' && fourcc !== 'WAD2') throw new Error('涓嶆槸 WAD 鏂囦欢');
+  if (fourcc !== 'WAD3' && fourcc !== 'WAD2') throw new Error('不是 WAD 文件');
   const numlumps = dv.getInt32(4, true);
   const infotableofs = dv.getInt32(8, true);
   const out = new Map();
@@ -249,7 +249,7 @@ function parseWad(buf, palette) {
     const type = dv.getUint8(off + 12);
     let name = '';
     for (let k = 0; k < 16; k++) { const ch = dv.getUint8(off + 16 + k); if (!ch) break; name += String.fromCharCode(ch); }
-    if (type !== 0x43) continue;                    // 鍙璐村浘
+    if (type !== 0x43) continue;                    // 只要贴图
     try {
       const lv = new DataView(buf.buffer, buf.byteOffset + filepos, size);
       const w = lv.getUint32(16, true), h = lv.getUint32(20, true);
@@ -263,16 +263,16 @@ function parseWad(buf, palette) {
         const idx = px[p];
         const pi = idx * 3;
         d[p * 4] = palette[pi]; d[p * 4 + 1] = palette[pi + 1]; d[p * 4 + 2] = palette[pi + 2];
-        d[p * 4 + 3] = idx === 255 ? 0 : 255;       // miptex 绾﹀畾 255 = 閫忔槑
+        d[p * 4 + 3] = idx === 255 ? 0 : 255;       // miptex 约定 255 = 透明
       }
       cx.putImageData(img, 0, 0);
       out.set(name.toLowerCase(), c);
-    } catch (e) { /* 璺宠繃鍧?lump */ }
+    } catch (e) { /* 跳过坏 lump */ }
   }
   return out;
 }
 
-// 鎶?WAD 閲岀殑璐村浘鏇挎崲杩?1..5 妲戒綅锛堟寜 dust 甯歌璐村浘鍚嶆寫锛屾寫涓嶅埌灏辩敤鍓嶅嚑寮狅級
+// 把 WAD 里的贴图替换进 1..5 槽位（按 dust 常见贴图名挑，挑不到就用前几张）
 function applyWad(wadMap) {
   const want = ['crete4_wall02', 'cwall', 'sandwall', 'wall', 'crate', 'cncr', 'door'];
   const pick = (names) => {
@@ -286,7 +286,7 @@ function applyWad(wadMap) {
   for (let i = 0; i < 5; i++) {
     if (list[i]) { textures[i + 1] = { canvas: list[i] }; hit++; }
   }
-  if (!hit) {                                // 鍚嶅瓧瀵逛笉涓婏細鎸変綋绉彇鍓?5 寮?
+  if (!hit) {                                // 名字对不上：按体积取前 5 张
     let n = 0;
     for (const c of wadMap.values()) {
       if (n >= 5) break;
@@ -297,9 +297,9 @@ function applyWad(wadMap) {
   return hit;
 }
 
-// ---------------------------------------------------------------- 娓告垙鐘舵€?
+// ---------------------------------------------------------------- 游戏状态
 const state = {
-  x: 4.5, y: 20.5, a: -Math.PI / 2,        // 鐜╁浣嶇疆/鏈濆悜
+  x: 4.5, y: 20.5, a: -Math.PI / 2,        // 玩家位置/朝向
   hp: 100, armor: 100,
   weapon: 1, ammo: [0, 20, 30, 5], mag: [0, 20, 30, 5], reserve: [0, 60, 90, 15],
   kills: 0, waves: 0, dead: false, won: false,
@@ -312,7 +312,7 @@ const WEAPONS = {
   3: { name: 'AWP', dmg: 115, rate: 0.7, spread: 0.004, auto: false, reload: 3.2, pellets: 1 },
 };
 
-// 纰版挒
+// 碰撞
 function solid(x, y) {
   const gx = x | 0, gy = y | 0;
   if (gx < 0 || gy < 0 || gx >= MAP_W || gy >= MAP_H) return true;
@@ -322,7 +322,7 @@ function blocked(x, y, r) {
   return solid(x - r, y - r) || solid(x + r, y - r) || solid(x - r, y + r) || solid(x + r, y + r);
 }
 
-// ---------------------------------------------------------------- 鏈哄櫒浜?
+// ---------------------------------------------------------------- 机器人
 function spawnWave() {
   state.waves++;
   const n = Math.min(6, 2 + state.waves);
@@ -336,12 +336,12 @@ function spawnWave() {
       hitFlash: 0, anim: Math.random() * 6,
     });
   }
-  say(`绗?${state.waves} 娉?路 ${n} 涓晫浜篳);
+  say(`第 ${state.waves} 波 · ${n} 个敌人`);
 }
 
 function say(t) { state.msg = t; state.msgT = 2.2; }
 
-// ---------------------------------------------------------------- 杈撳叆
+// ---------------------------------------------------------------- 输入
 const keys = Object.create(null);
 let pointerLocked = false;
 
@@ -375,12 +375,12 @@ document.addEventListener('pointerlockchange', () => { pointerLocked = document.
 function startReload() {
   const w = state.weapon, def = WEAPONS[w];
   if (state.reloading > 0 || state.mag[w] >= def.mag) return;
-  if (state.reserve[w] <= 0) { say('娌℃湁澶囧脊'); return; }
+  if (state.reserve[w] <= 0) { say('没有备弹'); return; }
   state.reloading = def.reload;
 }
 WEAPONS[1].mag = 20; WEAPONS[2].mag = 30; WEAPONS[3].mag = 5;
 
-// ---------------------------------------------------------------- 寮€鐏?
+// ---------------------------------------------------------------- 开火
 function fire(single) {
   const now = performance.now() / 1000;
   const w = state.weapon, def = WEAPONS[w];
@@ -392,7 +392,7 @@ function fire(single) {
   state.kick = 1; state.recoil = Math.min(1, state.recoil + 0.35);
   if (window.__mfKit?.sfx) window.__mfKit.sfx.shoot?.(w);
 
-  // 灏勭嚎锛氭部瑙嗙嚎鎵紝鍛戒腑鏈€杩戞晫浜?
+  // 射线：沿视线扫，命中最近敌人
   const spread = def.spread * (1 + state.recoil * 0.8);
   const ang = state.a + (Math.random() - .5) * spread;
   const dx = Math.cos(ang), dy = Math.sin(ang);
@@ -400,12 +400,12 @@ function fire(single) {
   for (const b of state.bots) {
     if (!b.alive) continue;
     const vx = b.x - state.x, vy = b.y - state.y;
-    const t = vx * dx + vy * dy;                    // 鎶曞奖璺濈
+    const t = vx * dx + vy * dy;                    // 投影距离
     if (t <= 0 || t > 26) continue;
-    const perp = Math.abs(vx * dy - vy * dx);       // 鍨傜洿鍋忕Щ
-    if (perp > 0.42) continue;                      // 鍛戒腑鍗婂緞
+    const perp = Math.abs(vx * dy - vy * dx);       // 垂直偏移
+    if (perp > 0.42) continue;                      // 命中半径
     if (t < bestT) {
-      // 澧欓伄鎸℃鏌?
+      // 墙遮挡检查
       let blockedByWall = false;
       for (let s = 0.3; s < t; s += 0.25) {
         if (solid(state.x + dx * s, state.y + dy * s)) { blockedByWall = true; break; }
@@ -424,12 +424,12 @@ function fire(single) {
       if (window.__mfKit?.sfx) window.__mfKit.sfx.score?.();
       if (state.bots.every(x => !x.alive)) { state.won = true; }
     }
-    // 杞诲井鍥炴帹
+    // 轻微回推
     state.x -= dx * 0.02; state.y -= dy * 0.02;
   }
 }
 
-// ---------------------------------------------------------------- 娓叉煋
+// ---------------------------------------------------------------- 渲染
 const zBuf = new Float32Array(W);
 const FLOOR_H = H * 0.5;
 
@@ -456,7 +456,7 @@ function castColumn(camX, ang) {
 }
 
 function render() {
-  // 澶╃┖ & 鍦伴潰锛坉ust锛氭殩鑹茶皟锛?
+  // 天空 & 地面（dust：暖色调）
   const sky = ctx.createLinearGradient(0, 0, 0, H * 0.55);
   sky.addColorStop(0, '#7d8ea0'); sky.addColorStop(1, '#c8b995');
   ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H * 0.55);
@@ -470,7 +470,7 @@ function render() {
     const ang = state.a + Math.atan(camX * Math.tan(FOV_V / 2));
     const hit = castColumn(camX, ang);
     if (!hit) { zBuf[col] = 1e9; continue; }
-    // 閫忚淇
+    // 透视修正
     const perp = hit.dist * Math.cos(ang - state.a);
     zBuf[col] = perp;
     const lineH = Math.min(H * 3, (H / perp));
@@ -480,7 +480,7 @@ function render() {
     const tw = tex.canvas.width;
     let tx = Math.floor(hit.wallX * tw) % tw;
     if (hit.side === 1) tx = tw - 1 - tx;
-    // 鏄庢殫锛氫晶闈㈠澹佽皟鏆楋紝杩滃鍙樻殫锛堢畝鏄撻浘锛?
+    // 明暗：侧面墙壁调暗，远处变暗（简易雾）
     const shade = Math.min(1, 1 / (1 + perp * 0.16)) * (hit.side === 1 ? 0.78 : 1);
     ctx.globalAlpha = 1;
     ctx.drawImage(tex.canvas, tx, 0, 1, tex.canvas.height, col, y0, 1, lineH);
@@ -509,7 +509,7 @@ function renderBots() {
     const size = (H / Math.max(0.6, d)) * 0.62;
     const bottom = H / 2 + size * 0.42 + state.kick * 4;
     const top = bottom - size * 1.15;
-    // 閫愬垪娣卞害娴嬭瘯
+    // 逐列深度测试
     const x0 = Math.floor(screenX - size * 0.30), x1 = Math.ceil(screenX + size * 0.30);
     const colW = Math.max(1, Math.round((x1 - x0) / 1));
     for (let px = x0; px <= x1; px++) {
@@ -523,7 +523,7 @@ function renderBots() {
 function drawBotSlice(px, top, bottom, size, b, x0, x1) {
   const t = (px - x0) / Math.max(1, (x1 - x0));
   const bodyW = size * 0.5;
-  // 鍛戒腑鍙嶉锛氭暣浣撴硾绾?
+  // 命中反馈：整体泛红
   const flash = b.hitFlash > 0;
   const cx = x0 + (x1 - x0) * 0.5;
   const dxAbs = Math.abs(px - cx) / (bodyW / 2);
@@ -532,17 +532,17 @@ function drawBotSlice(px, top, bottom, size, b, x0, x1) {
   const legTop = top + hh * 0.62;
   const headR = size * 0.10;
   const headY = top + headR * 1.2;
-  // 澶?
+  // 头
   if (Math.abs(px - cx) < headR * 1.6) {
     ctx.fillStyle = flash ? '#e08a7a' : '#d9b99a';
     ctx.fillRect(px, headY - headR, 1, headR * 2);
-    // 澶村甫/甯藉瓙
+    // 头带/帽子
     ctx.fillStyle = flash ? '#c86a58' : '#3f4a52';
     ctx.fillRect(px, headY - headR, 1, headR * 0.8);
   }
   ctx.fillStyle = flash ? '#a8584a' : '#4f5d52';
   ctx.fillRect(px, top + hh * 0.26, 1, legTop - (top + hh * 0.26));
-  // 鑵?
+  // 腿
   ctx.fillStyle = flash ? '#8a4a3e' : '#38413c';
   ctx.fillRect(px, legTop, 1, bottom - legTop);
 }
@@ -553,24 +553,24 @@ function renderViewmodel() {
   ctx.save();
   ctx.translate(cx, cy);
   const w = state.weapon;
-  if (w === 1) {                       // Glock 杞粨
+  if (w === 1) {                       // Glock 轮廓
     ctx.fillStyle = '#2b2f33'; ctx.fillRect(-26, -38, 30, 30);
     ctx.fillStyle = '#22262a'; ctx.fillRect(-14, -10, 18, 26);
     ctx.fillStyle = '#3a4148'; ctx.fillRect(-26, -40, 30, 5);
-  } else if (w === 2) {                // AK 杞粨
-    ctx.fillStyle = '#4a2f1c'; ctx.fillRect(-52, -12, 26, 16);      // 鏈ㄦ墭
-    ctx.fillStyle = '#25292d'; ctx.fillRect(-30, -22, 62, 18);      // 鏈哄專
-    ctx.fillStyle = '#2e3439'; ctx.fillRect(14, -19, 44, 7);        // 鏋
-    ctx.fillStyle = '#3a2a1a'; ctx.fillRect(-6, -6, 14, 26);        // 寮瑰專
-    ctx.fillStyle = '#1b1f22'; ctx.fillRect(24, -26, 8, 12);        // 鍑嗘槦
+  } else if (w === 2) {                // AK 轮廓
+    ctx.fillStyle = '#4a2f1c'; ctx.fillRect(-52, -12, 26, 16);      // 木托
+    ctx.fillStyle = '#25292d'; ctx.fillRect(-30, -22, 62, 18);      // 机匣
+    ctx.fillStyle = '#2e3439'; ctx.fillRect(14, -19, 44, 7);        // 枪管
+    ctx.fillStyle = '#3a2a1a'; ctx.fillRect(-6, -6, 14, 26);        // 弹匣
+    ctx.fillStyle = '#1b1f22'; ctx.fillRect(24, -26, 8, 12);        // 准星
   } else {                             // AWP
     ctx.fillStyle = '#20262b'; ctx.fillRect(-46, -16, 96, 14);
-    ctx.fillStyle = '#2b3640'; ctx.fillRect(-34, -24, 44, 10);      // 闀?
+    ctx.fillStyle = '#2b3640'; ctx.fillRect(-34, -24, 44, 10);      // 镜
     ctx.fillStyle = '#5a3f24'; ctx.fillRect(-58, -10, 18, 22);
     ctx.fillStyle = '#171c20'; ctx.fillRect(40, -22, 10, 8);
   }
   ctx.restore();
-  // 鏋彛闂厜
+  // 枪口闪光
   if (state.kick > 0.55) {
     const mx = cx + (w === 2 ? 58 : w === 3 ? 50 : 2), my = cy - (w === 2 ? 16 : w === 3 ? 18 : 34) + kick;
     const g = ctx.createRadialGradient(mx, my, 0, mx, my, 26);
@@ -580,7 +580,7 @@ function renderViewmodel() {
 }
 
 function renderHUD() {
-  // 鍑嗘槦
+  // 准星
   const cx = W / 2, cy = H / 2 + state.kick * 3;
   const gap = 3 + state.recoil * 6;
   ctx.fillStyle = state.hitMark > 0 ? '#ff6b5e' : 'rgba(140,255,190,.92)';
@@ -589,16 +589,16 @@ function renderHUD() {
   ctx.fillRect(cx, cy - gap - 6, 1, 6);
   ctx.fillRect(cx, cy + gap, 1, 6);
 
-  // 宸︿笅锛氱敓鍛?鎶ょ敳
+  // 左下：生命/护甲
   ctx.font = 'bold 15px ui-monospace, Consolas, monospace';
   ctx.textAlign = 'left';
   ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(8, H - 52, 104, 44);
   ctx.fillStyle = state.hp > 40 ? '#9fe3b4' : '#f08a7a';
-  ctx.fillText('鈾?' + Math.max(0, Math.floor(state.hp)), 14, H - 32);
+  ctx.fillText('♥ ' + Math.max(0, Math.floor(state.hp)), 14, H - 32);
   ctx.fillStyle = '#8fb8d6';
-  ctx.fillText('鉀?' + Math.max(0, Math.floor(state.armor)), 14, H - 14);
+  ctx.fillText('⛨ ' + Math.max(0, Math.floor(state.armor)), 14, H - 14);
 
-  // 鍙充笅锛氬脊鑽?
+  // 右下：弹药
   const w = state.weapon, def = WEAPONS[w];
   ctx.textAlign = 'right';
   ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(W - 118, H - 52, 110, 44);
@@ -614,17 +614,17 @@ function renderHUD() {
   if (state.reloading > 0) {
     ctx.fillStyle = 'rgba(255,220,140,.9)';
     ctx.textAlign = 'center';
-    ctx.fillText('鎹㈠脊涓€?, W / 2, H - 26);
+    ctx.fillText('换弹中…', W / 2, H - 26);
   }
 
-  // 宸︿笂锛氬嚮鏉€鏁?娉㈡暟
+  // 左上：击杀数/波数
   ctx.textAlign = 'left';
   ctx.font = 'bold 12px ui-monospace, Consolas, monospace';
   ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.fillRect(8, 8, 128, 22);
   ctx.fillStyle = '#e8eef2';
-  ctx.fillText(`鍑绘潃 ${state.kills}銆€娉㈡ ${state.waves}`, 14, 23);
+  ctx.fillText(`击杀 ${state.kills}　波次 ${state.waves}`, 14, 23);
 
-  // 闆疯揪
+  // 雷达
   const RS = 54, rx = W - RS - 10, ry = 10;
   ctx.fillStyle = 'rgba(6,10,13,.62)'; ctx.fillRect(rx, ry, RS, RS);
   ctx.strokeStyle = 'rgba(140,200,170,.35)'; ctx.lineWidth = 1; ctx.strokeRect(rx + .5, ry + .5, RS - 1, RS - 1);
@@ -645,7 +645,7 @@ function renderHUD() {
   ctx.lineTo(rx + (state.x + Math.cos(state.a) * 3) * sc, ry + (state.y + Math.sin(state.a) * 3) * sc);
   ctx.stroke();
 
-  // 娑堟伅
+  // 消息
   if (state.msgT > 0) {
     ctx.globalAlpha = Math.min(1, state.msgT);
     ctx.textAlign = 'center';
@@ -658,20 +658,20 @@ function renderHUD() {
     ctx.globalAlpha = 1;
   }
 
-  // 姝讳骸 / 閫氬叧
+  // 死亡 / 通关
   if (state.dead || state.won) {
     ctx.fillStyle = 'rgba(6,9,12,.72)'; ctx.fillRect(0, 0, W, H);
     ctx.textAlign = 'center';
     ctx.font = 'bold 22px system-ui, "PingFang SC", sans-serif';
     ctx.fillStyle = state.dead ? '#f08a7a' : '#9fe3b4';
-    ctx.fillText(state.dead ? '浣犺鍑诲€掍簡' : `绗?${state.waves} 娉㈡竻绌篳, W / 2, H / 2 - 14);
+    ctx.fillText(state.dead ? '你被击倒了' : `第 ${state.waves} 波清空`, W / 2, H / 2 - 14);
     ctx.font = '13px system-ui, "PingFang SC", sans-serif';
     ctx.fillStyle = '#c3ccd4';
-    ctx.fillText(`鍑绘潃 ${state.kills}銆€鎸?R 閲嶆柊寮€濮媊, W / 2, H / 2 + 14);
+    ctx.fillText(`击杀 ${state.kills}　按 R 重新开始`, W / 2, H / 2 + 14);
   }
 }
 
-// ---------------------------------------------------------------- 涓诲惊鐜?
+// ---------------------------------------------------------------- 主循环
 let last = performance.now();
 function loop(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
@@ -688,7 +688,7 @@ function update(dt) {
   if (state.recoil > 0) state.recoil = Math.max(0, state.recoil - dt * 3.2);
   if (state.kick > 0) state.kick = Math.max(0, state.kick - dt * 6);
 
-  // 鎹㈠脊
+  // 换弹
   if (state.reloading > 0) {
     state.reloading -= dt;
     if (state.reloading <= 0) {
@@ -700,7 +700,7 @@ function update(dt) {
     }
   }
 
-  // 绉诲姩
+  // 移动
   let mx = 0, my = 0;
   if (keys['KeyW']) my += 1;
   if (keys['KeyS']) my -= 1;
@@ -715,14 +715,14 @@ function update(dt) {
     if (!blocked(state.x, state.y + dy, 0.24)) state.y += dy;
   }
 
-  // 鏈哄櫒浜?AI
+  // 机器人 AI
   for (const b of state.bots) {
     if (!b.alive) continue;
     if (b.hitFlash > 0) b.hitFlash -= dt;
     b.anim += dt * 6;
     const dx = state.x - b.x, dy = state.y - b.y;
     const d = Math.hypot(dx, dy) || 1;
-    // 淇濇寔 4~8 绫充氦鎴樿窛绂?
+    // 保持 4~8 米交战距离
     let dir = 0;
     if (d > 8) dir = 1; else if (d < 3.5) dir = -1;
     if (dir) {
@@ -730,12 +730,12 @@ function update(dt) {
       const ny = b.y + (dy / d) * b.speed * dir * dt;
       if (!blocked(nx, ny, 0.26)) { b.x = nx; b.y = ny; }
     }
-    // 妯悜娓歌蛋
+    // 横向游走
     const strafe = Math.sin(b.anim * 0.5) * b.speed * 0.6 * dt;
     const px = b.x + (-dy / d) * strafe, py = b.y + (dx / d) * strafe;
     if (!blocked(px, py, 0.26)) { b.x = px; b.y = py; }
 
-    // 寮€鐏垽瀹氾紙瑙嗙嚎閬尅 + 姒傜巼鍛戒腑锛?
+    // 开火判定（视线遮挡 + 概率命中）
     b.cd -= dt;
     if (b.cd <= 0 && d < 16) {
       b.cd = 0.75 + Math.random() * 0.9;
@@ -757,7 +757,7 @@ function update(dt) {
   }
 }
 
-// 鑳滃埄鍚庤繘鍏ヤ笅涓€娉?
+// 胜利后进入下一波
 function checkWin() {
   if (state.won) {
     state.won = false;
@@ -765,7 +765,7 @@ function checkWin() {
   }
 }
 
-// ---------------------------------------------------------------- 鍚姩 & 浜や簰
+// ---------------------------------------------------------------- 启动 & 交互
 const boot = document.getElementById('boot');
 document.getElementById('start').onclick = () => {
   boot.style.display = 'none';
@@ -786,14 +786,14 @@ addEventListener('keydown', (e) => {
   }
 });
 
-// 寰幆琛ラ綈锛氭瘡甯ф鏌ラ€氬叧
+// 循环补齐：每帧检查通关
 const _render = render;
 render = function () {
   if (state.won) checkWin();
   _render();
 };
 
-// ------------------------------------------------ WAD 鎷栨嫿锛堢敤鎴疯嚜宸辩殑娓告垙鏂囦欢锛?
+// ------------------------------------------------ WAD 拖拽（用户自己的游戏文件）
 const dropEl = document.getElementById('drop');
 const dropInfo = document.getElementById('dropinfo');
 let paletteBuf = null;
@@ -809,7 +809,7 @@ dropEl.addEventListener('drop', async (e) => {
   const files = [...e.dataTransfer.files];
   const wadFile = files.find(f => /\.wad$/i.test(f.name));
   const palFile = files.find(f => /palette\.lmp$/i.test(f.name) || /\.lmp$/i.test(f.name));
-  if (palFile) { paletteBuf = await readFile(palFile); dropInfo.textContent = '璋冭壊鏉垮凡璇诲彇锛? + palFile.name; }
+  if (palFile) { paletteBuf = await readFile(palFile); dropInfo.textContent = '调色板已读取：' + palFile.name; }
   if (!wadFile) return;
   try {
     const buf = await readFile(wadFile);
@@ -817,21 +817,21 @@ dropEl.addEventListener('drop', async (e) => {
     const map = parseWad(buf, pal);
     const hit = applyWad(map);
     usingWad = true;
-    dropInfo.textContent = `宸插姞杞?${wadFile.name}锛?{map.size} 寮犺创鍥撅紝鍚敤 ${hit} 寮燻;
-    say('宸插垏鎹负 WAD 璐村浘');
+    dropInfo.textContent = `已加载 ${wadFile.name}：${map.size} 张贴图，启用 ${hit} 张`;
+    say('已切换为 WAD 贴图');
   } catch (err) {
-    dropInfo.textContent = '瑙ｆ瀽澶辫触锛? + err.message;
+    dropInfo.textContent = '解析失败：' + err.message;
   }
 });
 
-// Quake/HL 椋庢牸鐏板害鍏滃簳璋冭壊鏉匡紙鏃?palette.lmp 鏃剁敤锛屼粎淇濊瘉鍙帺锛?
+// Quake/HL 风格灰度兜底调色板（无 palette.lmp 时用，仅保证可玩）
 function defaultPalette() {
   const p = new Uint8Array(768);
   for (let i = 0; i < 256; i++) { p[i * 3] = i; p[i * 3 + 1] = i; p[i * 3 + 2] = i; }
   return p;
 }
 
-// 鑷€傚簲缂╂斁锛堜繚鎸?16:9锛屽儚绱犱笉绯婏級
+// 自适应缩放（保持 16:9，像素不糊）
 function fit() {
   const r = Math.min(innerWidth / W, innerHeight / H);
   view.style.width = Math.floor(W * r) + 'px';
