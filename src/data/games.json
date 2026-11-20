@@ -212,12 +212,11 @@
   {
     "slug": "cs16",
     "title": "CS 1.6",
-    "desc": "play-cs.com 的浏览器版反恐精英：直接进服务器开打，不用装客户端。",
+    "desc": "站内自绘的 dust 风 FPS：射线投射渲染、AK/AWP/Glock 三把枪带后坐力与换弹、机器人分波推进、小地图雷达。支持拖入你自己的 cstrike.wad 切换原版贴图。",
     "tag": "FPS",
     "emoji": "🎯",
     "href": "/games/cs16/",
-    "status": "play",
-    "note": "第三方站"
+    "status": "play"
   },
   {
     "slug": "pelican",
