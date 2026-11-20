@@ -60,14 +60,14 @@
   "lyrics": "/music/osu-97235-lyrics.json"
  },
  "Flamingo": {
-  "artist": "Yonezu Kenshi",
-  "id": 1210565,
+  "artist": "米津玄師",
+  "id": 1071580,
   "title": "Flamingo",
-  "r2": "/api/r2?key=music/track-1210565.mp3",
-  "cover": "/api/r2?key=music/track-1210565-cover.jpg",
-  "bytes": 1759995,
-  "mb": 1.7,
-  "lyrics": "/music/osu-1210565-lyrics.json"
+  "r2": "/api/r2?key=music/track-1071580.mp3",
+  "cover": "/api/r2?key=music/track-1071580-cover.jpg",
+  "bytes": 8689965,
+  "mb": 8.3,
+  "lyrics": "/music/flamingo-lyrics.json"
  },
  "KICK BACK": {
   "artist": "Kenshi Yonezu",
@@ -537,5 +537,55 @@
   "bytes": 2161817,
   "mb": 2.1,
   "lyrics": "/music/osu-1368923-lyrics.json"
+ },
+ "ストリーミングハート": {
+  "artist": "DECO*27",
+  "id": 195967,
+  "title": "Streaming Heart",
+  "r2": "/api/r2?key=music/track-195967.mp3",
+  "bytes": 7194263,
+  "mb": 6.9,
+  "cover": "/api/r2?key=music/track-195967-cover.jpg",
+  "lyrics": "/music/streaming-heart-lyrics.json"
+ },
+ "アニマル": {
+  "artist": "DECO*27",
+  "id": 1652534,
+  "title": "Animal feat. Hatsune Miku",
+  "r2": "/api/r2?key=music/track-1652534.mp3",
+  "bytes": 5749523,
+  "mb": 5.5,
+  "cover": "/api/r2?key=music/track-1652534-cover.jpg",
+  "lyrics": "/music/animal-lyrics.json"
+ },
+ "弱虫モンブラン": {
+  "artist": "DECO*27",
+  "id": 1267364,
+  "title": "Yowamushi Montblanc",
+  "r2": "/api/r2?key=music/track-1267364.mp3",
+  "bytes": 5759823,
+  "mb": 5.5,
+  "cover": "/api/r2?key=music/track-1267364-cover.jpg",
+  "lyrics": "/music/yowamushi-montblanc-lyrics.json"
+ },
+ "感電": {
+  "artist": "米津玄師",
+  "id": 2279858,
+  "title": "KANDEN",
+  "r2": "/api/r2?key=music/track-2279858.mp3",
+  "bytes": 11720819,
+  "mb": 11.2,
+  "cover": "/api/r2?key=music/track-2279858-cover.jpg",
+  "lyrics": "/music/kanden-lyrics.json"
+ },
+ "ドーナツホール": {
+  "artist": "ハチ",
+  "id": 318479,
+  "title": "Donut Hole",
+  "r2": "/api/r2?key=music/track-318479.mp3",
+  "bytes": 5046230,
+  "mb": 4.8,
+  "cover": "/api/r2?key=music/track-318479-cover.jpg",
+  "lyrics": "/music/donut-hole-lyrics.json"
  }
 }

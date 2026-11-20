@@ -120,6 +120,8 @@ window.MFHRY_SONGS = [
       { label: 'Flamingo', q: 'flamingo kenshi yonezu' },
       { label: '砂の惑星', q: 'sand planet hachi' , nc: 1317505406},
       { label: 'マトリョシカ', q: 'matryoshka hachi' , nc: 22691083},
+      { label: '感電', zh: '触电', q: 'kenshi yonezu kanden', artist: '米津玄師' },
+      { label: 'ドーナツホール', zh: '甜甜圈洞', q: 'hachi donut hole', artist: 'ハチ' },
     ],
   },
   {
@@ -145,6 +147,9 @@ window.MFHRY_SONGS = [
       { label: 'KING', q: 'king kanaria' },
       { label: 'ビターチョコデコレーション', q: 'bitter choco decoration' },
       { label: 'メルト', q: 'melt supercell' , nc: 825736},
+      { label: 'ストリーミングハート', zh: '流心', q: 'streaming heart deco27', artist: 'DECO*27' },
+      { label: 'アニマル', zh: '动物', q: 'animal deco27', artist: 'DECO*27' },
+      { label: '弱虫モンブラン', zh: '胆小鬼蒙布朗', q: 'yowamushi montblanc deco27', artist: 'DECO*27' },
     ],
   },
   {
