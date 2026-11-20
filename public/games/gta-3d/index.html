@@ -118,6 +118,18 @@
   </div>
 </div>
 
+<style id="crossStyle">
+  #cross{position:fixed;left:50%;top:50%;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;
+    background:rgba(255,255,255,.85);box-shadow:0 0 0 2px rgba(0,0,0,.45);z-index:60;display:none;pointer-events:none}
+  #cross.on{display:block}
+  #lockTip{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);font:12px/1.6 system-ui,sans-serif;
+    color:#cfe0f5;background:rgba(10,14,20,.7);border:1px solid rgba(255,255,255,.12);border-radius:999px;
+    padding:6px 14px;z-index:60;display:none}
+  #lockTip.on{display:block}
+</style>
+<div id="cross"></div>
+<div id="lockTip">点击画面锁定鼠标视角 · ESC 松开</div>
+
 <div class="objective" id="obj"><div class="t">剧情</div><div id="objTxt"></div></div>
 
 <div class="bl hud">
@@ -128,7 +140,7 @@
 <div id="miniWrap"><canvas id="mini" width="132" height="132"></canvas></div>
 
 <div class="speedo"><b id="spd">0</b><i>km/h</i></div>
-<div class="hint" id="hint">WASD 开车 · E 上下车 · 左键开枪 · Shift 手刹</div>
+<div class="hint" id="hint">点画面锁鼠标转视角 · WASD 移动 · E 上下车 · 左键开枪 · Shift 冲刺/手刹</div>
 
 <div class="touch" id="touch">
   <div class="pad">
@@ -149,10 +161,11 @@
     <div class="keys">
       <div><span>油门 / 倒车</span><k>W S</k></div>
       <div><span>转向</span><k>A D</k></div>
+      <div><span>下车后走 / 冲刺</span><k>WASD / Shift</k></div>
       <div><span>上下车</span><k>E</k></div>
       <div><span>开枪</span><k>左键 / J</k></div>
       <div><span>手刹漂移</span><k>Shift</k></div>
-      <div><span>转视角</span><k>拖动鼠标</k></div>
+      <div><span>视角（MC 式）</span><k>点画面锁鼠标</k></div>
     </div>
     <button class="go" id="btnStart" disabled>正在加载 3D 引擎…</button>
     <button class="go ghost" id="btnFull2d" style="margin-top:8px">去 2D 版玩 19 章完整剧情</button>
@@ -170,7 +183,7 @@
 <div class="veil" id="help">
   <div class="panel">
     <h1>操作</h1>
-    <p>W/S 油门倒车，A/D 转向，Shift 手刹漂移，E 上下车。<br>鼠标拖动转镜头，左键或 J 开枪。<br>撞人、开枪、抢车都会涨通缉星，星星越多警车越多；躲远点、安静一阵会慢慢掉星。</p>
+    <p>W/S 油门倒车，A/D 转向，Shift 手刹漂移，E 上下车。<br><b>点一下画面锁定鼠标</b>，之后像 MC 一样用鼠标转视角：走路时鼠标就是朝向，开车时是镜头（松开鼠标 1 秒自动回正），ESC 解锁。<br>左键或 J 开枪；撞人、开枪、抢车都会涨通缉星，星星越多警车越多；躲远点、安静一阵会慢慢掉星。</p>
     <p>赚到的钱实时同步到账户，和 2D 版 / 炒股 / 外汇通用。</p>
     <button class="go" id="btnHelpClose">知道了</button>
   </div>
@@ -190,11 +203,46 @@ import * as THREE from './three.module.min.js';
 
 const cv = document.getElementById('game');
 const renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.28;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.setSize(window.innerWidth, window.innerHeight, false);
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0x141c28, 150, 520);
+scene.fog = new THREE.Fog(0x1a2434, 180, 620);
+{
+  const c = mkCanvas(8, 256), g = c.getContext('2d');
+  const grad = g.createLinearGradient(0, 0, 0, 256);
+  grad.addColorStop(0, '#070b14');
+  grad.addColorStop(0.42, '#16233a');
+  grad.addColorStop(0.62, '#39405a');
+  grad.addColorStop(0.78, '#8a5f52');
+  grad.addColorStop(1, '#1b2130');
+  g.fillStyle = grad; g.fillRect(0, 0, 8, 256);
+  const skyTex = new THREE.CanvasTexture(c);
+  skyTex.colorSpace = THREE.SRGBColorSpace;
+  const sky = new THREE.Mesh(
+    new THREE.SphereGeometry(900, 24, 16),
+    new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, fog: false, depthWrite: false })
+  );
+  scene.add(sky);
+  // 星星
+  const N = 700, arr = new Float32Array(N * 3);
+  for (let i = 0; i < N; i++) {
+    const a = Math.random() * 6.2832, e = 0.08 + Math.random() * 0.82;
+    const r = 820;
+    arr[i * 3] = Math.cos(a) * Math.cos(e) * r;
+    arr[i * 3 + 1] = Math.sin(e) * r;
+    arr[i * 3 + 2] = Math.sin(a) * Math.cos(e) * r;
+  }
+  const sg = new THREE.BufferGeometry();
+  sg.setAttribute('position', new THREE.BufferAttribute(arr, 3));
+  const st = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xdbe6ff, size: 2.6, sizeAttenuation: false, transparent: true, opacity: 0.75, fog: false }));
+  scene.add(st);
+}
 
 const camera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.5, 1200);
 
@@ -259,13 +307,74 @@ for (const L of [...LANDMARKS, ...POIS]) {
 }
 
 // ====== 灯光 ======
-scene.add(new THREE.HemisphereLight(0xb4d2ff, 0x2b3038, 1.35));
-const sun = new THREE.DirectionalLight(0xffe6c0, 1.35);
+scene.add(new THREE.HemisphereLight(0xc2daff, 0x3a4048, 1.7));
+const fill = new THREE.DirectionalLight(0x9dc0ff, 0.65);
+fill.position.set(-90, 70, -60);
+scene.add(fill);
+const sun = new THREE.DirectionalLight(0xffe6c0, 2.1);
+scene.add(sun.target);
+sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024);
+sun.shadow.camera.near = 1;
+sun.shadow.camera.far = 420;
+sun.shadow.camera.left = -95;
+sun.shadow.camera.right = 95;
+sun.shadow.camera.top = 95;
+sun.shadow.camera.bottom = -95;
+sun.shadow.bias = -0.0006;
+sun.shadow.normalBias = 0.04;
 sun.position.set(90, 140, 60);
 scene.add(sun);
 const rim = new THREE.DirectionalLight(0x6f9bff, 0.5);
 rim.position.set(-90, 60, -70);
 scene.add(rim);
+
+// ====== 几何工具：倒角盒 + 合并（人物用实体圆滑件，不用方块）======
+function roundedBox(w, h, d, r, seg) {
+  r = Math.min(r, Math.min(w, h, d) / 2 - 0.001);
+  const g = new THREE.BoxGeometry(w, h, d, seg || 3, seg || 3, seg || 3);
+  const p = g.attributes.position;
+  const hx = w / 2 - r, hy = h / 2 - r, hz = d / 2 - r;
+  const v = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++) {
+    v.fromBufferAttribute(p, i);
+    const cx = clamp(v.x, -hx, hx), cy = clamp(v.y, -hy, hy), cz = clamp(v.z, -hz, hz);
+    const dx = v.x - cx, dy = v.y - cy, dz = v.z - cz;
+    const l = Math.hypot(dx, dy, dz) || 1;
+    p.setXYZ(i, cx + (dx / l) * r, cy + (dy / l) * r, cz + (dz / l) * r);
+  }
+  g.computeVertexNormals();
+  return g;
+}
+function mergeGeos(list) {
+  const geos = list.map((g) => (g.index ? g.toNonIndexed() : g));
+  const total = geos.reduce((n, g) => n + g.attributes.position.count, 0);
+  const pos = new Float32Array(total * 3);
+  const nor = new Float32Array(total * 3);
+  const uv = new Float32Array(total * 2);
+  let o = 0;
+  for (const g of geos) {
+    const p = g.attributes.position, n = g.attributes.normal, u = g.attributes.uv;
+    pos.set(p.array, o * 3);
+    if (n) nor.set(n.array, o * 3);
+    if (u) uv.set(u.array, o * 2);
+    o += p.count;
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  out.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+  out.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  return out;
+}
+// 把圆柱/胶囊转到指定位置
+function at(geo, x, y, z, rx, ry, rz) {
+  const g = geo.clone();
+  if (rx) g.rotateX(rx);
+  if (ry) g.rotateY(ry);
+  if (rz) g.rotateZ(rz);
+  g.translate(x, y, z);
+  return g;
+}
 
 // ====== 贴图（程序化 canvas，不上外部图片）======
 function mkCanvas(w, h) {
@@ -352,9 +461,9 @@ function archMaterial(name, rows) {
 function asphaltTex() {
   const W = 256, H = 256;
   const c = mkCanvas(W, H), g = c.getContext('2d');
-  g.fillStyle = '#22252b'; g.fillRect(0, 0, W, H);
+  g.fillStyle = '#2c313a'; g.fillRect(0, 0, W, H);
   for (let i = 0; i < 2600; i++) {
-    const v = 28 + Math.random() * 26;
+    const v = 44 + Math.random() * 34;
     g.fillStyle = 'rgba(' + v + ',' + (v + 2) + ',' + (v + 6) + ',.5)';
     g.fillRect(Math.random() * W, Math.random() * H, 1 + Math.random() * 2, 1 + Math.random() * 2);
   }
@@ -473,6 +582,7 @@ const groundMat = new THREE.MeshLambertMaterial({ map: asphaltTex() });
 const ground = new THREE.Mesh(groundGeo, groundMat);
 ground.rotation.x = -Math.PI / 2;
 ground.position.set(WORLD / 2, -0.02, WORLD / 2);
+ground.receiveShadow = true;
 scene.add(ground);
 
 // 人行道（每个街区一块，水泥贴图）
@@ -496,6 +606,7 @@ padMesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
   padMesh.instanceMatrix.needsUpdate = true;
   padMesh.instanceColor.needsUpdate = true;
 }
+padMesh.receiveShadow = true;
 scene.add(padMesh);
 
 // 车道虚线
@@ -623,6 +734,8 @@ function rowsFor(h) { return h < 12 ? 3 : h < 30 ? 5 : h < 60 ? 8 : 10; }
     inst.instanceMatrix.needsUpdate = true;
     if (inst.instanceColor) inst.instanceColor.needsUpdate = true;
     inst.frustumCulled = false;
+    inst.castShadow = true;
+    inst.receiveShadow = true;
     scene.add(inst);
   }
 }
@@ -729,6 +842,7 @@ const leafMesh2 = new THREE.InstancedMesh(new THREE.ConeGeometry(1.9, 3.4, 8), l
   leafMesh.instanceMatrix.needsUpdate = true;
   leafMesh2.instanceMatrix.needsUpdate = true;
 }
+for (const m of [trunkMesh, leafMesh, leafMesh2]) { m.castShadow = true; m.receiveShadow = true; }
 scene.add(trunkMesh, leafMesh, leafMesh2);
 
 // ====== 建筑碰撞查询 ======
@@ -786,23 +900,23 @@ const carGroup = new THREE.Group();
   const tyre = new THREE.MeshLambertMaterial({ map: tireTex() });
 
   // 底盘 + 车身
-  const chassis = new THREE.Mesh(new THREE.BoxGeometry(2.05, 0.42, 4.5), trim);
-  chassis.position.y = 0.55;
-  const body = new THREE.Mesh(new THREE.BoxGeometry(2.02, 0.62, 4.42), paint);
+  const chassis = new THREE.Mesh(roundedBox(2.02, 0.4, 4.46, 0.16), trim);
+  chassis.position.y = 0.56;
+  const body = new THREE.Mesh(roundedBox(2.04, 0.66, 4.4, 0.28), paint);
   body.position.y = 0.98;
-  const skirt = new THREE.Mesh(new THREE.BoxGeometry(2.08, 0.22, 4.2), paintDark);
-  skirt.position.y = 0.72;
+  const skirt = new THREE.Mesh(roundedBox(2.06, 0.2, 4.16, 0.08), paintDark);
+  skirt.position.y = 0.7;
   // 机盖 / 尾箱 / 车顶
-  const hood = new THREE.Mesh(new THREE.BoxGeometry(1.94, 0.18, 1.5), paint);
-  hood.position.set(0, 1.3, 1.42);
-  const trunk = new THREE.Mesh(new THREE.BoxGeometry(1.94, 0.18, 1.15), paint);
-  trunk.position.set(0, 1.3, -1.62);
-  const roof = new THREE.Mesh(new THREE.BoxGeometry(1.72, 0.16, 1.9), paintDark);
-  roof.position.set(0, 1.86, -0.18);
+  const hood = new THREE.Mesh(roundedBox(1.92, 0.2, 1.52, 0.09), paint);
+  hood.position.set(0, 1.31, 1.4);
+  const trunk = new THREE.Mesh(roundedBox(1.92, 0.2, 1.16, 0.09), paint);
+  trunk.position.set(0, 1.31, -1.6);
+  const roof = new THREE.Mesh(roundedBox(1.7, 0.16, 1.94, 0.07), paintDark);
+  roof.position.set(0, 1.88, -0.2);
   // 车厢玻璃
-  const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.78, 0.62, 2.0), glass);
-  cabin.position.set(0, 1.55, -0.18);
-  const windshield = new THREE.Mesh(new THREE.BoxGeometry(1.76, 0.56, 0.14), glass);
+  const cabin = new THREE.Mesh(roundedBox(1.76, 0.64, 2.02, 0.14), glass);
+  cabin.position.set(0, 1.56, -0.2);
+  const windshield = new THREE.Mesh(roundedBox(1.74, 0.58, 0.14, 0.05), glass);
   windshield.position.set(0, 1.5, 0.86);
   windshield.rotation.x = -0.42;
   carGroup.add(chassis, body, skirt, hood, trunk, roof, cabin, windshield);
@@ -837,53 +951,73 @@ const carGroup = new THREE.Group();
   bump2.position.z = -2.3;
   carGroup.add(bump, bump2);
 }
+carGroup.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
 scene.add(carGroup);
 
 // 主角（有脸、有衣服贴图的分件人体）
 const foot = new THREE.Group();
+let footParts = null;
 {
-  const shirtMat = new THREE.MeshLambertMaterial({ map: shirtTex(0xff2e88) });
-  const pantsMat = new THREE.MeshLambertMaterial({ map: shirtTex(0x2b3340) });
-  const skinMat = new THREE.MeshLambertMaterial({ color: 0xe8bd97 });
-  const faceMat = new THREE.MeshLambertMaterial({ map: faceTex() });
-  const shoeMat = new THREE.MeshLambertMaterial({ color: 0x15181d });
+  const skinMat = new THREE.MeshStandardMaterial({ color: 0xe8bd97, roughness: 0.62, metalness: 0.02 });
+  const shirtMat = new THREE.MeshStandardMaterial({ map: shirtTex(0xe23b74), roughness: 0.78, metalness: 0.04 });
+  const pantsMat = new THREE.MeshStandardMaterial({ map: shirtTex(0x2b3340), roughness: 0.85 });
+  const hairMat = new THREE.MeshStandardMaterial({ color: 0x2a211c, roughness: 0.9 });
+  const shoeMat = new THREE.MeshStandardMaterial({ color: 0x14171c, roughness: 0.55, metalness: 0.15 });
 
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.95, 0.44), shirtMat);
-  torso.position.y = 1.42;
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.16, 8), skinMat);
-  neck.position.y = 1.95;
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 14, 12), skinMat);
-  head.position.y = 2.16;
-  const face = new THREE.Mesh(new THREE.PlaneGeometry(0.44, 0.44), faceMat);
-  face.position.set(0, 2.17, 0.26);
-  const armL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.78, 0.22), shirtMat);
-  armL.position.set(-0.5, 1.42, 0);
-  const armR = armL.clone(); armR.position.x = 0.5;
-  const handL = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.16, 0.2), skinMat);
-  handL.position.set(-0.5, 1.02, 0);
-  const handR = handL.clone(); handR.position.x = 0.5;
-  const legL = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.9, 0.3), pantsMat);
-  legL.position.set(-0.19, 0.5, 0);
-  const legR = legL.clone(); legR.position.x = 0.19;
-  const shoeL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.14, 0.44), shoeMat);
-  shoeL.position.set(-0.19, 0.07, 0.06);
-  const shoeR = shoeL.clone(); shoeR.position.x = 0.19;
-  foot.add(torso, neck, head, face, armL, armR, handL, handR, legL, legR, shoeL, shoeR);
+  // 躯干：胶囊压扁成胸背
+  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.27, 0.5, 6, 12), shirtMat);
+  torso.scale.set(1.28, 1, 0.82);
+  torso.position.y = 1.34;
+  const neck = new THREE.Mesh(new THREE.CapsuleGeometry(0.1, 0.12, 4, 8), skinMat);
+  neck.position.y = 1.86;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.255, 20, 16), skinMat);
+  head.position.y = 2.06;
+  head.scale.set(0.95, 1.06, 1);
+  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.262, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.55), hairMat);
+  hair.position.y = 2.08;
+  hair.scale.set(1.02, 1.05, 1.04);
+  // 五官：眼、鼻
+  const eyeGeo = new THREE.SphereGeometry(0.035, 8, 8);
+  const eyeMat = new THREE.MeshStandardMaterial({ color: 0x1b1b1f, roughness: 0.4 });
+  const eyeL = new THREE.Mesh(eyeGeo, eyeMat); eyeL.position.set(-0.09, 2.08, 0.225);
+  const eyeR = new THREE.Mesh(eyeGeo, eyeMat); eyeR.position.set(0.09, 2.08, 0.225);
+  const nose = new THREE.Mesh(new THREE.CapsuleGeometry(0.03, 0.08, 4, 6), skinMat);
+  nose.rotation.x = Math.PI / 2; nose.position.set(0, 2.02, 0.24);
+  // 手臂
+  const armL = new THREE.Mesh(new THREE.CapsuleGeometry(0.095, 0.52, 5, 10), shirtMat);
+  armL.position.set(-0.42, 1.36, 0);
+  const armR = armL.clone(); armR.position.x = 0.42;
+  const handGeo = new THREE.SphereGeometry(0.1, 10, 8);
+  const handL = new THREE.Mesh(handGeo, skinMat); handL.position.set(-0.42, 1.05, 0);
+  const handR = handL.clone(); handR.position.x = 0.42;
+  // 腿
+  const legL = new THREE.Mesh(new THREE.CapsuleGeometry(0.125, 0.56, 5, 10), pantsMat);
+  legL.position.set(-0.16, 0.56, 0);
+  const legR = legL.clone(); legR.position.x = 0.16;
+  const shoeL = new THREE.Mesh(roundedBox(0.24, 0.16, 0.4, 0.07), shoeMat);
+  shoeL.position.set(-0.16, 0.08, 0.07);
+  const shoeR = shoeL.clone(); shoeR.position.x = 0.16;
+
+  const all = [torso, neck, head, hair, eyeL, eyeR, nose, armL, armR, handL, handR, legL, legR, shoeL, shoeR];
+  for (const m of all) { m.castShadow = true; m.receiveShadow = true; foot.add(m); }
+  footParts = { armL, armR, legL, legR, handL, handR, shoeL, shoeR };
   foot.visible = false;
 }
-scene.add(foot);
+scene.add(foot);scene.add(foot);
 
 // ====== 交通车 / 警车 / 行人 ======
 const CAR_N = 34;
-const trafficBody = new THREE.InstancedMesh(new THREE.BoxGeometry(2.02, 0.72, 4.36),
+const trafficBody = new THREE.InstancedMesh(roundedBox(2.04, 0.74, 4.36, 0.3),
   new THREE.MeshLambertMaterial({ map: paintTex(0xffffff, false) }), CAR_N + 8);
-const trafficTop = new THREE.InstancedMesh(new THREE.BoxGeometry(1.66, 0.6, 1.86),
+const trafficTop = new THREE.InstancedMesh(roundedBox(1.64, 0.58, 1.84, 0.14),
   new THREE.MeshLambertMaterial({ color: 0x1a2431, transparent: true, opacity: 0.92 }), CAR_N + 8);
 const trafficWheel = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.36, 0.36, 1.9, 10),
   new THREE.MeshLambertMaterial({ map: tireTex() }), CAR_N + 8);
 for (const m of [trafficBody, trafficTop, trafficWheel]) {
   m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   m.frustumCulled = false;
+  m.castShadow = true;
+  m.receiveShadow = true;
 }
 trafficBody.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
 trafficTop.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -896,54 +1030,63 @@ trafficTop.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
 scene.add(trafficBody, trafficTop, trafficWheel);
 
 const PED_N = 90;
-const PED_MAX = PED_N + 40;   // 留位置给任务里的敌人
-const pedBody = new THREE.InstancedMesh(
-  new THREE.BoxGeometry(0.66, 0.86, 0.4),
-  new THREE.MeshLambertMaterial({ map: shirtTex(0xffffff) }), PED_MAX);
+const PED_MAX = PED_N + 40;
+const pedTorso = new THREE.InstancedMesh(
+  (() => { const g = new THREE.CapsuleGeometry(0.26, 0.48, 5, 10); g.scale(1.26, 1, 0.8); g.translate(0, 1.34, 0); return g; })(),
+  new THREE.MeshStandardMaterial({ map: shirtTex(0xffffff), roughness: 0.8 }), PED_MAX);
 const pedHead = new THREE.InstancedMesh(
-  new THREE.SphereGeometry(0.25, 12, 10),
-  new THREE.MeshLambertMaterial({ map: faceTex() }), PED_MAX);
+  (() => { const g = new THREE.SphereGeometry(0.245, 16, 12); g.scale(0.96, 1.05, 1); g.translate(0, 2.02, 0); return g; })(),
+  new THREE.MeshStandardMaterial({ color: 0xe0b18c, roughness: 0.62 }), PED_MAX);
+const pedHair = new THREE.InstancedMesh(
+  (() => { const g = new THREE.SphereGeometry(0.252, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.52); g.translate(0, 2.04, 0); return g; })(),
+  new THREE.MeshStandardMaterial({ color: 0x2a211c, roughness: 0.92 }), PED_MAX);
+const pedArms = new THREE.InstancedMesh(
+  mergeGeos([
+    at(new THREE.CapsuleGeometry(0.085, 0.5, 4, 8), -0.4, 1.34, 0),
+    at(new THREE.CapsuleGeometry(0.085, 0.5, 4, 8), 0.4, 1.34, 0),
+  ]),
+  new THREE.MeshStandardMaterial({ map: shirtTex(0xffffff), roughness: 0.8 }), PED_MAX);
 const pedLegs = new THREE.InstancedMesh(
-  new THREE.BoxGeometry(0.56, 0.8, 0.34),
-  new THREE.MeshLambertMaterial({ map: shirtTex(0x33384a) }), PED_MAX);
-for (const m of [pedBody, pedHead, pedLegs]) {
+  mergeGeos([
+    at(new THREE.CapsuleGeometry(0.115, 0.54, 4, 8), -0.16, 0.56, 0),
+    at(new THREE.CapsuleGeometry(0.115, 0.54, 4, 8), 0.16, 0.56, 0),
+    at(roundedBox(0.12, 0.1, 0.2, 0.04), -0.16, 0.06, 0.02),
+    at(roundedBox(0.12, 0.1, 0.2, 0.04), 0.16, 0.06, 0.02),
+  ]),
+  new THREE.MeshStandardMaterial({ map: shirtTex(0x33384a), roughness: 0.86 }), PED_MAX);
+const pedSet = [pedTorso, pedHead, pedHair, pedArms, pedLegs];
+for (const m of pedSet) {
   m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   m.frustumCulled = false;
+  m.castShadow = true;
+  m.receiveShadow = true;
 }
 {
   const col = new THREE.Color();
   const palette = [0xd8dde6, 0xcf9a6a, 0x8f9fb5, 0xb58fc0, 0x9ab58f, 0xd0b38f, 0x6f8fc0, 0xc07f7f];
-  for (let i = 0; i < PED_MAX; i++) pedBody.setColorAt(i, col.setHex(palette[i % palette.length]));
-  pedBody.instanceColor.needsUpdate = true;
+  for (let i = 0; i < PED_MAX; i++) {
+    col.setHex(palette[i % palette.length]);
+    pedTorso.setColorAt(i, col);
+    pedArms.setColorAt(i, col);
+  }
+  pedTorso.instanceColor.needsUpdate = true;
+  pedArms.instanceColor.needsUpdate = true;
 }
 const _pm = new THREE.Matrix4();
 const _pq = new THREE.Quaternion();
 const _pe = new THREE.Euler();
-const _pv = new THREE.Vector3();
 const _p1 = new THREE.Vector3(1, 1, 1);
 function setPed(i, x, z, h, dead) {
   if (dead) {
-    _pe.set(-Math.PI / 2, 0, h);
-    _pv.set(x, 0.35, z);
-    _pq.setFromEuler(_pe);
-    _pm.compose(_pv, _pq, _p1);
-    pedBody.setMatrixAt(i, _pm);
-    pedHead.setMatrixAt(i, _pm);
-    _pe.set(-Math.PI / 2, 0, h);
-    _pq.setFromEuler(_pe);
-    _pm.compose(new THREE.Vector3(x, 0.3, z), _pq, _p1);
-    pedLegs.setMatrixAt(i, _pm);
-    return;
+    _pq.setFromEuler(_pe.set(-Math.PI / 2, 0, h));
+    _pm.compose(new THREE.Vector3(x, 0.32, z), _pq, _p1);
+  } else {
+    _pq.setFromAxisAngle(new THREE.Vector3(0, 1, 0), h);
+    _pm.compose(new THREE.Vector3(x, 0, z), _pq, _p1);
   }
-  _pq.setFromAxisAngle(new THREE.Vector3(0, 1, 0), h);
-  _pm.compose(new THREE.Vector3(x, 1.34, z), _pq, _p1);
-  pedBody.setMatrixAt(i, _pm);
-  _pm.compose(new THREE.Vector3(x, 1.98, z), _pq, _p1);
-  pedHead.setMatrixAt(i, _pm);
-  _pm.compose(new THREE.Vector3(x, 0.52, z), _pq, _p1);
-  pedLegs.setMatrixAt(i, _pm);
+  for (const m of pedSet) m.setMatrixAt(i, _pm);
 }
-scene.add(pedBody, pedHead, pedLegs);
+scene.add(pedTorso, pedHead, pedHair, pedArms, pedLegs);
 
 const traffic = [];
 for (let i = 0; i < CAR_N; i++) {
@@ -975,9 +1118,9 @@ for (let i = 0; i < PED_N; i++) {
 
 // 警车（最多 6 辆）
 let copCars = [];
-const copBody = new THREE.InstancedMesh(new THREE.BoxGeometry(2.06, 0.74, 4.42),
+const copBody = new THREE.InstancedMesh(roundedBox(2.08, 0.76, 4.42, 0.3),
   new THREE.MeshLambertMaterial({ map: paintTex(0x1b2a4a, true) }), 8);
-const copTop = new THREE.InstancedMesh(new THREE.BoxGeometry(1.7, 0.58, 1.86),
+const copTop = new THREE.InstancedMesh(roundedBox(1.68, 0.56, 1.84, 0.14),
   new THREE.MeshLambertMaterial({ color: 0x1a2431, transparent: true, opacity: 0.92 }), 8);
 const copLight = new THREE.InstancedMesh(new THREE.BoxGeometry(1.6, 0.2, 0.5),
   new THREE.MeshBasicMaterial({ color: 0xff2b2b }), 8);
@@ -985,10 +1128,11 @@ const copWheel = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.4, 0.4, 1.
   new THREE.MeshLambertMaterial({ map: tireTex() }), 8);
 const copSign = new THREE.InstancedMesh(new THREE.BoxGeometry(1.2, 0.5, 0.36),
   new THREE.MeshLambertMaterial({ color: 0xe8eef7 }), 8);
-for (const m of [copWheel, copSign]) m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+for (const m of [copWheel, copSign]) { m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); m.castShadow = true; }
 copBody.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
 copTop.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
 copLight.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+for (const m of [copBody, copTop, copLight, copWheel, copSign]) { m.castShadow = true; m.receiveShadow = true; }
 scene.add(copBody, copTop, copLight, copWheel, copSign);
 
 // ====== 状态 ======
@@ -997,7 +1141,7 @@ const game = {
   money: 0, wanted: 0, time: 0, crimeAt: -99, quiet: 0,
   kills: 0, shake: 0, dlgOn: false, dlgQueue: [], dlgDone: null,
   chapter: 1, missions: [], surviveT: 0, chapterDone: false, missionT: 0, missionKills: 0, failReason: '',
-  hp: 100, inCar: false, speed: 0, camYaw: 0, camPitch: 0,
+  hp: 100, inCar: false, speed: 0, camYaw: 0, camPitch: 0, lastLook: -9,
   bullets: [], parts: [],
 };
 const car = { x: 0, z: 0, h: 0, v: 0, hp: 100 };
@@ -1337,7 +1481,22 @@ for (let i = 0; i < 8; i++) {
 
 // ====== 输入 ======
 const keys = {};
-const mouse = { dragging: false, lastX: 0, lastY: 0, down: false };
+const mouse = { dragging: false, lastX: 0, lastY: 0, down: false, locked: false };
+const SENS = 0.0024;
+function setLocked(on) {
+  mouse.locked = on;
+  document.getElementById('cross').classList.toggle('on', on);
+  document.getElementById('lockTip').classList.toggle('on', !on && game.running && !game.dlgOn);
+}
+document.addEventListener('pointerlockchange', () => setLocked(document.pointerLockElement === cv));
+cv.addEventListener('click', () => {
+  if (!game.running) return;
+  if (game.dlgOn) { nextLine(); return; }
+  if (!mouse.locked) {
+    try { const pr = cv.requestPointerLock && cv.requestPointerLock(); if (pr && pr.catch) pr.catch(function () {}); } catch (e) {}
+    return;
+  }
+});
 window.addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
   keys[k] = true;
@@ -1349,15 +1508,33 @@ window.addEventListener('keydown', (e) => {
 window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
 cv.addEventListener('mousedown', (e) => {
   mouse.down = true;
-  if (e.button === 2 || e.shiftKey) { mouse.dragging = true; mouse.lastX = e.clientX; mouse.lastY = e.clientY; }
-  else shoot();
+  if (!mouse.locked) {
+    if (e.button === 2 || e.shiftKey) { mouse.dragging = true; mouse.lastX = e.clientX; mouse.lastY = e.clientY; }
+    else shoot();
+    return;
+  }
+  if (e.button === 0) shoot();
 });
 window.addEventListener('mouseup', () => { mouse.down = false; mouse.dragging = false; });
 window.addEventListener('mousemove', (e) => {
+  if (mouse.locked) {
+    // 锁定后：鼠标 = 视角。走路时直接转身体，开车时转镜头
+    if (game.inCar) {
+      game.camYaw -= e.movementX * SENS;
+      game.camYaw = clamp(game.camYaw, -2.6, 2.6);
+    } else {
+      player.h -= e.movementX * SENS;
+      game.camYaw = 0;
+    }
+    game.camPitch = clamp(game.camPitch + e.movementY * SENS * 0.9, -0.5, 0.85);
+    game.lastLook = game.time;
+    return;
+  }
   if (!mouse.dragging) return;
   game.camYaw -= (e.clientX - mouse.lastX) * 0.006;
   game.camPitch = clamp(game.camPitch + (e.clientY - mouse.lastY) * 0.003, -0.35, 0.6);
   mouse.lastX = e.clientX; mouse.lastY = e.clientY;
+  game.lastLook = game.time;
 });
 cv.addEventListener('contextmenu', (e) => e.preventDefault());
 
@@ -1522,7 +1699,7 @@ function missionFail(reason) {
 // ====== 主循环 ======
 let last = performance.now();
 let miniT = 0;
-let slowFrames = 0, curDpr = Math.min(window.devicePixelRatio || 1, 1.5);
+let slowFrames = 0, curDpr = Math.min(window.devicePixelRatio || 1, 2);
 function frame(now) {
   let raw = (now - last) / 1000;
   let dt = Math.min(raw, 0.05);
@@ -1582,14 +1759,17 @@ function update(dt) {
     const right = keys['d'] || keys['arrowright'] || touchState.right;
     const up = keys['w'] || keys['arrowup'] || touchState.gas;
     const down = keys['s'] || keys['arrowdown'];
-    const mx = (right ? 1 : 0) - (left ? 1 : 0);
-    const mz = (up ? 1 : 0) - (down ? 1 : 0);
-    if (mx || mz) {
-      const len = Math.hypot(mx, mz) || 1;
-      const sp = 9;
-      player.h = Math.atan2(mx / len, mz / len);
-      const nx = clamp(player.x + (mx / len) * sp * dt, 4, WORLD - 4);
-      const nz = clamp(player.z + (mz / len) * sp * dt, 4, WORLD - 4);
+    const mf = (up ? 1 : 0) - (down ? 1 : 0);
+    const ms = (right ? 1 : 0) - (left ? 1 : 0);
+    if (mf || ms) {
+      const yaw = player.h;
+      let vx = Math.sin(yaw) * mf + Math.cos(yaw) * ms;
+      let vz = Math.cos(yaw) * mf - Math.sin(yaw) * ms;
+      const len = Math.hypot(vx, vz) || 1;
+      vx /= len; vz /= len;
+      const sp = (keys['shift'] ? 13 : 8.5);
+      const nx = clamp(player.x + vx * sp * dt, 4, WORLD - 4);
+      const nz = clamp(player.z + vz * sp * dt, 4, WORLD - 4);
       const hit = collideCar(nx, nz, 0.7);
       if (hit) { player.x += hit.x; player.z += hit.z; }
       else { player.x = nx; player.z = nz; }
@@ -1604,6 +1784,9 @@ function update(dt) {
   const p = activePos();
   const camDist = game.inCar ? 16 : 11;
   const camH = game.inCar ? 8.6 : 6.6;
+  if (game.inCar && game.time - (game.lastLook || -9) > 1.1) {
+    game.camYaw *= Math.pow(0.06, dt);
+  }
   const yaw = p.h + Math.PI + game.camYaw;
   const tx = p.x + Math.sin(yaw) * camDist;
   const tz = p.z + Math.cos(yaw) * camDist;
@@ -1611,7 +1794,9 @@ function update(dt) {
   camera.position.x = lerp(camera.position.x, tx, Math.min(1, dt * 5));
   camera.position.z = lerp(camera.position.z, tz, Math.min(1, dt * 5));
   camera.position.y = lerp(camera.position.y, ty, Math.min(1, dt * 5));
-  camera.lookAt(p.x + Math.sin(p.h) * 8, 1.6, p.z + Math.cos(p.h) * 8);
+  camera.lookAt(p.x + Math.sin(p.h) * 8, 1.6 - game.camPitch * 3.2, p.z + Math.cos(p.h) * 8);
+  sun.target.position.set(p.x, 0, p.z);
+  sun.position.set(p.x + 70, 120, p.z + 55);
 
   // 交通车
   const tm = new THREE.Matrix4();
@@ -1682,12 +1867,10 @@ function update(dt) {
     }
     setPed(i, p.x, p.z, p.h, false);
   }
-  pedBody.count = peds.length;
-  pedHead.count = peds.length;
-  pedLegs.count = peds.length;
-  pedBody.instanceMatrix.needsUpdate = true;
-  pedHead.instanceMatrix.needsUpdate = true;
-  pedLegs.instanceMatrix.needsUpdate = true;
+  for (const m of pedSet) {
+    m.count = peds.length;
+    m.instanceMatrix.needsUpdate = true;
+  }
 
   // 警车
   if (copCars.length) {
@@ -1810,6 +1993,7 @@ function reset() {
   game.running = true;
   game.paused = false;
   document.getElementById('veil').classList.remove('on');
+  setLocked(false);
   document.getElementById('dead').classList.remove('on');
   if (game.missions.length >= STORY.length) {
     setObjective();
@@ -1859,6 +2043,8 @@ window.__gta3d = {
   tp: (x, z) => { car.x = x; car.z = z; },
   step: (n) => { for (let i = 0; i < n; i++) update(1 / 60); },
   camPos: () => ({ x: camera.position.x, y: camera.position.y, z: camera.position.z }),
+  stats: () => ({ shadows: renderer.shadowMap.enabled, footMeshes: foot.children.length, pedVerts: pedTorso.geometry.attributes.position.count, dpr: renderer.getPixelRatio(), crisp: renderer.toneMapping === THREE.ACESFilmicToneMapping }),
+  lock: () => !!document.pointerLockElement,
   story: () => STORY.length,
   goChapter: (n) => { game.missions = []; game.wanted = 0; game.hp = 100; startChapter(n); },
   enemies: () => peds.filter((p) => p.enemy && !p.dead).length,
