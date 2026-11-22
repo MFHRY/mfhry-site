@@ -60,6 +60,10 @@
   .overlay-box button:active{transform:scale(.96);}
   .overlay-box .cont{display:inline-block; margin-left:12px; background:var(--panel); color:var(--text); border:1px solid #26303a; font-size:14px; font-weight:600; border-radius:10px; padding:10px 16px; cursor:pointer;}
   .overlay-box .cont.hidden{display:none;}
+  @keyframes winpop{0%{transform:scale(.86);opacity:.4}60%{transform:scale(1.05)}100%{transform:scale(1)}}
+  .overlay-box.win{animation:winpop .5s ease-out; box-shadow:0 0 48px rgba(255,180,84,.45);}
+  .overlay-box.win h2{animation:blinkGlow 1s ease-in-out 2;}
+  @keyframes blinkGlow{50%{text-shadow:0 0 22px rgba(255,180,84,.9);}}
 </style>
 </head>
 <body>
@@ -80,7 +84,7 @@
     <button class="cont hidden" id="overlayContinue">继续挑战</button>
   </div>
 </div>
-<script src="/games/kit.js"></script>
+<script src="/games/score.js"></script>
 <script>
 (function () {
   'use strict';
@@ -96,18 +100,24 @@
   const overlayBtn = document.getElementById('overlayBtn');
   const overlayContinue = document.getElementById('overlayContinue');
 
-  // ---- kit 音效 / 成绩 ----
-  const kit = window.mfKit || null;
+  // ---- kit 音效 / 成绩（kit 在页面末尾加载，运行时懒取）----
   function sfx(n) {
-    if (kit && typeof kit.sfx === 'function') { try { kit.sfx(n); } catch (e) {} }
+    var k = window.mfKit;
+    if (k && typeof k.sfx === 'function') { try { k.sfx(n); } catch (e) {} }
   }
-  function refreshBest() {
-    let b = 0;
-    if (kit && typeof kit.getBest === 'function') { try { b = kit.getBest('g2048') || 0; } catch (e) {} }
-    bestLabel.textContent = b;
+  function readBest() {
+    var b = 0;
+    try {
+      b = +(localStorage.getItem('mfhry_best_2048') || 0) || 0;
+      if (!b) b = +(localStorage.getItem('mfhry_2048_best') || 0) || 0;
+    } catch (e) {}
+    return b;
   }
-  function reportScore() {
-    if (typeof window.mfhryScore === 'function') { try { window.mfhryScore('g2048', score); } catch (e) {} }
+  function refreshBest() { bestLabel.textContent = readBest(); }
+  // 只在整局结束 / 达成 2048 时提交一次，避免每步都发请求
+  function submitScore() {
+    if (typeof window.mfhryScore === 'function') { try { window.mfhryScore('2048', score); } catch (e) {} }
+    try { window.mfKit && window.mfKit.setScore(score); } catch (e) {}
     refreshBest();
   }
 
@@ -221,21 +231,26 @@
     if (won) return;
     if (grid.indexOf(2048) !== -1) {
       won = true;
-      sfx('win');
+      try { window.mfKit && window.mfKit.win(); } catch (e) {}
+      submitScore();
+      const box = overlay.querySelector('.overlay-box');
+      if (box) box.classList.add('win');
       showOverlay('🎉 达成 2048！', '得分 ' + score, '再玩一次', true);
     }
   }
   function checkLose() {
-    if (over || won) return;
+    if (over) return;
     if (!canMove()) {
       over = true;
+      try { window.mfKit && window.mfKit.gameOver(); } catch (e) {}
+      submitScore();
       showOverlay('游戏结束', '得分 ' + score, '再玩一次', false);
     }
   }
 
   // ---- 移动 ----
   function move(dir) {
-    if (over) return;
+    if (over || !overlay.classList.contains('hidden')) return;
     const lines = linesFor(dir);
     let changed = false;
     let gained = 0;
@@ -261,7 +276,6 @@
     }
     spawnTile();
     updateStatus();
-    reportScore();
     render();
     checkWin();
     checkLose();
@@ -278,8 +292,10 @@
     spawnTile();
     spawnTile();
     hideOverlay();
+    const box = overlay.querySelector('.overlay-box');
+    if (box) box.classList.remove('win');
     updateStatus();
-    reportScore();
+    refreshBest();
     render();
   }
 
@@ -295,21 +311,23 @@
     if (dir) { e.preventDefault(); move(dir); }
   });
 
-  // ---- 触屏滑动 ----
+  // ---- 触屏 / 鼠标滑动（Pointer Events，配合 touch-action:none 防页面滚动）----
   let tStart = null;
-  boardEl.addEventListener('touchstart', function (e) {
-    tStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-  }, { passive: true });
-  boardEl.addEventListener('touchend', function (e) {
+  boardEl.addEventListener('pointerdown', function (e) {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    tStart = { x: e.clientX, y: e.clientY };
+    try { boardEl.setPointerCapture(e.pointerId); } catch (err) {}
+  });
+  boardEl.addEventListener('pointerup', function (e) {
     if (!tStart) return;
-    const t = e.changedTouches[0];
-    const dx = t.clientX - tStart.x, dy = t.clientY - tStart.y;
+    const s = tStart;
     tStart = null;
-    if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;
+    const dx = e.clientX - s.x, dy = e.clientY - s.y;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 20) return;
     if (Math.abs(dx) > Math.abs(dy)) move(dx > 0 ? 'right' : 'left');
     else move(dy > 0 ? 'down' : 'up');
-  }, { passive: true });
-  boardEl.addEventListener('touchcancel', function () { tStart = null; }, { passive: true });
+  });
+  boardEl.addEventListener('pointercancel', function () { tStart = null; });
 
   // ---- 构建 4×4 格子 ----
   const cells = [];
@@ -335,5 +353,6 @@
   restartGame();
 })();
 </script>
+<script src="/games/kit.js"></script>
 </body>
 </html>

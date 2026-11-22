@@ -17,7 +17,7 @@
   .stat span{display:block;font-size:10px;color:var(--muted);letter-spacing:.08em}
   .stat b{font-size:17px}
   .stage{position:relative;background:#151b21;border-radius:14px;overflow:hidden;touch-action:none}
-  canvas{display:block;width:100%;height:auto}
+  canvas{display:block;width:100%;height:auto;touch-action:none}
   .overlay{position:absolute;inset:0;background:rgba(0,0,0,.74);display:none;flex-direction:column;
     align-items:center;justify-content:center;gap:14px;z-index:5;text-align:center;padding:16px}
   .overlay.on{display:flex}
@@ -68,8 +68,22 @@
   const PLAT_H = 14;
   const MIN_D = 34, MAX_D = 250;
 
-  let best = +(localStorage.getItem('mfhry_jump_best') || 0);
-  $best.textContent = best;
+  let best = 0;
+  let float = null;
+
+  function sfx(n) {
+    const k = window.mfKit;
+    if (k && typeof k.sfx === 'function') { try { k.sfx(n); } catch (e) {} }
+  }
+  function readBest() {
+    try {
+      let b = +(localStorage.getItem('mfhry_best_jump') || 0) || 0;
+      if (!b) b = +(localStorage.getItem('mfhry_jump_best') || 0) || 0;
+      return b;
+    } catch (e) { return 0; }
+  }
+  function refreshBest() { best = readBest(); $best.textContent = best; }
+  refreshBest();
 
   let plats = [], idx = 0, camX = 0, score = 0;
   let mode = 'idle';               // idle | charge | fly | dead
@@ -89,6 +103,7 @@
     plats = [{ x: 40, w: 110, y: GROUND }];
     for (let i = 0; i < 8; i++) plats.push(newPlat(plats[plats.length - 1]));
     idx = 0; camX = 0; score = 0; power = 0; fly = null; falling = null; mode = 'idle';
+    float = null;
     $score.textContent = '0';
   }
 
@@ -147,6 +162,16 @@
       ctx.fillStyle = power > 0.85 ? '#e0a35c' : '#7fd1b0';
       ctx.beginPath(); ctx.roundRect(W / 2 - w / 2, 24, w * power, 10, 5); ctx.fill();
     }
+
+    // +1 飘字
+    if (float && float.life > 0) {
+      ctx.globalAlpha = Math.min(1, float.life);
+      ctx.fillStyle = '#9ff0cf';
+      ctx.font = 'bold 22px -apple-system,"PingFang SC",sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('+1', float.x - camX, float.y);
+      ctx.globalAlpha = 1;
+    }
   }
 
   function camera() {
@@ -174,6 +199,11 @@
       falling.y += falling.vy;
       if (falling.y > H + 60) endGame();
     }
+    if (float) {
+      float.life -= 0.02;
+      float.y -= 1.2;
+      if (float.life <= 0) float = null;
+    }
     camera();
     draw();
     requestAnimationFrame(tick);
@@ -184,6 +214,7 @@
     mode = 'charge';
     power = 0;
     chargeStart = performance.now();
+    sfx('click');
   }
 
   function release() {
@@ -195,6 +226,7 @@
     fly = { from, to, x: from, y: pp.y - 11, y0: pp.y - 11, h: 42 + dist * 0.42, t: 0, dt: 0.03 + dist / 6000 };
     mode = 'fly';
     power = 0;
+    sfx('jump');
   }
 
   function land() {
@@ -207,6 +239,8 @@
       $score.textContent = score;
       fly = null;
       mode = 'idle';
+      sfx('score');
+      float = { x: p.x + p.w / 2, y: p.y - 40, life: 1 };
       while (plats.length < idx + 9) plats.push(newPlat(plats[plats.length - 1]));
     } else {
       fly = null;
@@ -218,14 +252,14 @@
   function endGame() {
     mode = 'idle';
     falling = null;
-    if (score > best) {
-      best = score;
-      localStorage.setItem('mfhry_jump_best', String(best));
-      $best.textContent = best;
-    }
-    if (score > 0) window.mfhryScore && window.mfhryScore('jump', score);
+    const prevBest = best;
+    if (window.mfhryScore) window.mfhryScore('jump', score);
+    try {
+      if (window.mfKit) { window.mfKit.setScore(score); window.mfKit.gameOver(); }
+    } catch (e) {}
+    refreshBest();
     ovt.textContent = '掉下去了';
-    ovp.innerHTML = '跳过了 <b>' + score + '</b> 块平台' + (score >= best ? '，新纪录 🎉' : '，最高 ' + best);
+    ovp.innerHTML = '跳过了 <b>' + score + '</b> 块平台' + (score > prevBest ? '，新纪录 🎉' : '，最高 ' + best);
     btn.textContent = '再来一局';
     ov.classList.add('on');
   }
@@ -237,9 +271,16 @@
   }
 
   const stage = document.getElementById('stage');
-  stage.addEventListener('pointerdown', (e) => { e.preventDefault(); startCharge(); });
-  stage.addEventListener('pointerup', (e) => { e.preventDefault(); release(); });
-  stage.addEventListener('pointercancel', () => { if (mode === 'charge') release(); });
+  cv.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    try { cv.setPointerCapture(e.pointerId); } catch (err) {}
+    startCharge();
+  });
+  cv.addEventListener('pointerup', (e) => { e.preventDefault(); release(); });
+  cv.addEventListener('pointercancel', () => { if (mode === 'charge') release(); });
+  window.addEventListener('mf:pause', function () {
+    if (mode === 'charge') { mode = 'idle'; power = 0; }
+  });
   document.addEventListener('keydown', (e) => {
     if (e.code === 'Space') { e.preventDefault(); if (!ov.classList.contains('on')) startCharge(); }
   });
@@ -247,6 +288,7 @@
     if (e.code === 'Space') { e.preventDefault(); release(); }
   });
   btn.addEventListener('click', start);
+  window.mfRestart = start;
 
   reset();
   requestAnimationFrame(tick);

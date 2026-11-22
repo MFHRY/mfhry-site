@@ -165,7 +165,7 @@
     var cells = [];    // cells[r-1][c-1] 对应 (r,c) 的按钮
     var selected = null;
     var score = 0, remaining = 24, startTime = 0, elapsed = 0;
-    var timer = null, over = false, toastTimer = null;
+    var timer = null, over = false, toastTimer = null, paused = false;
 
     function $(id) { return document.getElementById(id); }
 
@@ -249,7 +249,7 @@
       clearSelect();
       selected = { r: r, c: c, v: g[r][c] };
       cells[r - 1][c - 1].classList.add('sel');
-      sfx('jump');
+      sfx('click');
     }
 
     function buildBoard() {
@@ -294,6 +294,19 @@
     function tick() {
       elapsed = Math.floor((Date.now() - startTime) / 1000);
       $('time').textContent = fmt(elapsed);
+    }
+
+    // 暂停停表、恢复续表：先清 interval 再起，避免叠加
+    function stopClock() {
+      if (timer) { clearInterval(timer); timer = null; }
+      if (startTime) elapsed = Math.max(elapsed, Math.floor((Date.now() - startTime) / 1000));
+      $('time').textContent = fmt(elapsed);
+    }
+    function startClock(sec) {
+      if (timer) { clearInterval(timer); timer = null; }
+      startTime = Date.now() - sec * 1000;
+      elapsed = sec;
+      timer = setInterval(tick, 1000);
     }
 
     function toast(msg) {
@@ -352,14 +365,17 @@
 
     function winGame() {
       over = true;
-      clearInterval(timer);
-      sfx('win');
+      stopClock();
       var bonus = Math.max(0, TIME_LIMIT - elapsed);
       var finalScore = score + bonus;
       var best = 0;
-      try { best = window.mfKit.getBest('linklink') || 0; } catch (e) {}
-      if (finalScore > best) { try { window.mfKit.setBest('linklink', finalScore); } catch (e) {} }
-      try { window.mfhryScore('linklink', finalScore); } catch (e) {}
+      try {
+        if (window.mfKit) best = window.mfKit.getBest('linklink') || 0;
+        else best = +(localStorage.getItem('mfhry_best_linklink') || 0) || 0;
+      } catch (e) {}
+      if (!(finalScore > best)) sfx('win'); // 新纪录时 kit 包装会播 win，避免双重音效
+      try { if (window.mfhryScore) window.mfhryScore('linklink', finalScore); } catch (e) {}
+      try { if (window.mfKit) window.mfKit.setScore(finalScore); } catch (e) {}
       $('winBase').textContent = score;
       $('winBonus').textContent = bonus;
       $('winScore').textContent = finalScore;
@@ -369,6 +385,7 @@
 
     function init() {
       over = false;
+      paused = false;
       score = 0;
       remaining = 24;
       selected = null;
@@ -396,11 +413,29 @@
       updateStats();
 
       startTime = Date.now();
-      if (timer) clearInterval(timer);
-      timer = setInterval(tick, 1000);
+      startClock(0);
 
       if (!hasMove()) reshuffle();
     }
+
+    window.addEventListener('mf:pause', function () {
+      paused = true;
+      if (!over) stopClock();
+    });
+    window.addEventListener('mf:resume', function () {
+      paused = false;
+      if (!over) startClock(elapsed);
+    });
+    // 兜底：还没和 kit 交互就切后台时也停表
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) {
+        paused = true;
+        if (!over) stopClock();
+      } else if (!document.body.classList.contains('mf-paused')) {
+        paused = false;
+        if (!over) startClock(elapsed);
+      }
+    });
 
     $('shuffle').addEventListener('click', function () {
       if (over) return;
@@ -414,5 +449,6 @@
   })();
   </script>
   <script src="/games/kit.js"></script>
+  <script src="/errlog.js"></script>
 </body>
 </html>

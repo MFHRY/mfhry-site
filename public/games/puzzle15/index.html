@@ -21,13 +21,14 @@
   button{font:inherit;padding:8px 16px;border-radius:10px;border:1px solid #2a3540;background:#161d24;
     color:var(--fg);cursor:pointer;font-size:14px}
   button:hover{background:rgba(127,209,176,.12)}
-  .board{position:relative;width:100%;aspect-ratio:1;background:#121820;border-radius:14px}
+  .board{position:relative;width:100%;aspect-ratio:1;background:#121820;border-radius:14px;touch-action:manipulation}
   .tile{position:absolute;width:calc(25% - 12px);height:calc(25% - 12px);margin:6px;border-radius:10px;
     background:#1e2a34;border:1px solid #2b3a46;display:flex;align-items:center;justify-content:center;
     font-size:clamp(20px,7vw,30px);font-weight:600;cursor:pointer;
     transition:left .12s ease,top .12s ease,background .12s}
   .tile:hover{background:#25333f}
   .tile.ok{background:#182e2a;border-color:#2f5f52;color:var(--accent)}
+  .tile.press{transform:scale(.95);background:#26343f}
   .overlay{position:fixed;inset:0;background:rgba(5,7,9,.8);display:none;align-items:center;justify-content:center;
     flex-direction:column;gap:14px;text-align:center;padding:24px}
   .overlay.on{display:flex}
@@ -35,6 +36,7 @@
   .overlay p{color:var(--muted);font-size:14px}
   .hint{margin-top:12px;font-size:12px;color:var(--muted)}
   .back-link{display:inline-block;margin-top:8px;font-size:12px;color:var(--muted);text-decoration:none}
+  @media (max-width:380px){.tile{margin:4px;width:calc(25% - 8px);height:calc(25% - 8px)}}
 </style>
 </head>
 <body>
@@ -68,9 +70,24 @@
   let values = SOLVED.slice();
   let tiles = [];
   let blank = TOTAL - 1;
-  let moves = 0, seconds = 0, timer = null, playable = false, solved = false;
-  const best = +(localStorage.getItem('mfhry_puzzle_best') || 0);
-  $best.textContent = best ? best + ' 步' : '--';
+  let moves = 0, seconds = 0, timer = null, playable = false, solved = false, paused = false;
+  let lastMoveAt = 0;
+
+  function sfx(name) {
+    try { if (window.mfKit) window.mfKit.sfx(name); } catch (e) {}
+  }
+
+  // 最佳统一读 mfhry_best_puzzle15（回退旧 key，不写旧 key）
+  function readBest() {
+    try {
+      const v = +(localStorage.getItem('mfhry_best_puzzle15') || localStorage.getItem('mfhry_puzzle_best') || 0);
+      return v > 0 ? v : 0;
+    } catch (e) { return 0; }
+  }
+  function renderBest() {
+    const b = readBest();
+    $best.textContent = b ? b + ' 步' : '--';
+  }
 
   function build() {
     board.innerHTML = '';
@@ -120,57 +137,75 @@
     if (isSolved()) shuffle();
   }
 
+  function stopTimer() {
+    if (timer) { clearInterval(timer); timer = null; }
+  }
   function startTimer() {
-    clearInterval(timer);
+    stopTimer();
+    if (solved || paused) return;
     timer = setInterval(() => {
-      if (solved) return;
+      if (solved || paused) return;
       seconds++;
       $time.textContent = seconds;
     }, 1000);
   }
 
   function reset() {
-    clearInterval(timer);
+    stopTimer();
     values = SOLVED.slice();
     blank = TOTAL - 1;
-    moves = 0; seconds = 0; solved = false; playable = true;
+    moves = 0; seconds = 0; solved = false; playable = true; paused = false;
+    lastMoveAt = 0;
     $moves.textContent = 0;
     $time.textContent = 0;
     ov.classList.remove('on');
+    renderBest();
     shuffle();
     place();
     startTimer();
+    sfx('swipe');
   }
 
   function move(i) {
     if (!playable || solved) return;
     if (!neighborsOf(blank).includes(i)) return;
+    const now = performance.now();
+    if (now - lastMoveAt < 45) return; // 防连点重复计步
+    lastMoveAt = now;
+    const dest = blank;
     values[blank] = values[i];
     values[i] = 0;
     blank = i;
     moves++;
     $moves.textContent = moves;
     place();
+    const el = tiles[dest];
+    el.classList.add('press');
+    setTimeout(() => el.classList.remove('press'), 90);
+    sfx('move');
     if (isSolved()) win();
   }
 
   function win() {
     solved = true;
-    if (window.mfhryScore) mfhryScore('puzzle15', moves);
-    clearInterval(timer);
-    const prev = +(localStorage.getItem('mfhry_puzzle_best') || 0);
-    if (!prev || moves < prev) {
-      localStorage.setItem('mfhry_puzzle_best', moves);
-      $best.textContent = moves + ' 步';
-    }
+    playable = false;
+    stopTimer();
+    const prev = readBest();
+    if (window.mfhryScore) { try { window.mfhryScore('puzzle15', moves); } catch (e) {} }
+    try { if (window.mfKit) window.mfKit.setScore(moves); } catch (e) {}
+    const isNew = !prev || moves < prev;
+    if (!isNew) sfx('win'); // 新纪录时 kit 包装会播 win，避免双重音效
+    renderBest();
     ovt.textContent = '拼好了 🎉';
-    ovs.textContent = moves + ' 步 · ' + seconds + ' 秒' + (!prev || moves < prev ? ' · 新纪录' : '');
+    ovs.textContent = moves + ' 步 · ' + seconds + ' 秒' + (isNew ? ' · 新纪录' : '');
     ov.classList.add('on');
   }
 
-  board.addEventListener('click', (e) => {
+  board.addEventListener('pointerdown', (e) => {
     const el = e.target.closest('.tile');
-    if (el) move(+el.dataset.i);
+    if (!el) return;
+    e.preventDefault();
+    move(+el.dataset.i);
   });
 
   document.addEventListener('keydown', (e) => {
@@ -185,11 +220,14 @@
 
   document.getElementById('reset').addEventListener('click', reset);
   document.getElementById('again').addEventListener('click', reset);
+  window.mfRestart = reset;
 
-  // 切走标签页时停表
+  // 暂停/恢复：停表续表，先清再起避免叠加 interval
+  window.addEventListener('mf:pause', () => { paused = true; stopTimer(); });
+  window.addEventListener('mf:resume', () => { paused = false; startTimer(); });
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) clearInterval(timer);
-    else if (!solved) startTimer();
+    if (document.hidden) { paused = true; stopTimer(); }
+    else if (!document.body.classList.contains('mf-paused')) { paused = false; startTimer(); }
   });
 
   build();

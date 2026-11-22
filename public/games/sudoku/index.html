@@ -48,7 +48,7 @@
   .cell.error { color:#ff6b6b; background:#2a1717; font-weight:700; }
   .cell.selected { background:#20302a; z-index:1; box-shadow:inset 0 0 0 2px var(--accent); }
   #pad {
-    display:grid; grid-template-columns:repeat(5,1fr); gap:8px;
+    display:grid; grid-template-columns:repeat(6,1fr); gap:8px;
     width:min(92vw,420px); margin:14px auto 0;
   }
   #pad button {
@@ -57,6 +57,7 @@
   }
   #pad button:active { transform:scale(.94); background:#1d2a24; }
   #pad button.clr { color:#9aa4ad; font-size:14px; font-weight:600; }
+  #pad #padHint { grid-column:span 2; }
   #msg {
     position:fixed; inset:0; display:none; align-items:center; justify-content:center;
     background:rgba(5,8,10,.72); z-index:9000; padding:20px;
@@ -102,6 +103,7 @@
     <button data-n="4">4</button><button data-n="5">5</button><button data-n="6">6</button>
     <button data-n="7">7</button><button data-n="8">8</button><button data-n="9">9</button>
     <button id="clearBtn" class="clr">擦除</button>
+    <button id="padHint" class="clr">提示</button>
   </div>
 
   <div id="msg">
@@ -110,7 +112,8 @@
       <div class="row" id="winDiff"></div>
       <div class="row" id="winTime"></div>
       <div class="final" id="winScore">0</div>
-      <div class="cap">本次得分</div>
+      <div class="cap">本次用时（秒）</div>
+      <div class="row" id="winBest"></div>
       <div class="btns">
         <button id="againBtn" class="pri">再来一局</button>
         <button id="closeMsgBtn">关闭</button>
@@ -142,6 +145,7 @@
   var selected = -1;
   var hintsLeft = 3;
   var finished = false;
+  var paused = false;
   var timerId = null;
   var startAt = 0;
   var elapsed = 0;
@@ -201,6 +205,7 @@
   var timerEl = $('#timer');
   var diffEl = $('#diffLabel');
   var hintLeftEl = $('#hintLeft');
+  var padHintEl = $('#padHint');
   var cells = [];
 
   // kit.js 在本脚本之后加载，调用时再取值
@@ -317,6 +322,7 @@
     }
     diffEl.textContent = '难度：' + DIFFS[diff].label;
     hintLeftEl.textContent = hintsLeft;
+    padHintEl.textContent = '提示 ' + hintsLeft;
     renderTimer();
   }
 
@@ -333,14 +339,27 @@
     stopTimer();
     elapsed = sec;
     startAt = Date.now() - sec * 1000;
+    if (paused || finished) return;
     timerId = setInterval(function () {
-      if (finished) return;
+      if (finished || paused) return;
       elapsed = Math.floor((Date.now() - startAt) / 1000);
       renderTimer();
     }, 500);
   }
   function stopTimer() {
     if (timerId) { clearInterval(timerId); timerId = null; }
+  }
+  function pauseTimer() {
+    if (finished || paused) return;
+    paused = true;
+    if (startAt) elapsed = Math.max(elapsed, Math.floor((Date.now() - startAt) / 1000));
+    stopTimer();
+    saveState();
+  }
+  function resumeTimer() {
+    if (finished || !paused) return;
+    paused = false;
+    startTimerFrom(elapsed);
   }
 
   // ---------- 交互 ----------
@@ -425,20 +444,23 @@
     stopTimer();
     try { localStorage.removeItem(KEY); } catch (e) {} // 通关即清，重新开始
     elapsed = Math.floor((Date.now() - startAt) / 1000);
+    if (elapsed < 1) elapsed = 1;
     renderTimer();
     var d = DIFFS[diff];
-    var score = d.base + (d.par - elapsed); // 剩余时间奖励 / 超时惩罚
-    if (score < 100) score = 100;
-    score = Math.round(score);
 
+    // 本站无数独榜：mfhryScore 包装只记本机最佳（kit 按越小越好）
     var prev = 0;
     try { prev = window.mfKit ? window.mfKit.getBest('sudoku') : 0; } catch (e) {}
-    try { window.mfhryScore('sudoku', score); } catch (e) {}
-    if (score <= prev) sfx('win'); // kit 仅在破纪录时播 win，这里补齐
+    var isNew = !prev || elapsed < prev;
+    try { if (window.mfhryScore) window.mfhryScore('sudoku', elapsed); } catch (e) {}
+    if (!isNew) sfx('win'); // kit 仅在破纪录时播 win，这里补齐
 
+    var best = prev;
+    try { if (window.mfKit) best = window.mfKit.getBest('sudoku') || prev; } catch (e) {}
     $('#winDiff').textContent = '难度：' + d.label;
     $('#winTime').textContent = '用时 ' + fmt(elapsed);
-    $('#winScore').textContent = score;
+    $('#winScore').textContent = elapsed;
+    $('#winBest').textContent = best ? '本机最佳 ' + best + ' 秒' + (isNew ? ' · 新纪录' : '') : '';
     msgEl.classList.add('show');
   }
 
@@ -449,6 +471,7 @@
     diff = DIFFS[d] ? d : 'easy';
     hintsLeft = 3;
     finished = false;
+    paused = false;
     selected = -1;
     error = {};
     solution = genSolution();
@@ -478,6 +501,7 @@
     });
   });
   $('#hintBtn').addEventListener('click', useHint);
+  $('#padHint').addEventListener('click', useHint);
   $('#clearBtn').addEventListener('click', clearSel);
   $('#againBtn').addEventListener('click', function () { newGame(diff); });
   $('#closeMsgBtn').addEventListener('click', function () { sfx('pop'); hideMsg(); });
@@ -503,6 +527,15 @@
   // ---------- 对外接口 ----------
   window.mfRestart = function () { newGame(diff); };
 
+  // 暂停 / 切后台：kit 会派发 mf:pause / mf:resume，停表续表
+  window.addEventListener('mf:pause', pauseTimer);
+  window.addEventListener('mf:resume', resumeTimer);
+  // 兜底：未触发 kit 自动暂停（如还没交互就切后台）时也停表
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) pauseTimer();
+    else if (!document.body.classList.contains('mf-paused')) resumeTimer();
+  });
+
   // ---------- 启动 ----------
   buildBoard();
   if (loadState()) {
@@ -515,5 +548,6 @@
 })();
 </script>
 <script src="/games/kit.js"></script>
+<script src="/errlog.js"></script>
 </body>
 </html>

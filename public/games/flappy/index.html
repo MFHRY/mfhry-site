@@ -51,9 +51,22 @@
 
   const GRAV = 0.42, FLAP = -6.6, PIPE_W = 54, GAP = 132, SPACING = 190, SPEED = 2.3;
 
-  let bird, pipes, score, state, best = +(localStorage.getItem('mfhry_flappy_best') || 0);
-  let raf = null, groundX = 0, scale = 1;
-  $best.textContent = best;
+  let bird, pipes, score, state, best = 0;
+  let raf = null, groundX = 0, scale = 1, scorePop = 0;
+
+  function sfx(n) {
+    const k = window.mfKit;
+    if (k && typeof k.sfx === 'function') { try { k.sfx(n); } catch (e) {} }
+  }
+  function readBest() {
+    try {
+      let b = +(localStorage.getItem('mfhry_best_flappy') || 0) || 0;
+      if (!b) b = +(localStorage.getItem('mfhry_flappy_best') || 0) || 0;
+      return b;
+    } catch (e) { return 0; }
+  }
+  function refreshBest() { best = readBest(); $best.textContent = best; }
+  refreshBest();
 
   function fit() {
     const w = cv.parentElement.clientWidth;
@@ -71,6 +84,7 @@
     pipes = [];
     score = 0;
     groundX = 0;
+    scorePop = 0;
     state = 'ready';
   }
 
@@ -79,7 +93,7 @@
       state = 'play';
       ov.classList.remove('on');
     }
-    if (state === 'play') bird.vy = FLAP;
+    if (state === 'play') { bird.vy = FLAP; sfx('flap'); }
   }
 
   function spawnPipe() {
@@ -89,15 +103,15 @@
   }
 
   function over() {
+    if (state === 'dead') return;
     state = 'dead';
     if (window.mfhryScore) mfhryScore('flappy', score);
+    try {
+      if (window.mfKit) { window.mfKit.setScore(score); window.mfKit.gameOver(); }
+    } catch (e) {}
     cancelAnimationFrame(raf);
     raf = null;
-    if (score > best) {
-      best = score;
-      localStorage.setItem('mfhry_flappy_best', best);
-      $best.textContent = best;
-    }
+    refreshBest();
     ovt.textContent = '撞了 · ' + score + ' 分';
     ovs.textContent = best > 0 ? '最高 ' + best : '';
     btn.textContent = '再来一局';
@@ -117,6 +131,8 @@
         if (!p.passed && p.x + PIPE_W < bird.x - bird.r) {
           p.passed = true;
           score++;
+          scorePop = 1;
+          sfx('score');
         }
       }
       pipes = pipes.filter((p) => p.x + PIPE_W > -10);
@@ -132,6 +148,7 @@
       bird.y = H / 2 - 24 + Math.sin(Date.now() / 260) * 7;
     }
 
+    if (scorePop > 0) scorePop = Math.max(0, scorePop - 0.055);
     groundX = (groundX - SPEED) % 24;
     draw();
     raf = requestAnimationFrame(step);
@@ -197,15 +214,19 @@
     ctx.closePath(); ctx.fill();
     ctx.restore();
 
-    // 分数
+    // 分数（过管时轻微放大）
     if (state !== 'ready') {
+      ctx.save();
+      ctx.translate(W / 2, 74);
+      ctx.scale(1 + scorePop * 0.22, 1 + scorePop * 0.22);
       ctx.fillStyle = 'rgba(255,255,255,.9)';
       ctx.font = 'bold 42px -apple-system,sans-serif';
       ctx.textAlign = 'center';
       ctx.strokeStyle = 'rgba(0,0,0,.35)';
       ctx.lineWidth = 4;
-      ctx.strokeText(String(score), W / 2, 74);
-      ctx.fillText(String(score), W / 2, 74);
+      ctx.strokeText(String(score), 0, 0);
+      ctx.fillText(String(score), 0, 0);
+      ctx.restore();
     }
   }
 
@@ -227,10 +248,14 @@
     if (state === 'dead') return;
     flap();
   };
-  cv.addEventListener('mousedown', press);
-  cv.addEventListener('touchstart', press, { passive: false });
+  cv.addEventListener('pointerdown', press);
+  ov.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('button')) return;
+    if (state === 'dead') { e.preventDefault(); start(); }
+  });
   btn.addEventListener('click', start);
   window.addEventListener('resize', () => { fit(); draw(); });
+  window.mfRestart = start;
 
   fit();
   reset();

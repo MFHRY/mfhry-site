@@ -74,6 +74,9 @@
     },
     grass_side: function (ctx, rng, b, c, face) {
       var dirt = hex2rgb(b.col2 || '#8a6a44');
+      /* 顶面是纯草，底面是纯土，只有侧面才画草皮压着泥土的分界 */
+      if (face === 'top') { noise(ctx, rng, hex2rgb(c), 0.2); return; }
+      if (face === 'bottom') { noise(ctx, rng, dirt, 0.18); return; }
       noise(ctx, rng, dirt, 0.18);
       var top = hex2rgb(c);
       for (var x = 0; x < 16; x++) {

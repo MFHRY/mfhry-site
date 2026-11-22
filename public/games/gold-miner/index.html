@@ -86,7 +86,19 @@
   let muted      = false;
 
   let best = 0;
-  try { best = +(localStorage.getItem('goldminer_best') || 0) || 0; } catch (e) { best = 0; }
+  let lastRecord = false;
+  function readBest() {
+    try {
+      let b = +(localStorage.getItem('mfhry_best_gold-miner') || 0) || 0;
+      if (!b) b = +(localStorage.getItem('goldminer_best') || 0) || 0;
+      return b;
+    } catch (e) { return 0; }
+  }
+  best = readBest();
+  function sfx(n) {
+    const k = window.mfKit;
+    if (k && typeof k.sfx === 'function') { try { k.sfx(n); } catch (e) {} }
+  }
 
   /* ==================== 进度持久化 ==================== */
   // key 'goldminer_progress' 保存 { level, score }；刷新后从保存的关卡继续。
@@ -471,7 +483,7 @@
     if (finishing) return;
     if (state === 'swinging' && swingCooldown <= 0) {
       state = 'shooting';
-      beep(300, 0.08, 'square', 0.04);
+      sfx('shoot');
     }
   }
 
@@ -484,12 +496,27 @@
       initAudio();
       if (gamePhase === 'gameover') { clearProgress(); resetLevel(1); }
     }
-    if (e.code === 'KeyP') {
-      if (gamePhase === 'playing') { paused = !paused; initAudio(); }
-    }
     if (e.code === 'KeyM') {
       muted = !muted;
       initAudio();
+    }
+  });
+
+  // 暂停交给 kit（冻结 rAF + 覆盖层）；这里同步内部状态，让倒计时和钩子一起停
+  window.addEventListener('mf:pause', function () {
+    if (gamePhase === 'playing') paused = true;
+  });
+  window.addEventListener('mf:resume', function () {
+    paused = false;
+    lastT = performance.now();
+  });
+  // 未触发 kit 自动暂停时（例如刚进页面就切后台），也冻结倒计时
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) {
+      if (gamePhase === 'playing') paused = true;
+    } else if (paused && !document.body.classList.contains('mf-paused')) {
+      paused = false;
+      lastT = performance.now();
     }
   });
 
@@ -591,6 +618,7 @@
       }
     }
     beep(it.kind === 'diamond' ? 980 : (it.kind === 'rock' ? 220 : 680), 0.12, 'sine', 0.05);
+    sfx(it.kind === 'rock' ? 'hit' : 'coin');
     scheduleSave(); // 加分后防抖保存进度
   }
 
@@ -599,19 +627,17 @@
       gamePhase = 'levelclear';
       phaseTimer = 2.2;
       saveProgress({ level: level + 1, score: 0 }); // 过关：保存下一关起点，刷新后从下一关继续
-      beep(660, 0.14, 'sine', 0.055);
-      setTimeout(function () { beep(880, 0.18, 'sine', 0.055); }, 140);
-      setTimeout(function () { beep(1180, 0.24, 'sine', 0.055); }, 300);
+      try { if (window.mfKit) window.mfKit.win(); else sfx('win'); } catch (e) {}
     } else {
       gamePhase = 'gameover';
       saveProgress({ level: level, score: 0 }); // 结束：保留已过关卡，刷新后从本关继续
+      lastRecord = score > best;
       if (window.mfhryScore) mfhryScore('gold-miner', Math.max(0, Math.round(score)));
-      if (score > best) {
-        best = score;
-        try { localStorage.setItem('goldminer_best', String(best)); } catch (e) {}
-      }
-      beep(200, 0.35, 'sawtooth', 0.055);
-      setTimeout(function () { beep(130, 0.55, 'sawtooth', 0.055); }, 260);
+      try {
+        if (window.mfKit) { window.mfKit.setScore(Math.round(score)); window.mfKit.gameOver(); }
+        else sfx('fail');
+      } catch (e) {}
+      best = readBest();
     }
   }
 
@@ -666,6 +692,7 @@
             grabbed.rotVel = (Math.random() > 0.5 ? 1 : -1) * (0.8 + Math.random() * 0.8);
             grabbed.rot = 0;
             beep(it.kind === 'rock' ? 170 : (it.kind === 'diamond' ? 880 : 520), 0.09, 'square', 0.04);
+            sfx(it.kind === 'rock' ? 'hit' : (it.kind === 'diamond' ? 'pop' : 'coin'));
             break;
           }
         }
@@ -1193,7 +1220,7 @@
       ctx.font = 'bold 28px "Microsoft YaHei", sans-serif';
       ctx.fillText('得分  ' + Math.round(displayScore) + '  /  目标  ' + target, W / 2, H / 2 - 16);
 
-      if (score >= best && score > 0) {
+      if (lastRecord) {
         ctx.fillStyle = '#7dff8a';
         ctx.font = 'bold 24px "Microsoft YaHei", sans-serif';
         ctx.fillText('★ 新纪录  ' + best + ' ★', W / 2, H / 2 + 34);

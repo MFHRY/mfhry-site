@@ -84,7 +84,6 @@
     <button id="overlayBtn">再玩一次</button>
   </div>
 </div>
-<script src="/games/kit.js"></script>
 <script>
 (function () {
   'use strict';
@@ -119,17 +118,22 @@
   var overlayText = document.getElementById('overlayText');
   var overlayBtn = document.getElementById('overlayBtn');
 
-  // ---- kit 音效 ----
-  var kit = window.mfKit || null;
+  // ---- kit 音效（kit 在本脚本之后加载，调用时再取） ----
   function sfx(n) {
-    if (kit && typeof kit.sfx === 'function') { try { kit.sfx(n); } catch (e) {} }
+    try { if (window.mfKit && window.mfKit.sfx) window.mfKit.sfx(n); } catch (e) {}
+  }
+  function readBest() {
+    try {
+      if (window.mfKit && window.mfKit.getBest) return window.mfKit.getBest('huarong') || 0;
+      return +(localStorage.getItem('mfhry_best_huarong') || localStorage.getItem('mfhry_huarong_best') || 0) || 0;
+    } catch (e) { return 0; }
   }
   var lastSfxAt = 0;
   function clickSfx() {
     var now = Date.now();
     if (now - lastSfxAt < 55) return;   // 拖动时防音效刷屏
     lastSfxAt = now;
-    sfx('click');
+    sfx('move');
   }
 
   // ---- 状态 ----
@@ -190,9 +194,8 @@
   }
 
   function refreshBest() {
-    var b = 0;
-    if (kit && typeof kit.getBest === 'function') { try { b = kit.getBest('huarong') || 0; } catch (e) {} }
-    bestPill.textContent = '最佳 ' + (b || '—');
+    var b = readBest();
+    bestPill.textContent = '最佳 ' + (b ? b + ' 步' : '—');
   }
 
   // ---- 移动 ----
@@ -237,34 +240,45 @@
   }
 
   // ---- 胜利 ----
-  function showWinOverlay() {
-    var score = Math.max(1000 - steps * 10, 1);
-    overlayTitle.textContent = '🎉 曹操出关！';
-    overlayText.textContent = '用时 ' + steps + ' 步 · 得分 ' + score;
-    overlay.classList.remove('hidden');
-  }
   function checkWin() {
     if (won) return;
     var cao = caoPiece();
     if (!cao) return;
     if (cao.r === ROWS - cao.h && cao.c === EXIT_C) {
       won = true;
-      var score = Math.max(1000 - steps * 10, 1);
-      // 新纪录时 kit 的 mfhryScore 包装会自动放 win 音效，避免双重音效
-      var prevBest = (kit && typeof kit.getBest === 'function') ? (kit.getBest('huarong') || 0) : 0;
-      if (score <= prevBest) sfx('win');
-      if (window.mfhryScore) { try { window.mfhryScore('huarong', score); } catch (e) {} }
+      var prev = readBest();
+      var isNew = !prev || steps < prev;
+      // 本站无华容道榜：mfhryScore 包装只记本机最佳（kit 按步数越小越好）
+      if (window.mfhryScore) { try { window.mfhryScore('huarong', steps); } catch (e) {} }
+      if (!isNew) sfx('win'); // 新纪录时 kit 包装会播 win，避免双重音效
       refreshBest();
-      setTimeout(showWinOverlay, 350);
+      overlayTitle.textContent = '🎉 曹操出关！';
+      overlayText.textContent = '共 ' + steps + ' 步' + (isNew ? ' · 新纪录' : (prev ? ' · 最佳 ' + prev + ' 步' : ''));
+      overlay.classList.remove('hidden');
     }
   }
   function hideOverlay() { overlay.classList.add('hidden'); }
 
   // ---- 输入：点击 / 拖动（Pointer Events 覆盖鼠标 + 触屏）----
+  var emptyTap = null;
+  function legalDirs(p) {
+    var out = [], ds = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+    for (var i = 0; i < ds.length; i++) {
+      if (canMove(p, ds[i][0], ds[i][1])) out.push(ds[i]);
+    }
+    return out;
+  }
+  function tapMove(p) {
+    // 轻点棋子：只有唯一合法方向时直接走过去
+    var ds = legalDirs(p);
+    if (ds.length === 1) tryMove(p, ds[0][0], ds[0][1]);
+  }
+
   boardEl.addEventListener('pointerdown', function (e) {
     if (won) return;
+    emptyTap = null;
     var el = e.target.closest ? e.target.closest('.piece') : null;
-    if (!el) { select(null); return; }
+    if (!el) { emptyTap = { x: e.clientX, y: e.clientY }; return; }
     var p = null;
     for (var i = 0; i < pieces.length; i++) if (pieces[i].el === el) { p = pieces[i]; break; }
     if (!p) return;
@@ -296,10 +310,36 @@
     if (!drag) return;
     var p = drag.piece;
     p.el.classList.remove('dragging');
+    var moved = drag.moved;
     drag = null;
+    return moved ? p : null;
   }
-  boardEl.addEventListener('pointerup', endDrag);
-  boardEl.addEventListener('pointercancel', endDrag);
+  boardEl.addEventListener('pointerup', function (e) {
+    if (drag) {
+      var p = drag.piece;
+      var moved = drag.moved;
+      endDrag();
+      if (!moved) tapMove(p);
+      return;
+    }
+    if (!emptyTap) return;
+    emptyTap = null;
+    if (!selected) return;
+    var rect = boardEl.getBoundingClientRect();
+    var r = Math.floor((e.clientY - rect.top) / cell);
+    var c = Math.floor((e.clientX - rect.left) / cell);
+    if (r < 0 || c < 0 || r >= ROWS || c >= COLS) { select(null); return; }
+    var p2 = selected;
+    var dr = 0, dc = 0;
+    if (r >= p2.r && r < p2.r + p2.h && c === p2.c - 1) dc = -1;
+    else if (r >= p2.r && r < p2.r + p2.h && c === p2.c + p2.w) dc = 1;
+    else if (c >= p2.c && c < p2.c + p2.w && r === p2.r - 1) dr = -1;
+    else if (c >= p2.c && c < p2.c + p2.w && r === p2.r + p2.h) dr = 1;
+    // 点空白处：朝该方向挪一格，不合法则取消选中
+    if ((dr || dc) && tryMove(p2, dr, dc)) return;
+    select(null);
+  });
+  boardEl.addEventListener('pointercancel', function () { endDrag(); emptyTap = null; });
 
   // ---- 输入：键盘移动选中棋子 ----
   var keyMap = {
@@ -327,7 +367,10 @@
   // ---- 启动 ----
   refreshBest();
   resetGame();
+  window.addEventListener('load', refreshBest); // kit 加载完再按统一 key 刷新一次
 })();
 </script>
+<script src="/games/kit.js"></script>
+<script src="/errlog.js"></script>
 </body>
 </html>

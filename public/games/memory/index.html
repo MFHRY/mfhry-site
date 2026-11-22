@@ -22,14 +22,17 @@
     color:var(--fg);cursor:pointer;font-size:14px}
   button:hover{background:rgba(127,209,176,.12)}
   .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-  .card{aspect-ratio:1;perspective:800px;cursor:pointer}
+  .card{aspect-ratio:1;perspective:800px;cursor:pointer;touch-action:manipulation}
   .inner{position:relative;width:100%;height:100%;transition:transform .28s;transform-style:preserve-3d}
   .card.flip .inner,.card.done .inner{transform:rotateY(180deg)}
+  .card.bad{animation:mfbad .34s ease}
+  @keyframes mfbad{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}55%{transform:translateX(4px)}80%{transform:translateX(-2px)}}
   .face{position:absolute;inset:0;border-radius:12px;display:flex;align-items:center;justify-content:center;
     backface-visibility:hidden;font-size:clamp(24px,9vw,38px);user-select:none}
   .front{background:#1d2731;border:1px solid #26323e;color:#3b4b59;font-size:20px}
   .back{background:#1a2730;border:1px solid #2f4a44;transform:rotateY(180deg)}
-  .card.done .back{background:#182e2a;border-color:var(--accent)}
+  .card.done .back{background:#182e2a;border-color:var(--accent);animation:mfglow .5s ease}
+  @keyframes mfglow{0%{box-shadow:0 0 0 0 rgba(127,209,176,.7)}100%{box-shadow:0 0 0 12px rgba(127,209,176,0)}}
   .overlay{position:fixed;inset:0;background:rgba(5,7,9,.8);display:none;align-items:center;justify-content:center;
     flex-direction:column;gap:14px;text-align:center;padding:24px}
   .overlay.on{display:flex}
@@ -37,6 +40,7 @@
   .overlay p{color:var(--muted);font-size:14px}
   .hint{margin-top:12px;font-size:12px;color:var(--muted)}
   .back-link{display:inline-block;margin-top:8px;font-size:12px;color:var(--muted);text-decoration:none}
+  @media (max-width:380px){.grid{gap:7px}.card .front{font-size:17px}}
 </style>
 </head>
 <body>
@@ -65,9 +69,36 @@
   const $best = document.getElementById('best');
   const ov = document.getElementById('ov'), ovt = document.getElementById('ovt'), ovs = document.getElementById('ovs');
 
-  let deck, first = null, second = null, lock = false, moves = 0, matched = 0, timer = null, seconds = 0, running = false;
-  const best = +(localStorage.getItem('mfhry_memory_best') || 0);
-  $best.textContent = best ? best + ' 步' : '--';
+  let deck = [], first = null, lock = false, moves = 0, matched = 0, timer = null, seconds = 0;
+  let running = false, paused = false, won = false;
+  let waits = [];
+
+  function sfx(name) {
+    try { if (window.mfKit) window.mfKit.sfx(name); } catch (e) {}
+  }
+  function later(fn, ms) {
+    const id = setTimeout(() => {
+      waits = waits.filter((w) => w !== id);
+      fn();
+    }, ms);
+    waits.push(id);
+  }
+  function clearWaits() {
+    waits.forEach(clearTimeout);
+    waits = [];
+  }
+
+  // 最佳统一读 mfhry_best_memory（回退旧 key，不写旧 key）
+  function readBest() {
+    try {
+      const v = +(localStorage.getItem('mfhry_best_memory') || localStorage.getItem('mfhry_memory_best') || 0);
+      return v > 0 ? v : 0;
+    } catch (e) { return 0; }
+  }
+  function renderBest() {
+    const b = readBest();
+    $best.textContent = b ? b + ' 步' : '--';
+  }
 
   const shuffle = (a) => {
     for (let i = a.length - 1; i > 0; i--) {
@@ -90,13 +121,24 @@
     });
   }
 
+  function stopTimer() {
+    if (timer) { clearInterval(timer); timer = null; }
+  }
+  function startTimer() {
+    stopTimer();
+    if (!running || won || paused) return;
+    timer = setInterval(tick, 1000);
+  }
+
   function reset() {
-    clearInterval(timer);
-    seconds = 0; moves = 0; matched = 0; running = false;
-    first = second = null; lock = false;
+    stopTimer();
+    clearWaits();
+    seconds = 0; moves = 0; matched = 0; running = false; won = false; paused = false;
+    first = null; lock = false;
     $moves.textContent = 0;
     $time.textContent = 0;
     ov.classList.remove('on');
+    renderBest();
     build();
   }
 
@@ -106,62 +148,78 @@
   }
 
   function flip(card) {
-    if (lock || card.done || card.el.classList.contains('flip')) return;
-    if (!running) { running = true; timer = setInterval(tick, 1000); }
+    if (lock || won || card.done || card.el.classList.contains('flip')) return;
+    if (!running) { running = true; startTimer(); }
     card.el.classList.add('flip');
+    sfx('flip');
     if (!first) { first = card; return; }
-    second = card;
+    if (first === card) return;
+    const second = card;
     moves++;
     $moves.textContent = moves;
     lock = true;
 
     if (first.emoji === second.emoji) {
-      setTimeout(() => {
-        first.el.classList.add('done');
-        second.el.classList.add('done');
-        first.done = second.done = true;
+      const a = first, b = second;
+      first = null;
+      later(() => {
+        a.el.classList.add('done');
+        b.el.classList.add('done');
+        a.done = b.done = true;
         matched++;
-        first = second = null;
+        sfx('score');
         lock = false;
         if (matched === EMOJI.length) win();
-      }, 320);
+      }, 300);
     } else {
-      setTimeout(() => {
-        first.el.classList.remove('flip');
-        second.el.classList.remove('flip');
-        first = second = null;
+      const a = first, b = second;
+      first = null;
+      later(() => {
+        a.el.classList.add('bad');
+        b.el.classList.add('bad');
+      }, 340);
+      later(() => {
+        a.el.classList.remove('flip', 'bad');
+        b.el.classList.remove('flip', 'bad');
         lock = false;
-      }, 620);
+      }, 700);
     }
   }
 
   function win() {
-    clearInterval(timer);
-    if (window.mfhryScore) mfhryScore('memory', moves);
-    const prev = +(localStorage.getItem('mfhry_memory_best') || 0);
-    if (!prev || moves < prev) {
-      localStorage.setItem('mfhry_memory_best', moves);
-      $best.textContent = moves + ' 步';
-    }
+    won = true;
+    running = false;
+    stopTimer();
+    clearWaits();
+    const prev = readBest();
+    if (window.mfhryScore) { try { window.mfhryScore('memory', moves); } catch (e) {} }
+    try { if (window.mfKit) window.mfKit.setScore(moves); } catch (e) {}
+    const isNew = !prev || moves < prev;
+    if (!isNew) sfx('win'); // 新纪录时 kit 的包装会播 win，避免双重音效
+    renderBest();
     ovt.textContent = '通关 🎉';
-    ovs.textContent = moves + ' 步 · ' + seconds + ' 秒' + (!prev || moves < prev ? ' · 新纪录' : '');
+    ovs.textContent = moves + ' 步 · ' + seconds + ' 秒' + (isNew ? ' · 新纪录' : '');
     ov.classList.add('on');
   }
 
-  grid.addEventListener('click', (e) => {
+  grid.addEventListener('pointerdown', (e) => {
     const el = e.target.closest('.card');
     if (!el) return;
+    e.preventDefault();
     const card = deck.find((c) => c.id === +el.dataset.id);
     if (card) flip(card);
   });
 
   document.getElementById('reset').addEventListener('click', reset);
   document.getElementById('again').addEventListener('click', reset);
+  window.mfRestart = reset;
 
-  // 切走标签页时停表，回来继续
+  // 暂停/恢复：kit 自动暂停与手动暂停都会派发；先清再起，避免叠加 interval
+  window.addEventListener('mf:pause', () => { paused = true; stopTimer(); });
+  window.addEventListener('mf:resume', () => { paused = false; startTimer(); });
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) clearInterval(timer);
-    else if (running && !ov.classList.contains('on')) timer = setInterval(tick, 1000);
+    if (document.hidden) { paused = true; stopTimer(); }
+    else if (!document.body.classList.contains('mf-paused')) { paused = false; startTimer(); }
   });
 
   reset();

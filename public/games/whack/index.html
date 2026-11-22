@@ -10,22 +10,40 @@
   body{background:var(--bg);color:var(--fg);font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
     min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
   .wrap{width:min(94vw,460px)}
-  .top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px}
+  .top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;gap:10px;flex-wrap:wrap}
   h1{font-size:22px}
   .stats{display:flex;gap:10px}
   .stat{background:var(--cell);border-radius:10px;padding:6px 14px;text-align:center;min-width:74px}
   .stat span{display:block;font-size:10px;color:var(--muted);letter-spacing:.08em}
-  .stat b{font-size:17px}
+  .stat b{font-size:17px;font-variant-numeric:tabular-nums}
   .field{position:relative;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;
-    background:#151b21;border-radius:14px;padding:10px;aspect-ratio:1}
+    background:#151b21;border-radius:14px;padding:10px;aspect-ratio:1;
+    touch-action:manipulation;user-select:none}
   .hole{position:relative;background:var(--hole);border-radius:50%/38%;overflow:hidden;
     box-shadow:inset 0 8px 16px rgba(0,0,0,.6);cursor:pointer}
   .hole .mole{position:absolute;left:50%;bottom:-100%;width:66%;height:80%;transform:translateX(-50%);
     border-radius:50% 50% 44% 44%;background:radial-gradient(circle at 50% 32%,#b8865f,#8a5f3c);
-    transition:bottom .12s ease;display:flex;align-items:center;justify-content:center;font-size:22px}
+    transition:bottom .12s cubic-bezier(.2,1.45,.4,1),transform .12s;display:flex;align-items:center;justify-content:center;font-size:22px}
   .hole .mole.up{bottom:8%}
-  .hole.hit .mole{background:radial-gradient(circle at 50% 32%,#ffd9a0,#c88b4f)}
+  .hole.hit .mole{background:radial-gradient(circle at 50% 32%,#ffd9a0,#c88b4f);transform:translateX(-50%) scale(1.12)}
   .hole:active{filter:brightness(1.15)}
+  .hole.shake{animation:holeShake .2s ease}
+  @keyframes holeShake{0%,100%{transform:translate(0,0)}30%{transform:translate(-2px,1px)}70%{transform:translate(2px,-1px)}}
+  .float{position:absolute;left:50%;top:18%;transform:translateX(-50%);pointer-events:none;z-index:3;
+    font-weight:800;font-size:16px;color:#9fe8c8;text-shadow:0 2px 8px rgba(0,0,0,.45);
+    animation:floatUp .7s ease forwards}
+  .float.minus{color:#ff8f7a}
+  @keyframes floatUp{0%{opacity:0;transform:translate(-50%,6px) scale(.8)}20%{opacity:1;transform:translate(-50%,0) scale(1.08)}
+    100%{opacity:0;transform:translate(-50%,-26px) scale(.95)}}
+  .combo{position:absolute;right:12px;top:10px;z-index:4;padding:4px 10px;border-radius:999px;
+    font-size:12px;font-weight:800;color:#08221a;background:#7fd1b0;opacity:0;transform:translateY(-6px);
+    transition:opacity .18s,transform .18s;pointer-events:none}
+  .combo.on{opacity:1;transform:none}
+  .go{position:absolute;inset:0;display:none;align-items:center;justify-content:center;z-index:6;
+    font-size:38px;font-weight:900;color:#7fd1b0;text-shadow:0 6px 24px rgba(0,0,0,.55);pointer-events:none;
+    animation:goPop .55s ease}
+  .go.on{display:flex}
+  @keyframes goPop{0%{opacity:0;transform:scale(.6)}30%{opacity:1;transform:scale(1.05)}100%{opacity:0;transform:scale(1.12)}}
   .overlay{position:absolute;inset:0;background:rgba(0,0,0,.74);border-radius:14px;display:none;
     flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:5;text-align:center;padding:16px}
   .overlay.on{display:flex}
@@ -36,7 +54,13 @@
   button:hover{background:rgba(127,209,176,.12)}
   .back{display:inline-block;margin-top:14px;font-size:12px;color:var(--muted);text-decoration:none}
   .back:hover{color:var(--fg)}
-  .hint{margin-top:10px;font-size:12px;color:var(--muted)}
+  .hint{margin-top:10px;font-size:12px;color:var(--muted);line-height:1.6}
+  @media (max-width:380px){
+    .top{gap:6px}
+    .stats{gap:6px}
+    .stat{min-width:60px;padding:5px 10px}
+    .field{gap:8px;padding:8px}
+  }
 </style>
 </head>
 <body>
@@ -50,19 +74,22 @@
     </div>
   </div>
   <div class="field" id="field">
+    <div class="combo" id="combo"></div>
+    <div class="go" id="go">GO!</div>
     <div class="overlay" id="ov">
       <h2 id="ovt">打地鼠</h2>
       <p id="ovp">60 秒内敲到的地鼠越多越好<br>敲空一次扣 5 分</p>
       <button id="btn">开始</button>
     </div>
   </div>
-  <div class="hint">点 / 摸地鼠洞；敲空扣 5 分</div>
+  <div class="hint">点 / 摸地鼠洞，也可以按 1–9 敲对应位置；敲空扣 5 分，连击不断会显示连击数</div>
   <a class="back" href="/games/">← 返回小游戏</a>
 </div>
 <script src="/games/score.js"></script>
 <script>
 (() => {
   const HOLES = 9, TOTAL = 60 * 1000, HIT = 10, MISS = 5;
+  const BEST_KEY = 'mfhry_best_whack';
   const field = document.getElementById('field');
   const ov = document.getElementById('ov');
   const ovt = document.getElementById('ovt');
@@ -71,95 +98,164 @@
   const $score = document.getElementById('score');
   const $time = document.getElementById('time');
   const $best = document.getElementById('best');
+  const $combo = document.getElementById('combo');
+  const $go = document.getElementById('go');
 
-  let score = 0, best = +(localStorage.getItem('mfhry_whack_best') || 0);
-  let running = false, active = -1, timer = 0, tick = 0, upAt = 0, upFor = 0, nextAt = 0;
-  const holes = [];
+  let best = 0;
+  try { best = +(localStorage.getItem(BEST_KEY) || localStorage.getItem('mfhry_whack_best') || 0); } catch (e) {}
+  let score = 0, bestShown = best;
+  let running = false, active = -1, raf = 0;
+  let lastT = 0, timeLeft = TOTAL, upLeft = 0, nextIn = 0, streak = 0;
   $best.textContent = best;
 
+  const fx = (n) => { try { window.mfKit && mfKit.sfx(n); } catch (e) {} };
+  const buzz = (n) => { try { window.mfKit && mfKit.vibrate(n); } catch (e) {} };
+
+  const holes = [];
   for (let i = 0; i < HOLES; i++) {
     const hole = document.createElement('div');
     hole.className = 'hole';
     hole.innerHTML = '<div class="mole">🐹</div>';
-    hole.addEventListener('pointerdown', () => whack(i));
+    hole.addEventListener('pointerdown', (e) => { e.preventDefault(); whack(i); });
     field.appendChild(hole);
     holes.push(hole);
   }
 
+  function floatText(i, text, minus) {
+    const el = document.createElement('span');
+    el.className = 'float' + (minus ? ' minus' : '');
+    el.textContent = text;
+    holes[i].appendChild(el);
+    setTimeout(() => el.remove(), 750);
+  }
+
+  function setCombo() {
+    if (streak >= 3) {
+      $combo.textContent = '连击 ×' + streak;
+      $combo.classList.add('on');
+    } else {
+      $combo.classList.remove('on');
+    }
+  }
+
   function moveUp() {
-    const i = Math.floor(Math.random() * HOLES);
-    if (i === active) return;
-    down();
+    let i = (Math.random() * HOLES) | 0;
+    if (i === active) i = (i + 1 + ((Math.random() * (HOLES - 1)) | 0)) % HOLES;
     active = i;
+    upLeft = Math.max(420, 1000 - (TOTAL - timeLeft) * 0.01);
     holes[i].querySelector('.mole').classList.add('up');
-    const t = Math.max(420, 1000 - (TOTAL - (performance.now() - startAt)) * 0.01);
-    upFor = t;
-    upAt = performance.now();
   }
 
   function down() {
     if (active < 0) return;
-    const el = holes[active].querySelector('.mole');
-    el.classList.remove('up');
-    holes[active].classList.remove('hit');
+    const hole = holes[active];
+    hole.querySelector('.mole').classList.remove('up');
+    hole.classList.remove('hit');
     active = -1;
   }
 
   function whack(i) {
     if (!running) return;
-    if (i === active && performance.now() - upAt < upFor) {
+    const hole = holes[i];
+    if (i === active && upLeft > 0) {
       score += HIT;
-      const h = holes[i];
-      h.classList.add('hit');
-      setTimeout(() => h.classList.remove('hit'), 120);
-      $score.textContent = score;
+      streak++;
+      if (!hole.classList.contains('hit')) {
+        hole.classList.add('hit');
+        setTimeout(() => hole.classList.remove('hit'), 140);
+      }
+      floatText(i, '+' + HIT, false);
+      fx('hit');
+      buzz(8);
       down();
-      nextAt = performance.now() + Math.max(180, 420 - score * 2);
+      nextIn = Math.max(160, 380 - score * 2);
     } else {
       score = Math.max(0, score - MISS);
-      $score.textContent = score;
+      streak = 0;
+      hole.classList.remove('shake');
+      void hole.offsetWidth;
+      hole.classList.add('shake');
+      setTimeout(() => hole.classList.remove('shake'), 220);
+      floatText(i, '-' + MISS, true);
+      fx('miss');
+      buzz(14);
     }
+    $score.textContent = score;
+    setCombo();
   }
 
-  let startAt = 0;
-
-  function loop(now) {
+  function loop(t) {
     if (!running) return;
-    const left = Math.max(0, TOTAL - (now - startAt));
-    $time.textContent = Math.ceil(left / 1000);
-    if (left <= 0) return over();
-    if (active >= 0 && now - upAt > upFor) { down(); nextAt = now + Math.max(180, 420 - score * 2); }
-    if (active < 0 && now >= nextAt) { moveUp(); }
-    requestAnimationFrame(loop);
+    const dt = lastT ? Math.min(80, t - lastT) : 16;
+    lastT = t;
+    timeLeft -= dt;
+    $time.textContent = Math.ceil(Math.max(0, timeLeft) / 1000);
+    if (timeLeft <= 0) { over(); return; }
+    if (active >= 0) {
+      upLeft -= dt;
+      if (upLeft <= 0) { down(); nextIn = Math.max(160, 380 - score * 2); }
+    } else {
+      nextIn -= dt;
+      if (nextIn <= 0) moveUp();
+    }
+    raf = requestAnimationFrame(loop);
   }
 
   function start() {
-    score = 0; $score.textContent = '0';
-    startAt = performance.now();
+    cancelAnimationFrame(raf);
     running = true;
+    score = 0; streak = 0;
+    timeLeft = TOTAL; upLeft = 0; nextIn = 480; lastT = 0; active = -1;
+    holes.forEach((h) => {
+      h.classList.remove('hit', 'shake');
+      h.querySelector('.mole').classList.remove('up');
+    });
+    $score.textContent = '0';
+    $time.textContent = '60';
+    setCombo();
     ov.classList.remove('on');
-    nextAt = startAt + 300;
-    requestAnimationFrame(loop);
+    $go.classList.remove('on');
+    void $go.offsetWidth;
+    $go.classList.add('on');
+    setTimeout(() => $go.classList.remove('on'), 620);
+    fx('click');
+    raf = requestAnimationFrame(loop);
   }
+
+  window.mfRestart = start;
 
   function over() {
     running = false;
+    cancelAnimationFrame(raf);
     down();
-    if (score > best) {
-      best = score;
-      localStorage.setItem('mfhry_whack_best', String(best));
-      $best.textContent = best;
+    streak = 0;
+    setCombo();
+    const prev = bestShown;
+    if (score > prev) {
+      bestShown = score;
+      try { localStorage.setItem(BEST_KEY, String(score)); } catch (e) {}
+      $best.textContent = score;
     }
-    if (score > 0) window.mfhryScore && window.mfhryScore('whack', score);
+    if (score > 0) {
+      try { window.mfhryScore && mfhryScore('whack', score); } catch (e) {}
+    } else {
+      try { window.mfKit && mfKit.gameOver(); } catch (e) {}
+    }
     ovt.textContent = '时间到！';
-    ovp.innerHTML = '这局敲了 <b>' + score + '</b> 分' + (score >= best ? '，新纪录 🎉' : '，最高 ' + best);
+    ovp.innerHTML = '这局敲了 <b>' + score + '</b> 分' +
+      (score > prev ? '，新纪录 🎉' : '，本机最高 ' + prev);
     btn.textContent = '再来一局';
     ov.classList.add('on');
   }
 
   btn.addEventListener('click', start);
+
   document.addEventListener('keydown', (e) => {
-    if (e.key === ' ' && !running) { e.preventDefault(); start(); }
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === ' ' && !running) { e.preventDefault(); start(); return; }
+    if (!running) return;
+    const m = /^[1-9]$/.exec(e.key);
+    if (m) { e.preventDefault(); whack(+m[0] - 1); }
   });
 })();
 </script>

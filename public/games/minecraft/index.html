@@ -33,7 +33,7 @@
   .slot{width:52px;height:52px;border-radius:8px;background:#1a2028;border:2px solid #ffffff10;
     display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer}
   .slot.on{border-color:var(--accent);box-shadow:0 0 0 2px #7fd1b033}
-  .slot canvas{width:34px;height:34px;image-rendering:pixelated;pointer-events:none}
+  .slot canvas,.slot img{width:34px;height:34px;image-rendering:pixelated;pointer-events:none}
   .slot .n{position:absolute;left:3px;top:1px;font-size:10px;color:#ffffff70}
   .slot .lb{position:absolute;bottom:-1px;left:0;right:0;text-align:center;font-size:9px;color:#a8b8b0;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 2px}
@@ -63,7 +63,7 @@
   .item{background:#141a20;border:1px solid #ffffff10;border-radius:9px;padding:8px 4px 6px;text-align:center;
     cursor:pointer;position:relative}
   .item:hover{border-color:#7fd1b060;background:#182028}
-  .item canvas{width:38px;height:38px;image-rendering:pixelated}
+  .item canvas,.item img{width:38px;height:38px;image-rendering:pixelated}
   .item .nm{font-size:10px;color:#cfe0d8;margin-top:3px;line-height:1.25;word-break:break-all}
   .item .en{font-size:8px;color:#6b7a73;margin-top:1px;line-height:1.2;word-break:break-all}
   .count{font-size:11px;color:var(--muted);padding:0 14px}
@@ -167,8 +167,26 @@ const toast = (t) => { const el = $('#toast'); el.textContent = t; el.classList.
 /* ---------------------------------------------------------------- 资源 */
 const BLOCKS = window.MC_BLOCKS;
 const ATLAS = window.MC_TEX.build(BLOCKS);
-const WORLD = new window.MC_WORLD.World(BLOCKS, 20261120);
+const WORLD = new window.MC_WORLD.World(BLOCKS, 20261121);
 const { CX, CY, CZ, SEA } = window.MC_WORLD;
+
+/* 方块图标缓存：转成 dataURL 复用。原来目录每敲一个字就重画 700 多张 canvas，很卡 */
+const ICON_CACHE = new Map();
+function iconURL(b, size) {
+  const key = b.id + '@' + size;
+  let url = ICON_CACHE.get(key);
+  if (url === undefined) {
+    try { url = window.MC_TEX.icon(b, size).toDataURL(); } catch (e) { url = ''; }
+    ICON_CACHE.set(key, url);
+  }
+  return url;
+}
+function iconEl(b, size) {
+  const img = document.createElement('img');
+  img.src = iconURL(b, size); img.width = size; img.height = size;
+  img.alt = ''; img.draggable = false;
+  return img;
+}
 
 /* ---------------------------------------------------------------- 渲染器 */
 let renderer;
@@ -187,8 +205,8 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 $('#app').appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x8ec5ea);
-scene.fog = new THREE.Fog(0x9fd0ee, 60, 128);
+scene.background = new THREE.Color(0x9fd0ee);
+scene.fog = new THREE.Fog(0x9fd0ee, 58, 78);
 
 const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.1, 400);
 
@@ -208,7 +226,7 @@ const matOpaque = new THREE.MeshLambertMaterial({ map: atlasTex, vertexColors: t
 const matTrans = new THREE.MeshLambertMaterial({ map: atlasTex, vertexColors: true, transparent: true, alphaTest: 0.35, side: THREE.DoubleSide, depthWrite: true });
 
 /* ---------------------------------------------------------------- 区块流式加载 */
-const RENDER_DIST = 4;
+const RENDER_DIST = 5;
 const chunkMeshes = new Map();
 const buildQueue = [];
 
@@ -301,6 +319,7 @@ function pumpBuild(budget) {
 }
 
 /* ---------------------------------------------------------------- 玩家 */
+const spawnPoint = new THREE.Vector3(8, 42, 8);
 const player = {
   pos: new THREE.Vector3(8, 40, 8),
   vel: new THREE.Vector3(),
@@ -411,24 +430,25 @@ el.addEventListener('mousedown', (e) => {
 el.addEventListener('contextmenu', (e) => e.preventDefault());
 
 let overlayOpen = false;
+/* 两个面板互斥：原来先按 E 再按 M 会两个一起开，状态也乱了 */
+function setOverlay(name) {
+  $('#catalog').classList.toggle('show', name === 'catalog');
+  $('#mobdex').classList.toggle('show', name === 'mobdex');
+  overlayOpen = !!name;
+  if (name) document.exitPointerLock();
+  else if (running) el.requestPointerLock();
+}
 function toggleCatalog() {
-  const o = $('#catalog');
-  overlayOpen = !o.classList.contains('show');
-  o.classList.toggle('show', overlayOpen);
-  if (overlayOpen) { document.exitPointerLock(); renderCatalog(); $('#search').focus(); }
+  if ($('#catalog').classList.contains('show')) { setOverlay(null); return; }
+  setOverlay('catalog'); renderCatalog(); $('#search').focus();
 }
 function toggleMobdex() {
-  const o = $('#mobdex');
-  overlayOpen = !o.classList.contains('show');
-  o.classList.toggle('show', overlayOpen);
-  if (overlayOpen) { document.exitPointerLock(); renderMobdex(); }
+  if ($('#mobdex').classList.contains('show')) { setOverlay(null); return; }
+  setOverlay('mobdex'); renderMobdex();
 }
-document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => {
-  overlayOpen = false; $('#catalog').classList.remove('show'); $('#mobdex').classList.remove('show');
-}));
+document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => setOverlay(null)));
 
 /* ---------------------------------------------------------------- 挖掘 / 放置 */
-const raycaster = new THREE.Raycaster();
 function lookDir() {
   const cy = Math.cos(player.pitch);
   return new THREE.Vector3(-Math.sin(player.yaw) * cy, Math.sin(player.pitch), -Math.cos(player.yaw) * cy);
@@ -477,7 +497,7 @@ function renderHotbar() {
     d.className = 'slot' + (i === hotbarSel ? ' on' : '');
     const n = document.createElement('span'); n.className = 'n'; n.textContent = i + 1;
     const lb = document.createElement('span'); lb.className = 'lb'; lb.textContent = b ? b.zh : '';
-    if (b) d.appendChild(window.MC_TEX.icon(b, 34));
+    if (b) d.appendChild(iconEl(b, 34));
     d.appendChild(n); d.appendChild(lb);
     d.addEventListener('click', () => { hotbarSel = i; renderHotbar(); });
     hb.appendChild(d);
@@ -511,28 +531,32 @@ function renderCatalog() {
   });
   $('#count').textContent = list.length + ' / ' + BLOCKS.length;
 
-  const grid = $('#grid');
-  grid.innerHTML = '';
-  const frag = document.createDocumentFragment();
-  list.slice(0, 800).forEach(b => {
-    const d = document.createElement('div');
-    d.className = 'item';
-    d.title = b.en;
-    d.appendChild(window.MC_TEX.icon(b, 38));
-    const nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = b.zh;
-    const en = document.createElement('div'); en.className = 'en'; en.textContent = b.en;
-    d.appendChild(nm); d.appendChild(en);
-    d.addEventListener('click', () => {
-      hotbarItems[hotbarSel] = b;
-      renderHotbar();
-      toast('已放到第 ' + (hotbarSel + 1) + ' 格：' + b.zh);
-    });
-    frag.appendChild(d);
-  });
-  grid.appendChild(frag);
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  $('#grid').innerHTML = list.slice(0, 800).map(b =>
+    '<div class="item" data-id="' + b.id + '" title="' + esc(b.en) + '">' +
+      '<img src="' + iconURL(b, 38) + '" width="38" height="38" alt="" draggable="false">' +
+      '<div class="nm">' + esc(b.zh) + '</div><div class="en">' + esc(b.en) + '</div>' +
+    '</div>'
+  ).join('');
 }
 
-$('#search').addEventListener('input', (e) => { curSearch = e.target.value; renderCatalog(); });
+/* 目录点击：事件委托，只绑一次 */
+$('#grid').addEventListener('click', (ev) => {
+  const it = ev.target.closest && ev.target.closest('.item');
+  if (!it) return;
+  const b = WORLD.byId[+it.dataset.id];
+  if (!b) return;
+  hotbarItems[hotbarSel] = b;
+  renderHotbar();
+  toast('已放到第 ' + (hotbarSel + 1) + ' 格：' + b.zh);
+});
+
+let searchTimer = 0;
+$('#search').addEventListener('input', (e) => {
+  curSearch = e.target.value;
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(renderCatalog, 90);
+});
 
 function renderMobdex() {
   const grid = $('#mobgrid');
@@ -551,8 +575,7 @@ function renderMobdex() {
       const h = WORLD.heightAt(Math.floor(px), Math.floor(pz));
       mobs.spawn(m.key, px, h + 1, pz);
       toast('召唤了 ' + m.zh);
-      overlayOpen = false; $('#mobdex').classList.remove('show');
-      el.requestPointerLock();
+      setOverlay(null);
     });
     frag.appendChild(d);
   });
@@ -564,7 +587,7 @@ const mobs = new window.MC_MOBS.MobMgr(THREE, scene, WORLD);
 let mobTimer = 0;
 
 /* ---------------------------------------------------------------- 存档 */
-const SAVE_KEY = 'mc-sandbox-v1';
+const SAVE_KEY = 'mc-sandbox-v2';
 let saveTimer = 0;
 function save() {
   try {
@@ -648,7 +671,7 @@ function physics(dt) {
     player.vel.y = Math.max(player.vel.y, -50);
   }
   // 掉出世界
-  if (p.y < -12) { p.set(8, 42, 8); toast('掉出世界了，已传回出生点'); }
+  if (p.y < -12) { p.copy(spawnPoint); player.vel.set(0, 0, 0); toast('掉出世界了，已传回出生点'); }
 
   camera.position.set(p.x, p.y + player.eye, p.z);
   camera.rotation.set(0, 0, 0);
@@ -693,23 +716,27 @@ function loop(now) {
 /* ---------------------------------------------------------------- 启动 */
 function startWorld(withSave) {
   $('#loading').style.display = 'block';
-  if (withSave) load();
-  const h = WORLD.heightAt(Math.floor(player.pos.x), Math.floor(player.pos.z));
-  if (player.pos.y < SEA) player.pos.y = h + 2;
-  const cx = Math.floor(player.pos.x / CX), cz = Math.floor(player.pos.z / CZ);
-  // 出生点周围先铺平一小块
+  const loaded = withSave ? load() : false;
   const gx = Math.floor(player.pos.x), gz = Math.floor(player.pos.z);
-  for (let dx = -2; dx <= 2; dx++) for (let dz = -2; dz <= 2; dz++) {
-    const hh = WORLD.heightAt(gx + dx, gz + dz);
-    WORLD.set(gx + dx, hh + 1, gz + dz, 0);
-    WORLD.set(gx + dx, hh + 2, gz + dz, 0);
+
+  if (!loaded) {
+    /* 只有新世界才在出生点清出一小块空地（读档时这样做会把玩家建筑拆掉） */
+    for (let dx = -2; dx <= 2; dx++) for (let dz = -2; dz <= 2; dz++) {
+      const hh = WORLD.heightAt(gx + dx, gz + dz);
+      for (let k = 1; k <= 3; k++) WORLD.set(gx + dx, hh + k, gz + dz, 0);
+    }
+    player.pos.set(gx + 0.5, WORLD.heightAt(gx, gz) + 2, gz + 0.5);
+  } else {
+    /* 读档：留在原地，万一卡在方块里就顶出来 */
+    let guard = 0;
+    while (guard++ < 60 && collides(player.pos.x, player.pos.y, player.pos.z)) player.pos.y += 0.5;
   }
-  player.pos.set(gx + 0.5, WORLD.heightAt(gx, gz) + 2, gz + 0.5);
+  spawnPoint.copy(player.pos);
 
   // 首屏区块
   lastPCX = 1e9;
   updateChunks(true);
-  pumpBuild(5);
+  pumpBuild(12);
 
   mobs.spawnAround(player.pos, 14);
 
@@ -735,5 +762,7 @@ $('#startMeta').textContent = '方块 ' + BLOCKS.length + ' 种 · 生物 ' + wi
 
 requestAnimationFrame(loop);
 </script>
+<script>window.__mfNoPause = true; window.__mfNoRestart = true; window.__mfNoAutoSfx = true;</script>
+<script src="/games/kit.js"></script>
 </body>
 </html>

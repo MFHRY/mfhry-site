@@ -31,7 +31,7 @@
 <div class="wrap">
   <div class="top">
     <h1>打砖块</h1>
-    <div class="stat">分数 <b id="score">0</b> · 生命 <b id="lives">3</b> · 关 <b id="lvl">1</b></div>
+    <div class="stat">分数 <b id="score">0</b> · 生命 <b id="lives">3</b> · 关 <b id="lvl">1</b> · 最佳 <b id="best">0</b></div>
   </div>
   <div class="stage">
     <canvas id="cv"></canvas>
@@ -46,11 +46,31 @@
   const W = 620, H = 420;
   const cv = document.getElementById('cv');
   const ctx = cv.getContext('2d');
-  const $score = document.getElementById('score'), $lives = document.getElementById('lives'), $lvl = document.getElementById('lvl');
+  const $score = document.getElementById('score'), $lives = document.getElementById('lives'), $lvl = document.getElementById('lvl'), $best = document.getElementById('best');
   const ov = document.getElementById('ov'), ovt = document.getElementById('ovt'), btn = document.getElementById('btn');
 
   let paddle, ball, bricks, score = 0, lives = 3, level = 1, running = false, keys = {}, raf = null;
-  let best = +(localStorage.getItem('mfhry_brick_best') || 0);
+  let msg = '', msgT = 0;
+  let lastSfx = 0;
+
+  // kit 在页面末尾加载，运行时懒取
+  function sfx(n) {
+    const k = window.mfKit;
+    if (k && typeof k.sfx === 'function') {
+      const now = performance.now();
+      if (now - lastSfx < 45) return; // 连续撞砖时避免密集爆音
+      lastSfx = now;
+      try { k.sfx(n); } catch (e) {}
+    }
+  }
+  function readBest() {
+    try {
+      let b = +(localStorage.getItem('mfhry_best_breakout') || 0) || 0;
+      if (!b) b = +(localStorage.getItem('mfhry_brick_best') || 0) || 0;
+      return b;
+    } catch (e) { return 0; }
+  }
+  function refreshBest() { $best.textContent = readBest(); }
 
   function fit() {
     const w = cv.parentElement.clientWidth;
@@ -58,6 +78,7 @@
     cv.width = W * dpr; cv.height = H * dpr;
     cv.style.width = w + 'px'; cv.style.height = (w * H / W) + 'px';
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (paddle) draw();
   }
 
   function resetLevel() {
@@ -72,16 +93,20 @@
   }
 
   function start() {
-    score = 0; lives = 3; level = 1;
+    if (raf) cancelAnimationFrame(raf);
+    raf = null;
+    running = false;
+    score = 0; lives = 3; level = 1; msg = ''; msgT = 0; keys = {};
     $score.textContent = 0; $lives.textContent = 3; $lvl.textContent = 1;
+    refreshBest();
     resetLevel();
     ov.classList.remove('on');
     running = true;
-    cancelAnimationFrame(raf);
     loop();
   }
 
   function loop() {
+    if (!running) { raf = null; return; }
     update();
     draw();
     raf = requestAnimationFrame(loop);
@@ -93,6 +118,7 @@
     if (keys['arrowleft'] || keys['a']) paddle.x -= step;
     if (keys['arrowright'] || keys['d']) paddle.x += step;
     paddle.x = Math.max(8, Math.min(W - paddle.w - 8, paddle.x));
+    if (msgT > 0) msgT -= 16;
 
     if (ball.stuck) { ball.x = paddle.x + paddle.w / 2; ball.y = paddle.y - ball.r - 2; return; }
 
@@ -108,6 +134,7 @@
       ball.vx = 4.2 * hit;
       ball.vy = -Math.abs(ball.vy);
       ball.y = paddle.y - ball.r;
+      sfx('jump');
     }
 
     // 砖块
@@ -117,6 +144,7 @@
         b.alive = false;
         score += 10;
         $score.textContent = score;
+        sfx('hit');
         const overlapX = Math.min(ball.x + ball.r - b.x, b.x + b.w - ball.x + ball.r);
         const overlapY = Math.min(ball.y + ball.r - b.y, b.y + b.h - ball.y + ball.r);
         if (overlapX < overlapY) ball.vx *= -1; else ball.vy *= -1;
@@ -128,13 +156,16 @@
     if (ball.y > H + 20) {
       lives -= 1;
       $lives.textContent = lives;
+      sfx('boom');
       if (lives <= 0) {
         running = false;
         if (window.mfhryScore) mfhryScore('breakout', score);
+        try { window.mfKit && window.mfKit.setScore(score); window.mfKit && window.mfKit.gameOver(); } catch (e) {}
+        refreshBest();
         ovt.textContent = '结束 · 得分 ' + score;
-        btn.textContent = '再来';
+        btn.textContent = '再来一局';
         ov.classList.add('on');
-        if (score > best) { best = score; localStorage.setItem('mfhry_brick_best', best); }
+        draw();
         return;
       }
       ball.x = paddle.x + paddle.w / 2; ball.y = paddle.y - 12; ball.vx = 3.4; ball.vy = -3.8; ball.stuck = true;
@@ -143,7 +174,12 @@
     // 过关
     if (bricks.every((b) => !b.alive)) {
       level += 1;
+      score += 100;
+      $score.textContent = score;
       $lvl.textContent = level;
+      msg = '第 ' + level + ' 关 · +100';
+      msgT = 1300;
+      sfx('score');
       resetLevel();
     }
   }
@@ -179,10 +215,23 @@
       ctx.textAlign = 'center';
       ctx.fillText('点击或按空格发球', W / 2, paddle.y - 34);
     }
+
+    if (msgT > 0) {
+      const a = Math.min(1, msgT / 400);
+      ctx.globalAlpha = a;
+      ctx.fillStyle = '#7fd1b0';
+      ctx.font = 'bold 25px -apple-system,"PingFang SC",sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(msg, W / 2, H / 2 - 20);
+      ctx.globalAlpha = 1;
+    }
   }
 
   function launch() {
-    if (ball.stuck && running) { ball.stuck = false; }
+    if (ball.stuck && running) {
+      ball.stuck = false;
+      sfx('flap');
+    }
   }
 
   cv.addEventListener('pointermove', (e) => {
@@ -190,7 +239,14 @@
     const x = ((e.clientX - rect.left) / rect.width) * W;
     paddle.x = Math.max(8, Math.min(W - paddle.w - 8, x - paddle.w / 2));
   });
-  cv.addEventListener('pointerdown', () => { launch(); });
+  cv.addEventListener('pointerdown', (e) => {
+    const rect = cv.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * W;
+    paddle.x = Math.max(8, Math.min(W - paddle.w - 8, x - paddle.w / 2));
+    try { cv.setPointerCapture(e.pointerId); } catch (err) {}
+    launch();
+  });
+  cv.addEventListener('pointercancel', () => { keys = {}; });
   window.addEventListener('keydown', (e) => {
     keys[e.key.toLowerCase()] = true;
     if (e.key === ' ') { launch(); e.preventDefault(); }
@@ -200,9 +256,12 @@
 
   btn.addEventListener('click', start);
   window.addEventListener('resize', fit);
+  window.addEventListener('blur', () => { keys = {}; });
+  window.mfRestart = start;
 
   fit();
   resetLevel();
+  refreshBest();
   draw();
   ovt.textContent = '打砖块';
   btn.textContent = '开始';

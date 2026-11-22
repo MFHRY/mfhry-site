@@ -57,10 +57,22 @@
   const DIRS = [[1, 0], [0, 1], [1, 1], [1, -1]];
 
   let board, turn, over, mode = 'ai', history = [], thinking = false, cell = 30, pad = 18, size = 480;
-  let winCount = +(localStorage.getItem('mfhry_gomoku_win') || 0);
+  let gen = 0; // 重开后使旧的 AI 定时器失效
+  // 累计胜场统一读 mfhry_best_gomoku（回退旧 key，不写旧 key）
+  function getBest() {
+    try {
+      if (window.mfKit && window.mfKit.getBest) return window.mfKit.getBest('gomoku') || 0;
+      return +(localStorage.getItem('mfhry_best_gomoku') || localStorage.getItem('mfhry_gomoku_win') || 0) || 0;
+    } catch (e) { return 0; }
+  }
+  let winCount = getBest();
   let loseCount = +(localStorage.getItem('mfhry_gomoku_lose') || 0);
   $win.textContent = winCount;
   $lose.textContent = loseCount;
+
+  function sfx(name) {
+    try { if (window.mfKit && window.mfKit.sfx) window.mfKit.sfx(name); } catch (e) {}
+  }
 
   // ---------- 对局持久化 ----------
   const SAVE_KEY = 'mfhry_gomoku_state';
@@ -147,6 +159,7 @@
   }
 
   function reset() {
+    gen++;
     board = Array.from({ length: N }, () => Array(N).fill(EMPTY));
     turn = BLACK; over = false; history = []; thinking = false;
     clearSaved();
@@ -175,26 +188,33 @@
   function place(x, y, who) {
     board[y][x] = who;
     history.push({ x, y, who });
+    sfx('move');
     draw();
     return wins(x, y, who);
   }
 
   function endGame(winner) {
     over = true;
+    gen++;
     clearSaved();
     if (mode === 'ai') {
       if (winner === BLACK) {
+        const prev = getBest();
         winCount++;
-        localStorage.setItem('mfhry_gomoku_win', winCount);
+        // 本站无五子棋榜：mfhryScore 包装只记本机最佳（累计胜场越大越好）
+        try { if (window.mfhryScore) window.mfhryScore('gomoku', winCount); } catch (e) {}
+        if (winCount <= prev) sfx('win'); // 新纪录时 kit 包装会播 win，避免双重音效
         $msg.innerHTML = '<b>你赢了</b> · 五子连珠';
       } else {
         loseCount++;
-        localStorage.setItem('mfhry_gomoku_lose', loseCount);
+        try { localStorage.setItem('mfhry_gomoku_lose', loseCount); } catch (e) {}
+        try { if (window.mfKit) window.mfKit.gameOver(); } catch (e) {}
         $msg.innerHTML = '<b>电脑赢了</b> · 再来一局？';
       }
       $win.textContent = winCount;
       $lose.textContent = loseCount;
     } else {
+      if (winner === BLACK || winner === WHITE) sfx('win');
       $msg.innerHTML = (winner === BLACK ? '<b>黑棋</b>' : '<b>白棋</b>') + ' 获胜';
     }
   }
@@ -287,8 +307,10 @@
 
   function aiMove() {
     thinking = true;
+    const myGen = gen;
     $msg.textContent = '电脑思考中…';
     setTimeout(() => {
+      if (myGen !== gen) return; // 已重开/已结束，丢弃本次思考
       let bestScore = -1, best = null;
       for (const c of candidates()) {
         const attack = evaluate(c.x, c.y, WHITE);
@@ -322,17 +344,11 @@
     saveState();
   }
 
-  cv.addEventListener('click', (e) => {
+  cv.addEventListener('pointerup', (e) => {
+    if (e.button !== undefined && e.button !== 0) return;
     const r = cv.getBoundingClientRect();
     clickAt(e.clientX - r.left, e.clientY - r.top);
   });
-  cv.addEventListener('touchend', (e) => {
-    const t = e.changedTouches[0];
-    if (!t) return;
-    e.preventDefault();
-    const r = cv.getBoundingClientRect();
-    clickAt(t.clientX - r.left, t.clientY - r.top);
-  }, { passive: false });
 
   document.getElementById('undo').addEventListener('click', () => {
     if (!history.length || thinking) return;
@@ -358,8 +374,13 @@
   document.getElementById('modeAi').addEventListener('click', () => setMode('ai'));
   document.getElementById('modeTwo').addEventListener('click', () => setMode('two'));
   document.getElementById('restart').addEventListener('click', reset);
+  window.mfRestart = reset;
 
   window.addEventListener('resize', fit);
+  window.addEventListener('load', () => {
+    winCount = getBest();
+    $win.textContent = winCount;
+  }); // kit 加载完再按统一 key 刷新一次
 
   if (!loadState()) reset();
   fit();

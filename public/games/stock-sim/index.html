@@ -717,6 +717,7 @@
     if (earned === 0) return;
     if (!force && (Math.abs(earned - lastSent.score) < 1 || Date.now() - lastSent.at < 12000)) return;
     lastSent = { score: earned, at: Date.now() };
+    try { window.mfKit && window.mfKit.record('stock-sim', earned); } catch (e) {}
     fetch('/api/score', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -925,5 +926,7 @@
   boot();
 })();
 </script>
+<script>window.__mfNoPause = true; window.__mfNoAutoSfx = true;</script>
+<script src="/games/kit.js"></script>
 </body>
 </html>

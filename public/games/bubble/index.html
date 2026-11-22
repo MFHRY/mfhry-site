@@ -37,13 +37,20 @@
 
   var grid=[];
   var curColor=0, nextColor=0;
-  var score=0, state='play', recorded=false;
+  var score=0, state='play', recorded=false, best=0, scorePulse=0;
   var aim={x:LW/2,y:0};
   var shot=null;
   var falling=[];
   var lastT=0;
 
   function sfx(n){ try{ if(window.mfKit&&window.mfKit.sfx) window.mfKit.sfx(n); }catch(e){} }
+  function readBest(){
+    try{
+      var b=+(localStorage.getItem('mfhry_best_bubble')||0)||0;
+      if(!b) b=+(localStorage.getItem('mfhry_bubble_best')||0)||0;
+      return b;
+    }catch(e){ return 0; }
+  }
   function rnd(){ return Math.floor(Math.random()*COLORS.length); }
 
   function cellPos(r,c){ return {x:c*DIAM+(r%2?2*R:R), y:TOP+r*DY+R}; }
@@ -67,6 +74,7 @@
   }
   function reset(){
     grid=[]; score=0; state='play'; recorded=false; falling=[]; shot=null;
+    scorePulse=0; best=readBest();
     curColor=rnd(); nextColor=rnd();
     build();
   }
@@ -115,7 +123,7 @@
     var float=findFloating();
     if(float.length){ spawnFalling(float); gained+=float.length*5; sfx('jump'); }
     score+=gained;
-    if(gained>0) sfx('score');
+    if(gained>0){ sfx('score'); scorePulse=1; }
     for(r=0;r<grid.length;r++) for(c=0;c<COLS;c++) if(grid[r][c]!==null){ p=cellPos(r,c); if(p.y+R>LAUNCH_Y) return 'lost'; }
     if(countBubbles()===0) return 'won';
     return 'play';
@@ -127,7 +135,7 @@
     dx/=len; dy/=len;
     if(dy>0){ dy=-Math.abs(dy); len=Math.hypot(dx,dy); dx/=len; dy/=len; }
     shot={x:LW/2,y:SHOOTER_Y,vx:dx*SPEED,vy:dy*SPEED,color:curColor};
-    sfx('hit');
+    sfx('shoot');
     curColor=nextColor; nextColor=rnd();
   }
 
@@ -174,16 +182,16 @@
 
   function endGame(res){
     state = (res==='won') ? 'won' : 'lost';
-    if(res==='won') sfx('win'); else sfx('fail');
     if(!recorded){
       recorded=true;
       try{ if(window.mfhryScore) window.mfhryScore('bubble', score); }catch(e){}
       try{
-        if(window.mfKit && window.mfKit.getBest && window.mfKit.setBest){
-          var b=window.mfKit.getBest('bubble')||0;
-          if(score>b) window.mfKit.setBest('bubble',score);
+        if(window.mfKit){
+          window.mfKit.setScore(score);
+          if(res==='won') window.mfKit.win(); else window.mfKit.gameOver();
         }
       }catch(e){}
+      best=readBest();
     }
   }
 
@@ -264,8 +272,12 @@
 
   function drawHUD(){
     ctx.textBaseline='top';
-    ctx.textAlign='left'; ctx.fillStyle='#7fd1b0'; ctx.font='bold 20px system-ui,sans-serif';
+    ctx.textAlign='left';
+    var fs=20+scorePulse*6;
+    ctx.fillStyle='#7fd1b0'; ctx.font='bold '+fs.toFixed(1)+'px system-ui,sans-serif';
     ctx.fillText('得分 '+score, 12, 14);
+    ctx.fillStyle='#8a9aa4'; ctx.font='13px system-ui,sans-serif';
+    ctx.fillText('最佳 '+Math.max(best,score), 13, 46);
     ctx.textAlign='right'; ctx.fillStyle='#9aa4ad'; ctx.font='14px system-ui,sans-serif';
     ctx.fillText('剩余 '+countBubbles(), LW-12, 18);
   }
@@ -279,7 +291,7 @@
     ctx.fillStyle='#e6edf0'; ctx.font='20px system-ui,sans-serif';
     ctx.fillText('得分 '+score, LW/2, LH/2+16);
     ctx.fillStyle='#9aa4ad'; ctx.font='14px system-ui,sans-serif';
-    ctx.fillText('按 R 或点击右上角重开', LW/2, LH/2+48);
+    ctx.fillText('按 R 或点 ⟲ 重开', LW/2, LH/2+48);
   }
 
   function render(){
@@ -302,14 +314,23 @@
   function frame(t){
     var dt=(t-lastT)/1000||0.016; if(dt>0.033) dt=0.033; lastT=t;
     if(state==='play' && shot) updateShot(dt);
+    if(scorePulse>0) scorePulse=Math.max(0,scorePulse-dt*3.5);
     updateFalling(dt);
     render();
     requestAnimationFrame(frame);
   }
 
   canvas.addEventListener('pointermove', function(e){ var p=toLogical(e.clientX,e.clientY); aim.x=p.x; aim.y=p.y; });
-  canvas.addEventListener('pointerdown', function(e){ var p=toLogical(e.clientX,e.clientY); aim.x=p.x; aim.y=p.y; if(e.pointerType!=='touch') shoot(); });
-  canvas.addEventListener('pointerup', function(e){ if(e.pointerType==='touch'){ var p=toLogical(e.clientX,e.clientY); aim.x=p.x; aim.y=p.y; shoot(); } });
+  canvas.addEventListener('pointerdown', function(e){
+    e.preventDefault();
+    var p=toLogical(e.clientX,e.clientY); aim.x=p.x; aim.y=p.y;
+    if(e.pointerType!=='touch') shoot();
+  });
+  canvas.addEventListener('pointerup', function(e){
+    e.preventDefault();
+    if(e.pointerType==='touch'){ var p=toLogical(e.clientX,e.clientY); aim.x=p.x; aim.y=p.y; shoot(); }
+  });
+  canvas.addEventListener('pointercancel', function(){ /* 触摸取消不发射 */ });
   canvas.addEventListener('contextmenu', function(e){ e.preventDefault(); });
 
   window.mfRestart = function(){ reset(); };

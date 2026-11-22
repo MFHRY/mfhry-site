@@ -21,7 +21,9 @@
   .hint{font-size:12px; color:var(--muted); margin-bottom:12px; text-align:center; line-height:1.5;}
   .status{display:flex; align-items:center; gap:8px; font-size:13px; color:#cfe0d8; margin-bottom:12px; flex-wrap:wrap; justify-content:center;}
   .status .pill{background:var(--panel); padding:5px 12px; border-radius:8px; white-space:nowrap;}
-  .status .pill b{color:var(--accent); font-variant-numeric:tabular-nums;}
+  .status .pill b{color:var(--accent); font-variant-numeric:tabular-nums; display:inline-block;}
+  .status .pill.bump b{animation:bp .18s ease-out;}
+  @keyframes bp{50%{transform:scale(1.35); color:#fff;}}
   #stageWrap{flex:1; width:100%; display:flex; justify-content:center; align-items:center; min-height:0;}
   #stage{position:relative; line-height:0;}
   canvas{display:block; background:#121820; border-radius:14px; touch-action:none;
@@ -57,6 +59,7 @@
     </div>
   </div>
 </div>
+<script src="/games/score.js"></script>
 <script>
 (function () {
   'use strict';
@@ -90,8 +93,11 @@
     if (k && typeof k.sfx === 'function') { try { k.sfx(n); } catch (e) {} }
   }
   function refreshBest() {
-    var k = window.mfKit, b = 0;
-    if (k && typeof k.getBest === 'function') { try { b = k.getBest('snake') || 0; } catch (e) {} }
+    var b = 0;
+    try {
+      b = +(localStorage.getItem('mfhry_best_snake') || 0) || 0;
+      if (!b) b = +(localStorage.getItem('mfhry_snake_best') || 0) || 0;
+    } catch (e) {}
     best = b;
     bestEl.textContent = b;
   }
@@ -113,7 +119,23 @@
   // ---- 得分显示 ----
   function setPts(v) {
     ptsEl.textContent = v;
+    var pill = ptsEl.parentNode;
+    if (v > 0) {
+      pill.classList.remove('bump');
+      void pill.offsetWidth;
+      pill.classList.add('bump');
+    }
     if (v > best) { best = v; bestEl.textContent = v; }
+  }
+
+  // ---- 定时器（暂停/恢复共用，防止叠加） ----
+  var paused = false;
+  function stopTimer() {
+    if (timer) { clearInterval(timer); timer = null; }
+  }
+  function startTimer() {
+    stopTimer();
+    if (state === 'playing' && !paused) timer = setInterval(tick, speed);
   }
 
   // ---- 放置食物（不落在蛇身上）----
@@ -147,9 +169,10 @@
     initGame();
     fit();
     hideOverlay();
-    if (timer) { clearInterval(timer); timer = null; }
+    stopTimer();
+    paused = false;
     state = 'playing';
-    timer = setInterval(tick, speed);
+    startTimer();
   }
 
   // ---- 主循环 ----
@@ -177,8 +200,7 @@
       placeFood();
       if (speed > MIN_SPEED) {
         speed -= SPEED_STEP;
-        if (timer) { clearInterval(timer); timer = null; }
-        timer = setInterval(tick, speed);
+        startTimer();
       }
       if (snake.length >= N * N) { endGame(true); return; }
     } else {
@@ -191,19 +213,21 @@
   function endGame(won) {
     if (state === 'over') return;
     state = 'over';
-    if (timer) { clearInterval(timer); timer = null; }
+    stopTimer();
     var isRecord = score > best;
     if (won) {
-      sfx('win');
+      try { window.mfKit && window.mfKit.win(); } catch (e) {}
       ovTitle.textContent = '🏆 通关！';
       ovText.textContent = '填满全场 · 得分 ' + score;
     } else {
-      sfx('fail');
+      try { window.mfKit && window.mfKit.gameOver(); } catch (e) {}
       ovTitle.textContent = '游戏结束';
       ovText.textContent = '得分 ' + score + (isRecord ? ' · 新纪录！' : '');
     }
     if (isRecord) { best = score; bestEl.textContent = score; }
     if (window.mfhryScore) { try { window.mfhryScore('snake', score); } catch (e) {} }
+    try { window.mfKit && window.mfKit.setScore(score); } catch (e) {}
+    refreshBest();
     ovBtn.textContent = '再玩一次';
     overlay.classList.remove('hidden');
   }
@@ -287,22 +311,28 @@
     if (state === 'playing') { setDir(m[0], m[1]); }
   });
 
-  // ---- 控制：触屏滑动 ----
+  // ---- 控制：触屏 / 鼠标滑动（Pointer Events）----
   var tStart = null;
-  cv.addEventListener('touchstart', function (e) {
-    tStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-  }, { passive: true });
-  cv.addEventListener('touchend', function (e) {
-    if (!tStart) return;
-    var t = e.changedTouches[0];
-    var dx = t.clientX - tStart.x, dy = t.clientY - tStart.y;
-    tStart = null;
-    if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;
+  function swipeFrom(x0, y0, x1, y1) {
+    var dx = x1 - x0, dy = y1 - y0;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 20) return;
     if (state === 'idle') { start(); }
     if (state !== 'playing') return;
     if (Math.abs(dx) > Math.abs(dy)) setDir(dx > 0 ? 1 : -1, 0);
     else setDir(0, dy > 0 ? 1 : -1);
-  }, { passive: true });
+  }
+  cv.addEventListener('pointerdown', function (e) {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    tStart = { x: e.clientX, y: e.clientY };
+    try { cv.setPointerCapture(e.pointerId); } catch (err) {}
+  });
+  cv.addEventListener('pointerup', function (e) {
+    if (!tStart) return;
+    var s = tStart;
+    tStart = null;
+    swipeFrom(s.x, s.y, e.clientX, e.clientY);
+  });
+  cv.addEventListener('pointercancel', function () { tStart = null; });
 
   // ---- 覆盖层按钮 ----
   function showOverlay(title, text, btnText) {
@@ -314,13 +344,14 @@
   function hideOverlay() { overlay.classList.add('hidden'); }
   ovBtn.addEventListener('click', start);
 
-  // ---- 切走标签页暂停，避免回来自杀 ----
-  document.addEventListener('visibilitychange', function () {
-    if (document.hidden) {
-      if (timer) { clearInterval(timer); timer = null; }
-    } else if (state === 'playing' && !timer) {
-      timer = setInterval(tick, speed);
-    }
+  // ---- 暂停 / 恢复（kit 冻结 rAF，这里停/续自己的 setInterval）----
+  window.addEventListener('mf:pause', function () {
+    paused = true;
+    stopTimer();
+  });
+  window.addEventListener('mf:resume', function () {
+    paused = false;
+    startTimer();
   });
 
   // ---- 窗口变化重排 ----

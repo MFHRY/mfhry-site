@@ -53,6 +53,7 @@
   <span class="pill" id="levelLabel">第 1 / 8 关</span>
   <button class="navbtn" id="nextBtn" aria-label="下一关">▶</button>
   <span class="pill" id="stepsLabel">步数 0</span>
+  <button class="navbtn" id="undoBtn" aria-label="撤销一步">↶ 撤销</button>
   <span class="pill" id="scoreLabel">已过关 0</span>
   <span class="pill" id="bestLabel">最佳 0</span>
 </div>
@@ -66,7 +67,6 @@
     <button id="overlayBtn"></button>
   </div>
 </div>
-<script src="/games/kit.js"></script>
 <script>
 (function () {
   'use strict';
@@ -155,11 +155,12 @@
   const overlayTitle = document.getElementById('overlayTitle');
   const overlayText = document.getElementById('overlayText');
   const overlayBtn = document.getElementById('overlayBtn');
+  const undoBtn = document.getElementById('undoBtn');
 
-  // ---- kit 音效 ----
-  const kit = window.mfKit || null;
+  // ---- kit 音效（kit 在页面末尾加载，运行时懒取）----
   function sfx(n) {
-    if (kit && typeof kit.sfx === 'function') { try { kit.sfx(n); } catch (e) {} }
+    const k = window.mfKit;
+    if (k && typeof k.sfx === 'function') { try { k.sfx(n); } catch (e) {} }
   }
 
   // ---- 状态 ----
@@ -171,13 +172,17 @@
   let player = { r: 0, c: 0 };
   let rows = 0, cols = 0;
   let won = false;
+  let history = [];
 
   function hasBox(r, c) { return boxes.some(function (b) { return b.r === r && b.c === c; }); }
   function isTarget(r, c) { return board[r][c] === '.'; }
 
   function refreshBest() {
     let b = 0;
-    if (kit && typeof kit.getBest === 'function') { try { b = kit.getBest('sokoban') || 0; } catch (e) {} }
+    try {
+      b = +(localStorage.getItem('mfhry_best_sokoban') || 0) || 0;
+      if (!b) b = +(localStorage.getItem('mfhry_sokoban_best') || 0) || 0;
+    } catch (e) {}
     bestLabel.textContent = '最佳 ' + b;
   }
 
@@ -273,9 +278,34 @@
   function loadLevel(idx) {
     level = Math.max(0, Math.min(LEVELS.length - 1, idx));
     parseLevel(level);
+    history = [];
+    undoBtn.disabled = true;
     levelLabel.textContent = '第 ' + (level + 1) + ' / ' + LEVELS.length + ' 关';
     stepsLabel.textContent = '步数 0';
     hideOverlay();
+    render();
+    saveState();
+  }
+
+  // ---- 撤销一步（U / Z / ↶）----
+  function pushHistory() {
+    if (history.length > 200) history.shift();
+    history.push({
+      boxes: boxes.map(function (b) { return { r: b.r, c: b.c }; }),
+      player: { r: player.r, c: player.c },
+      steps: steps
+    });
+    if (undoBtn) undoBtn.disabled = false;
+  }
+  function undo() {
+    if (won || !history.length) return;
+    const h = history.pop();
+    boxes = h.boxes;
+    player = h.player;
+    steps = h.steps;
+    stepsLabel.textContent = '步数 ' + steps;
+    undoBtn.disabled = !history.length;
+    sfx('flip');
     render();
     saveState();
   }
@@ -323,11 +353,13 @@
       const br = nr + dr, bc = nc + dc;
       if (br < 0 || br >= rows || bc < 0 || bc >= cols) { sfx('hit'); return; }
       if (board[br][bc] === '#' || hasBox(br, bc)) { sfx('hit'); return; }
+      pushHistory();
       const bi = boxes.findIndex(function (b) { return b.r === nr && b.c === nc; });
       boxes[bi] = { r: br, c: bc };
       player = { r: nr, c: nc };
       sfx('pop');
     } else {
+      pushHistory();
       player = { r: nr, c: nc };
     }
     steps++;
@@ -348,7 +380,11 @@
       overlayTitle.textContent = '🏆 全部通关！';
       overlayText.textContent = '共通过 ' + levelsPassed + ' 关 · 最后一关步数 ' + steps;
       overlayBtn.textContent = '再玩一遍';
-      overlayBtn.onclick = function () { loadLevel(0); };
+      overlayBtn.onclick = function () {
+        levelsPassed = 0;
+        scoreLabel.textContent = '已过关 0';
+        loadLevel(0);
+      };
     }
     overlay.classList.remove('hidden');
   }
@@ -359,8 +395,13 @@
     levelsPassed++;
     scoreLabel.textContent = '已过关 ' + levelsPassed;
     if (window.mfhryScore) { try { window.mfhryScore('sokoban', levelsPassed); } catch (e) {} }
+    try { window.mfKit && window.mfKit.setScore(levelsPassed); } catch (e) {}
     refreshBest();
-    sfx('win');
+    if (level >= LEVELS.length - 1) {
+      try { window.mfKit && window.mfKit.win(); } catch (e) { sfx('win'); }
+    } else {
+      sfx('score');
+    }
     showWinOverlay();
   }
 
@@ -376,8 +417,9 @@
     if (keyMap[e.key]) {
       e.preventDefault();
       move(keyMap[e.key][0], keyMap[e.key][1]);
-    } else if ((e.key === 'r' || e.key === 'R') && !kit) {
-      window.mfRestart && window.mfRestart();
+    } else if (e.key === 'z' || e.key === 'Z' || e.key === 'u' || e.key === 'U' || e.key === 'Backspace') {
+      if (e.key === 'Backspace') e.preventDefault();
+      undo();
     }
   });
 
@@ -403,6 +445,7 @@
   document.getElementById('nextBtn').addEventListener('click', function () {
     sfx('jump'); loadLevel(level + 1);
   });
+  undoBtn.addEventListener('click', undo);
 
   // ---- 窗口变化重排 ----
   window.addEventListener('resize', render);
@@ -425,5 +468,6 @@
   }
 })();
 </script>
+<script src="/games/kit.js"></script>
 </body>
 </html>

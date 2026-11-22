@@ -7,9 +7,12 @@
 
   /* ---------------------------------------------------------- 噪声 */
   function hash2(x, z, seed) {
-    var h = x * 374761393 + z * 668265263 + seed * 2147483647;
-    h = (h ^ (h >> 13)) * 1274126177;
-    return ((h ^ (h >> 16)) >>> 0) / 4294967296;
+    /* 全程 32 位整数运算（Math.imul），避免大坐标下 double 精度丢失；
+       右移必须用无符号 >>>，否则符号位会让异或结果恒为非负半区 */
+    var h = (Math.imul(x | 0, 374761393) + Math.imul(z | 0, 668265263) +
+             Math.imul(seed | 0, 1274126177)) | 0;
+    h = Math.imul(h ^ (h >>> 13), 1274126177);
+    return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
   }
   function smooth(t) { return t * t * (3 - 2 * t); }
   function valueNoise(x, z, seed) {
@@ -40,6 +43,7 @@
     this.seed = seed || 1337;
     this.chunks = {};
     this.edits = {};
+    this.bases = {};   /* 原始地形缓存，存档时做 diff 用 */
   }
 
   World.prototype.chunkKey = function (cx, cz) { return cx + ',' + cz; };
@@ -52,10 +56,12 @@
   };
 
   World.prototype.heightAt = function (wx, wz) {
-    var n = fbm(wx / 96, wz / 96, this.seed, 4);
-    var n2 = fbm(wx / 24, wz / 24, this.seed + 91, 3);
-    var h = 18 + n * 34 + n2 * 6;
-    return Math.max(4, Math.min(CY - 12, Math.round(h)));
+    /* 三个尺度各自减去实测均值再放大：约 3 成海洋、3 成山地、其余平原丘陵 */
+    var m = fbm(wx / 210, wz / 210, this.seed + 5, 3);        /* 大陆度 */
+    var n = fbm(wx / 88, wz / 88, this.seed, 4);              /* 山丘 */
+    var n2 = fbm(wx / 26, wz / 26, this.seed + 91, 3);        /* 细节 */
+    var h = 31 + (m - 0.526) * 105 + (n - 0.545) * 24 + (n2 - 0.495) * 7;
+    return Math.max(3, Math.min(CY - 14, Math.round(h)));
   };
 
   World.prototype.genChunk = function (cx, cz) {
@@ -313,10 +319,8 @@
     var face = null, t = 0;
     for (var i = 0; i < 256; i++) {
       var id = this.get(x, y, z);
-      if (id && this.byId[id] && this.byId[id].shape !== 'cross' && this.byId[id].shape !== 'pane') {
-        return { x: x, y: y, z: z, id: id, face: face, dist: t };
-      }
-      if (id && this.byId[id] && (this.byId[id].shape === 'cross')) {
+      var bb = id ? this.byId[id] : null;
+      if (bb && bb.key !== 'water' && bb.key !== 'lava') {
         return { x: x, y: y, z: z, id: id, face: face, dist: t };
       }
       if (tMaxX < tMaxY && tMaxX < tMaxZ) {
@@ -336,9 +340,15 @@
     for (var k in this.edits) {
       var c = this.chunks[k];
       if (!c) continue;
+      /* 和原始地形逐格比对：这样挖掉的方块（0）也会被存下来，
+         否则重新载入时它会被地形重新生成出来 */
+      var base = this.bases[k];
+      if (!base) { base = this.genChunk(c.cx, c.cz).data; this.bases[k] = base; }
       var arr = [];
-      for (var i = 0; i < c.data.length; i++) if (c.data[i]) arr.push(i, c.data[i]);
-      out[k] = arr;
+      for (var i = 0; i < c.data.length; i++) {
+        if (c.data[i] !== base[i]) arr.push(i, c.data[i]);
+      }
+      if (arr.length) out[k] = arr;
     }
     return { seed: this.seed, edits: out };
   };

@@ -6,25 +6,29 @@
 <title>乒乓 · mfhry.store</title>
 <style>
   :root{--bg:#0b0e11;--fg:#eaecef;--muted:#8b939c;--accent:#7fd1b0}
-  *{box-sizing:border-box;margin:0;padding:0}
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
   body{background:var(--bg);color:var(--fg);font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
     min-height:100vh;display:flex;align-items:center;justify-content:center;padding:18px}
   .wrap{width:min(96vw,620px)}
   .top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;gap:10px;flex-wrap:wrap}
   h1{font-size:22px}
   .stat{background:#161d24;border-radius:10px;padding:6px 14px;font-size:14px}
-  .stat b{color:var(--accent)}
-  .stage{position:relative;border-radius:14px;overflow:hidden;background:#121820}
-  canvas{display:block;width:100%;height:auto;touch-action:none}
-  .overlay{position:absolute;inset:0;background:rgba(0,0,0,.74);display:none;flex-direction:column;
-    align-items:center;justify-content:center;gap:14px;text-align:center;padding:16px}
+  .stat b{color:var(--accent);font-variant-numeric:tabular-nums}
+  .stage{position:relative;border-radius:14px;overflow:hidden;background:#121820;
+    box-shadow:0 24px 60px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.06)}
+  canvas{display:block;width:100%;height:auto;touch-action:none;cursor:none}
+  .overlay{position:absolute;inset:0;background:rgba(5,8,10,.7);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+    display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:16px}
   .overlay.on{display:flex}
   .overlay h2{font-size:20px}
+  .overlay p{color:var(--muted);font-size:12px;line-height:1.7}
   button{font:inherit;padding:9px 22px;border-radius:10px;border:1px solid var(--accent);
-    background:transparent;color:var(--fg);cursor:pointer}
-  button:hover{background:rgba(127,209,176,.12)}
-  .hint{margin-top:10px;font-size:12px;color:var(--muted)}
+    background:rgba(127,209,176,.1);color:var(--fg);cursor:pointer;transition:background .15s,transform .12s}
+  button:hover{background:rgba(127,209,176,.2)}
+  button:active{transform:scale(.96)}
+  .hint{margin-top:10px;font-size:12px;color:var(--muted);line-height:1.7}
   .back{display:inline-block;margin-top:8px;font-size:12px;color:var(--muted);text-decoration:none}
+  .back:hover{color:var(--fg)}
 </style>
 </head>
 <body>
@@ -36,35 +40,47 @@
   </div>
   <div class="stage">
     <canvas id="cv"></canvas>
-    <div class="overlay" id="ov"><h2 id="ovt">乒乓</h2><button id="btn">开始</button></div>
+    <div class="overlay" id="ov">
+      <h2 id="ovt">乒乓</h2>
+      <p id="ovs">鼠标 / 手指拖动球拍，或 W S / ↑ ↓<br>先到 7 分获胜</p>
+      <button id="btn">开始</button>
+    </div>
   </div>
-  <div class="hint">鼠标 / 手指拖动，或 W S / ↑ ↓ 控制球拍</div>
+  <div class="hint">鼠标 / 手指拖动，或 W S / ↑ ↓ 控制球拍；空格开始</div>
   <a class="back" href="/games/">← 返回小游戏</a>
 </div>
 <script>
 (() => {
   const W = 480, H = 320;
   const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
-  const ov = document.getElementById('ov'), ovt = document.getElementById('ovt'), btn = document.getElementById('btn');
-
-  const PW = 10, PH = 64, R = 6;
-  const player = { x: 18, y: H / 2 - PH / 2 };
-  const ai = { x: W - 28, y: H / 2 - PH / 2 };
-  const ball = { x: W / 2, y: H / 2, vx: 0, vy: 0 };
-  const WIN = 7;
-
-  let scoreP = 0, scoreA = 0, running = false, serveTimer = null, keys = {}, raf = null;
-  let speed = 4.4, scale = 1;
-  let winCount = +(localStorage.getItem('mfhry_pong_win') || 0);
-  let loseCount = +(localStorage.getItem('mfhry_pong_lose') || 0);
+  const ov = document.getElementById('ov'), ovt = document.getElementById('ovt'), ovs = document.getElementById('ovs'), btn = document.getElementById('btn');
   const $win = document.getElementById('win'), $lose = document.getElementById('lose');
+
+  const PW = 10, PH = 64, R = 6, WIN = 7;
+  const player = { x: 18, y: H / 2 - PH / 2 };
+  const ai = { x: W - 28, y: H / 2 - PH / 2, jitter: 0 };
+  const ball = { x: W / 2, y: H / 2, vx: 0, vy: 0 };
+
+  let scoreP = 0, scoreA = 0, running = false, keys = {}, raf = 0, serveTimer = 0;
+  let speed = 4.4, scale = 1;
+  let winCount = 0, loseCount = 0;
+  try {
+    winCount = +(localStorage.getItem('mfhry_pong_win') || 0);
+    loseCount = +(localStorage.getItem('mfhry_pong_lose') || 0);
+  } catch (e) {}
   $win.textContent = winCount;
   $lose.textContent = loseCount;
+
+  let parts = [], trail = [], flash = 0;
+
+  const fx = (n) => { try { window.mfKit && mfKit.sfx(n); } catch (e) {} };
+  const buzz = (n) => { try { window.mfKit && mfKit.vibrate(n); } catch (e) {} };
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
   function fit() {
     const w = cv.parentElement.clientWidth;
     scale = w / W;
-    const dpr = Math.min(devicePixelRatio || 1, 2);
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
     cv.width = W * dpr;
     cv.height = H * dpr;
     cv.style.width = w + 'px';
@@ -72,66 +88,96 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
-  function resetBall(dir) {
-    ball.x = W / 2;
-    ball.y = H / 2;
-    speed = 4.4;
-    const angle = (Math.random() * 0.7 - 0.35);
-    ball.vx = Math.cos(angle) * speed * dir;
-    ball.vy = Math.sin(angle) * speed;
-    clearTimeout(serveTimer);
-    serveTimer = setTimeout(() => { if (running) loop(); }, 500);
+  function burst(x, y, color, n) {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 1.2 + Math.random() * 3.4;
+      parts.push({
+        x, y,
+        vx: Math.cos(a) * sp,
+        vy: Math.sin(a) * sp,
+        life: 22 + Math.random() * 18,
+        max: 40,
+        size: 1.6 + Math.random() * 2.6,
+        color,
+      });
+    }
   }
 
   function serve(dir) {
     clearTimeout(serveTimer);
-    ball.x = W / 2; ball.y = H / 2;
+    ball.x = W / 2;
+    ball.y = H / 2;
     speed = 4.4;
     const angle = Math.random() * 0.7 - 0.35;
     ball.vx = Math.cos(angle) * speed * dir;
     ball.vy = Math.sin(angle) * speed;
+    trail = [];
+    ai.jitter = Math.random() * 10 - 5;
   }
 
   function point(who) {
-    if (who === 'p') scoreP++; else scoreA++;
-    cancelAnimationFrame(raf); raf = null;
-    if (scoreP >= WIN || scoreA >= WIN) {
-      running = false;
-      if (scoreP >= WIN) {
-        winCount++;
-        localStorage.setItem('mfhry_pong_win', winCount);
-      } else {
-        loseCount++;
-        localStorage.setItem('mfhry_pong_lose', loseCount);
-      }
-      $win.textContent = winCount;
-      $lose.textContent = loseCount;
-      ovt.textContent = scoreP >= WIN ? '你赢了 ' + scoreP + ':' + scoreA : '输了 ' + scoreP + ':' + scoreA;
-      btn.textContent = '再来一局';
-      ov.classList.add('on');
-      draw();
-      return;
+    cancelAnimationFrame(raf);
+    if (who === 'p') {
+      scoreP++;
+      fx('score');
+      flash = 0.22;
+      burst(W - 12, ball.y, '#7fd1b0', 18);
+      buzz(10);
+    } else {
+      scoreA++;
+      fx('miss');
+      flash = 0.14;
+      burst(12, ball.y, '#e57b6b', 14);
+      buzz(16);
     }
-    serve(who === 'p' ? -1 : 1);
-    setTimeout(() => { if (running) loop(); }, 600);
+    if (scoreP >= WIN || scoreA >= WIN) { finish(); return; }
+    serve(who === 'p' ? 1 : -1);
+    serveTimer = setTimeout(() => { if (running) loop(); }, 620);
     draw();
   }
 
-  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  function finish() {
+    running = false;
+    clearTimeout(serveTimer);
+    cancelAnimationFrame(raf);
+    const playerWon = scoreP >= WIN;
+    let record = false;
+    if (playerWon) {
+      winCount++;
+      try { localStorage.setItem('mfhry_pong_win', String(winCount)); } catch (e) {}
+      $win.textContent = winCount;
+      record = window.mfKit ? mfKit.isBetter('pong', winCount) : false;
+      try { window.mfhryScore && mfhryScore('pong', winCount); } catch (e) {}
+      if (!record) fx('win');
+      buzz([16, 24, 36]);
+    } else {
+      loseCount++;
+      try { localStorage.setItem('mfhry_pong_lose', String(loseCount)); } catch (e) {}
+      $lose.textContent = loseCount;
+      try { window.mfKit && mfKit.gameOver(); } catch (e) {}
+    }
+    ovt.textContent = playerWon ? '你赢了 ' + scoreP + ':' + scoreA : '输了 ' + scoreP + ':' + scoreA;
+    ovs.textContent = playerWon
+      ? '本机第 ' + winCount + ' 胜' + (record ? ' · 新纪录 🎉' : '')
+      : '再调整一下落点，下局赢回来';
+    btn.textContent = '再来一局';
+    ov.classList.add('on');
+    draw();
+  }
 
   function step() {
     if (!running) return;
 
-    // 玩家：键盘
     if (keys.up) player.y -= 6;
     if (keys.down) player.y += 6;
     player.y = clamp(player.y, 0, H - PH);
-    ai.y = clamp(ai.y, 0, H - PH);
 
-    // AI
-    const target = ball.y - PH / 2 + (Math.random() * 10 - 5);
-    const diff = target - ai.y;
-    ai.y += clamp(diff, -3.4, 3.4);
+    const toward = ball.vx > 0;
+    const target = toward ? ball.y - PH / 2 + ai.jitter : H / 2 - PH / 2;
+    const aiSpeed = toward ? 3.4 : 1.4;
+    ai.y += clamp(target - ai.y, -aiSpeed, aiSpeed);
+    ai.y = clamp(ai.y, 0, H - PH);
 
     ball.x += ball.vx;
     ball.y += ball.vy;
@@ -139,8 +185,7 @@
     if (ball.y - R < 0) { ball.y = R; ball.vy = Math.abs(ball.vy); }
     if (ball.y + R > H) { ball.y = H - R; ball.vy = -Math.abs(ball.vy); }
 
-    // 玩家拍
-    if (ball.vx < 0 && ball.x - R <= player.x + PW && ball.x - R >= player.x - PW &&
+    if (ball.vx < 0 && ball.x - R <= player.x + PW && ball.x + R >= player.x &&
         ball.y >= player.y - R && ball.y <= player.y + PH + R) {
       ball.x = player.x + PW + R;
       const rel = (ball.y - (player.y + PH / 2)) / (PH / 2);
@@ -148,10 +193,12 @@
       const angle = rel * 0.9;
       ball.vx = Math.cos(angle) * speed;
       ball.vy = Math.sin(angle) * speed;
+      fx('hit');
+      buzz(6);
+      burst(ball.x, ball.y, '#7fd1b0', 8);
     }
 
-    // AI 拍
-    if (ball.vx > 0 && ball.x + R >= ai.x && ball.x + R <= ai.x + PW + 8 &&
+    if (ball.vx > 0 && ball.x + R >= ai.x && ball.x - R <= ai.x + PW &&
         ball.y >= ai.y - R && ball.y <= ai.y + PH + R) {
       ball.x = ai.x - R;
       const rel = (ball.y - (ai.y + PH / 2)) / (PH / 2);
@@ -159,10 +206,26 @@
       const angle = rel * 0.8;
       ball.vx = -Math.cos(angle) * speed;
       ball.vy = Math.sin(angle) * speed;
+      ai.jitter = Math.random() * 12 - 6;
+      fx('hit');
+      burst(ball.x, ball.y, '#8b939c', 6);
     }
 
     if (ball.x < -R * 4) { point('a'); return; }
     if (ball.x > W + R * 4) { point('p'); return; }
+
+    trail.push({ x: ball.x, y: ball.y });
+    if (trail.length > 9) trail.shift();
+
+    for (const p of parts) {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vx *= 0.96;
+      p.vy = p.vy * 0.96 + 0.06;
+      p.life--;
+    }
+    parts = parts.filter((p) => p.life > 0);
+    if (flash > 0) flash = Math.max(0, flash - 0.035);
 
     draw();
     raf = requestAnimationFrame(step);
@@ -177,59 +240,111 @@
     ctx.fillStyle = '#121820';
     ctx.fillRect(0, 0, W, H);
 
+    const bg = ctx.createRadialGradient(W / 2, -60, 20, W / 2, -60, 420);
+    bg.addColorStop(0, 'rgba(127,209,176,.09)');
+    bg.addColorStop(1, 'rgba(127,209,176,0)');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+
     ctx.strokeStyle = 'rgba(255,255,255,.08)';
     ctx.lineWidth = 2;
     ctx.setLineDash([8, 12]);
     ctx.beginPath(); ctx.moveTo(W / 2, 0); ctx.lineTo(W / 2, H); ctx.stroke();
     ctx.setLineDash([]);
 
-    ctx.fillStyle = 'rgba(234,236,239,.06)';
-    ctx.font = 'bold 76px -apple-system,sans-serif';
+    ctx.fillStyle = 'rgba(234,236,239,.07)';
+    ctx.font = '800 74px -apple-system,sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(String(scoreP), W / 2 - 90, 96);
-    ctx.fillText(String(scoreA), W / 2 + 90, 96);
+    ctx.fillText(String(scoreP), W / 2 - 90, 92);
+    ctx.fillText(String(scoreA), W / 2 + 90, 92);
 
+    for (let i = 0; i < trail.length; i++) {
+      const t = trail[i];
+      ctx.fillStyle = 'rgba(234,236,239,' + (0.02 + (i / trail.length) * 0.12) + ')';
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, R * (0.4 + i / trail.length * 0.7), 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(127,209,176,.75)';
+    ctx.shadowBlur = 14;
     ctx.fillStyle = '#7fd1b0';
     ctx.fillRect(player.x, player.y, PW, PH);
+    ctx.restore();
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(139,147,156,.5)';
+    ctx.shadowBlur = 10;
     ctx.fillStyle = '#8b939c';
     ctx.fillRect(ai.x, ai.y, PW, PH);
+    ctx.restore();
 
+    ctx.save();
+    ctx.shadowColor = 'rgba(234,236,239,.8)';
+    ctx.shadowBlur = 12;
     ctx.fillStyle = '#eaecef';
     ctx.beginPath();
     ctx.arc(ball.x, ball.y, R, 0, Math.PI * 2);
     ctx.fill();
+    ctx.restore();
+
+    for (const p of parts) {
+      ctx.globalAlpha = Math.max(0, p.life / p.max);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+    }
+    ctx.globalAlpha = 1;
+
+    if (flash > 0) {
+      ctx.fillStyle = 'rgba(255,255,255,' + flash + ')';
+      ctx.fillRect(0, 0, W, H);
+    }
   }
 
   function start() {
     fit();
-    scoreP = 0; scoreA = 0; running = true;
+    clearTimeout(serveTimer);
+    cancelAnimationFrame(raf);
+    scoreP = 0;
+    scoreA = 0;
+    running = true;
+    player.x = 18;
     player.y = H / 2 - PH / 2;
+    ai.x = W - 28;
     ai.y = H / 2 - PH / 2;
+    parts = [];
+    trail = [];
+    flash = 0;
     ov.classList.remove('on');
-    serve(Math.random() < .5 ? -1 : 1);
+    serve(Math.random() < 0.5 ? -1 : 1);
+    fx('click');
     loop();
   }
 
-  // 输入
-  cv.addEventListener('mousemove', (e) => {
+  window.mfRestart = start;
+
+  function movePaddle(e) {
     const r = cv.getBoundingClientRect();
     const y = (e.clientY - r.top) / r.height * H;
     player.y = clamp(y - PH / 2, 0, H - PH);
     if (!running) draw();
+  }
+
+  cv.addEventListener('pointerdown', (e) => {
+    try { cv.setPointerCapture(e.pointerId); } catch (err) {}
+    movePaddle(e);
   });
-  cv.addEventListener('touchmove', (e) => {
-    e.preventDefault();
-    const r = cv.getBoundingClientRect();
-    const y = (e.touches[0].clientY - r.top) / r.height * H;
-    player.y = clamp(y - PH / 2, 0, H - PH);
-    if (!running) draw();
-  }, { passive: false });
+  cv.addEventListener('pointermove', movePaddle);
+  cv.addEventListener('pointerup', (e) => {
+    try { cv.releasePointerCapture(e.pointerId); } catch (err) {}
+  });
 
   document.addEventListener('keydown', (e) => {
     if (['ArrowUp', 'ArrowDown', ' '].includes(e.key)) e.preventDefault();
     if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.up = true;
     if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.down = true;
-    if (e.key === ' ' && !running) start();
+    if ((e.key === ' ' || e.key === 'Enter') && !running) start();
   });
   document.addEventListener('keyup', (e) => {
     if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.up = false;

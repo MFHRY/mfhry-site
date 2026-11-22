@@ -67,13 +67,24 @@
   const bt = document.getElementById('bt'), bp = document.getElementById('bp');
   const msg = document.getElementById('msg');
   const $sb = document.getElementById('sb'), $sw = document.getElementById('sw'), $win = document.getElementById('win');
-  let wins = +(localStorage.getItem('mfhry_reversi_win') || 0);
+  // 胜场 = 本机最佳，统一 mfhry_best_reversi（回退旧 key，不写旧 key）
+  function getBest() {
+    try {
+      if (window.mfKit && window.mfKit.getBest) return window.mfKit.getBest('reversi') || 0;
+      return +(localStorage.getItem('mfhry_best_reversi') || localStorage.getItem('mfhry_reversi_win') || 0) || 0;
+    } catch (e) { return 0; }
+  }
+  let wins = getBest();
   $win.textContent = wins;
+
+  function sfx(name) {
+    try { if (window.mfKit && window.mfKit.sfx) window.mfKit.sfx(name); } catch (e) {}
+  }
 
   const STATE_KEY = 'mfhry_reversi_state';
   const STATE_VERSION = 1;
 
-  let grid = [], turn = B, busy = false, last = -1;
+  let grid = [], turn = B, busy = false, last = -1, over = false, gen = 0;
   const sq = [];
 
   for (let i = 0; i < N * N; i++) {
@@ -88,6 +99,8 @@
   const opp = (c) => (c === B ? W : B);
 
   function fresh() {
+    gen++;
+    over = false;
     clearState();
     grid = new Array(N * N).fill(0);
     const a = (N / 2 - 1) * N + (N / 2 - 1);
@@ -96,6 +109,12 @@
     banner.classList.remove('on');
     msg.textContent = '你先手（黑棋）';
     draw();
+  }
+
+  // 延迟 AI 时校验代次：重开后丢弃旧的思考，避免落到新棋盘/重复结算
+  function scheduleAi(ms) {
+    const g = gen;
+    setTimeout(() => { if (g === gen && !over) aiMove(); }, ms);
   }
 
   function saveState() {
@@ -124,13 +143,14 @@
     turn = s.turn;
     last = s.last;
     busy = false;
+    over = false;
     banner.classList.remove('on');
     draw();
     if (turn === W || !moves(grid, B).length) {
       // 轮到电脑（刷新时正好是电脑回合，或玩家没棋可下需让电脑继续）
       busy = true;
       msg.textContent = '电脑思考中…';
-      setTimeout(aiMove, 260);
+      scheduleAi(260);
     } else {
       msg.textContent = '轮到你了';
     }
@@ -197,10 +217,11 @@
     grid[i] = color;
     for (const j of f) grid[j] = color;
     last = i;
+    sfx('flip');
   }
 
   function play(i) {
-    if (busy || turn !== B) return;
+    if (busy || over || turn !== B) return;
     if (!flips(grid, i, B).length) return;
     place(i, B);
     turn = W;
@@ -208,12 +229,13 @@
     if (!finishIfDone()) {
       busy = true;
       msg.textContent = '电脑思考中…';
-      setTimeout(aiMove, 260);
+      scheduleAi(260);
       saveState();
     }
   }
 
   function aiMove() {
+    if (over) return;
     const list = moves(grid, W);
     if (!list.length) {
       // 没得下就过
@@ -246,7 +268,8 @@
       msg.textContent = my.length ? '轮到你了' : '你没棋可下';
       if (!my.length) {
         busy = true;
-        setTimeout(() => { turn = W; aiMove(); }, 400);
+        const g = gen;
+        setTimeout(() => { if (g !== gen || over) return; turn = W; aiMove(); }, 400);
       }
     }
   }
@@ -258,23 +281,34 @@
   }
 
   function finish() {
+    if (over) return;
+    over = true;
     const c = counts();
     busy = true;
     clearState();
     const win = c.b > c.w, drawGame = c.b === c.w;
     if (win) {
+      const prev = getBest();
       wins++;
-      localStorage.setItem('mfhry_reversi_win', String(wins));
+      // 本站无黑白棋榜：mfhryScore 包装只记本机最佳（累计胜场越大越好）
+      try { if (window.mfhryScore) window.mfhryScore('reversi', wins); } catch (e) {}
       $win.textContent = wins;
+      if (wins <= prev) sfx('win'); // 新纪录时 kit 包装会播 win，避免双重音效
+    } else if (drawGame) {
+      sfx('pop');
+    } else {
+      try { if (window.mfKit) window.mfKit.gameOver(); } catch (e) {}
     }
     bt.textContent = win ? '你赢了 🎉' : drawGame ? '平局' : '电脑赢了';
     bp.innerHTML = '黑 ' + c.b + ' : ' + c.w + ' 白';
     banner.classList.add('on');
-    msg.textContent = win ? '再来一局？' : '别急，角不好抢';
+    msg.textContent = win ? '再来一局？' : drawGame ? '势均力敌，再来一局？' : '别急，角不好抢';
   }
 
   document.getElementById('reset').addEventListener('click', fresh);
   document.getElementById('again').addEventListener('click', fresh);
+  window.mfRestart = fresh;
+  window.addEventListener('load', () => { wins = getBest(); $win.textContent = wins; });
   if (!loadState()) fresh();
 })();
 </script>

@@ -43,6 +43,7 @@
     height: 100%;
     background: #0b0e11;
     cursor: crosshair;
+    touch-action: none;
   }
   #overlay {
     position: absolute;
@@ -93,7 +94,6 @@
   </div>
 </div>
 
-<script src="/games/kit.js"></script>
 <script>
 (function () {
   'use strict';
@@ -141,7 +141,7 @@
   /* ---------------- 游戏状态 ---------------- */
   var player = null;
   var bullets = [], enemies = [], stars = [], parts = [], bg = [];
-  var score = 0, elapsed = 0;
+  var score = 0, elapsed = 0, scorePop = 0;
   var running = false, over = false;
   var lastT = 0, shootT = 0, enemyT = 0, starT = 0, raf = null;
 
@@ -212,7 +212,7 @@
   function shoot() {
     if (!running) return;
     bullets.push({ x: player.x, y: player.y - player.h / 2 - 6, vy: -600, w: 4, h: 14 });
-    play('pop');
+    play('shoot');
   }
 
   /* ---------------- 碰撞 ---------------- */
@@ -242,31 +242,39 @@
     if (over) return;
     over = true;
     running = false;
-    play('fail');
-    var k = kit();
-    var b = 0;
-    try { b = (typeof k.getBest === 'function') ? (k.getBest('dodger') || 0) : 0; } catch (e) { b = 0; }
-    var isNew = score > 0 && score > b;
-    var nb = Math.max(b, score);
-    try { if (isNew && typeof k.setBest === 'function') k.setBest('dodger', score); } catch (e) {}
+    var isNew = score > 0 && score > readBest();
     try { if (score > 0 && typeof window.mfhryScore === 'function') window.mfhryScore('dodger', score); } catch (e) {}
+    var k = kit();
+    try {
+      if (k && typeof k.setScore === 'function') k.setScore(score);
+      if (k && typeof k.gameOver === 'function') k.gameOver(); else play('fail');
+    } catch (e) {}
     ovScore.textContent = '得分 ' + score;
-    ovBest.textContent = '最佳 ' + nb;
+    ovBest.textContent = '最佳 ' + Math.max(readBest(), score);
     ovNew.style.display = isNew ? 'block' : 'none';
     overlay.classList.add('show');
+  }
+
+  function readBest() {
+    var b = 0;
+    try {
+      b = +(localStorage.getItem('mfhry_best_dodger') || 0) || 0;
+      if (!b) b = +(localStorage.getItem('mfhry_dodger_best') || 0) || 0;
+    } catch (e) {}
+    return b;
   }
 
   /* ---------------- 重开 ---------------- */
   function restart() {
     player = { x: W / 2, y: H - 90, w: 46, h: 42, speed: 340 };
     bullets = []; enemies = []; stars = []; parts = [];
-    score = 0; elapsed = 0; over = false; running = true;
+    score = 0; elapsed = 0; over = false; running = true; scorePop = 0;
     shootT = 0; enemyT = 0.5; starT = 1.5;
+    tId = null;
+    keys.left = false; keys.right = false;
     overlay.classList.remove('show');
-    if (!raf) {
-      lastT = performance.now();
-      raf = requestAnimationFrame(loop);
-    }
+    lastT = performance.now();
+    if (!raf) raf = requestAnimationFrame(loop);
   }
   window.mfRestart = restart;
 
@@ -282,8 +290,13 @@
     else if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
   });
 
-  /* ---------------- 鼠标（桌面点击射击） ---------------- */
+  /* ---------------- 鼠标（桌面点击射击 / 拖动移动） ---------------- */
   canvas.addEventListener('mousedown', function () { shoot(); });
+  canvas.addEventListener('pointermove', function (e) {
+    if (e.pointerType !== 'mouse' || !running || !player) return;
+    var r = canvas.getBoundingClientRect();
+    player.x = clamp(((e.clientX - r.left) / r.width) * W, player.w / 2 + 4, W - player.w / 2 - 4);
+  });
 
   /* ---------------- 触屏（拖动移动 / 轻点射击） ---------------- */
   var tId = null, tStartX = 0, tStartPx = 0, tStartT = 0, tMoved = 0;
@@ -322,6 +335,7 @@
   /* ---------------- 更新 ---------------- */
   function update(dt) {
     elapsed += dt;
+    if (scorePop > 0) scorePop = Math.max(0, scorePop - dt * 4);
 
     // 玩家移动（键盘）
     var dir = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
@@ -361,6 +375,7 @@
           bullets.splice(j, 1);
           enemies.splice(i, 1);
           score += 10;
+          scorePop = 1;
           play('boom');
           addParts(e.x, e.y, '#ff8a5c', 10);
           break;
@@ -389,6 +404,7 @@
           Math.abs(s.y - player.y) < player.h / 2 + s.r) {
         stars.splice(i, 1);
         score += 5;
+        scorePop = 0.7;
         play('score');
         addParts(s.x, s.y, '#ffd766', 8);
       }
@@ -531,14 +547,18 @@
 
     // 得分
     if (player || over) {
+      ctx.save();
+      ctx.translate(W / 2, 12);
+      ctx.scale(1 + scorePop * 0.16, 1 + scorePop * 0.16);
       ctx.fillStyle = '#7fd1b0';
       ctx.font = '700 22px system-ui, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
       ctx.shadowColor = 'rgba(127,209,176,0.5)';
       ctx.shadowBlur = 8;
-      ctx.fillText(String(score), W / 2, 12);
+      ctx.fillText(String(score), 0, 0);
       ctx.shadowBlur = 0;
+      ctx.restore();
     }
   }
 
@@ -568,5 +588,6 @@
   restart();
 })();
 </script>
+<script src="/games/kit.js"></script>
 </body>
 </html>

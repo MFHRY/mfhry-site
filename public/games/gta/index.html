@@ -71,10 +71,23 @@
   .dlg .nx{margin-top:10px;text-align:right;font-size:11.5px;color:#7c8698;font-weight:700}
   .dlg .nx b{color:#42d77d}
 
+  /* 暂停 */
+  .paused{position:fixed;inset:0;z-index:18;display:none;place-items:center;background:rgba(6,8,12,.72);
+    backdrop-filter:blur(10px);text-align:center;cursor:pointer}
+  .paused.on{display:grid}
+  .paused b{display:block;font-size:26px;font-weight:900;letter-spacing:8px;color:#fff}
+  .paused i{display:block;font-style:normal;font-size:12px;color:#8b95a8;margin-top:10px;letter-spacing:1px}
+  .paused u{display:inline-block;text-decoration:none;margin-top:18px;font-size:12px;font-weight:900;color:#0b0e12;
+    background:#ffd84d;border-radius:8px;padding:9px 20px}
+
   .touch{position:fixed;inset:0;z-index:12;pointer-events:none;display:none}
   .touch.on{display:block}
   .stick{position:absolute;left:20px;bottom:24px;width:116px;height:116px;border-radius:50%;
-    background:rgba(22,26,34,.42);border:2px solid rgba(255,255,255,.22);pointer-events:auto}
+    background:rgba(22,26,34,.42);border:2px solid rgba(255,255,255,.22);pointer-events:auto;
+    transition:left .12s ease,bottom .12s ease}
+  .stick.dragging{transition:none}          /* 拖动时不要动画，否则会跟手延迟 */
+  /* 左下角一整块都能起摇杆：手指落在哪，摇杆就出现在哪 */
+  .zone{position:absolute;left:0;bottom:0;width:46%;height:56%;pointer-events:auto;touch-action:none}
   .stick>i{position:absolute;left:50%;top:50%;width:50px;height:50px;margin:-25px 0 0 -25px;border-radius:50%;
     background:rgba(255,255,255,.5)}
   .tbtns{position:absolute;right:18px;bottom:28px;display:flex;gap:10px;align-items:flex-end;pointer-events:auto}
@@ -195,6 +208,7 @@
 </div>
 
 <div class="touch" id="touch">
+  <div class="zone" id="stickZone"></div>
   <div class="stick" id="stick"><i></i></div>
   <div class="tbtns">
     <button class="tb sm" id="tMap">地图</button>
@@ -203,6 +217,8 @@
     <button class="tb fire" id="tFire">开火</button>
   </div>
 </div>
+
+<div class="paused" id="pauseBox"><div><b>已暂停</b><i>按 Esc / P 继续</i><br><u>继续游戏</u></div></div>
 
 <div class="chap" id="chapCard"><b id="chapName">第 1 章</b><i id="chapSub">出狱</i></div>
 
@@ -1587,7 +1603,7 @@
     try {
       const d = await api('/api/gta', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'to-stock', amount: amount }) });
       game.money = d.cash;
-      moneyEl.textContent = money(game.money);
+      paintMoney();
       state.netWorth = game.money + state.fxUsd * state.rate;
       storyEvent('to-stock', amount);
       toast(d.message);
@@ -1602,7 +1618,7 @@
     try {
       const d = await api('/api/gta', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'from-stock', amount: amount }) });
       game.money = d.cash;
-      moneyEl.textContent = money(game.money);
+      paintMoney();
       state.netWorth = game.money + state.fxUsd * state.rate;
       toast(d.message);
       exAccount = await api('/api/stock');
@@ -1616,7 +1632,7 @@
     document.getElementById('fxVeil').classList.add('on');
     await bankSync(true);
     const d = await loadWallet();
-    if (d) { game.money = d.cash; moneyEl.textContent = money(game.money); }
+    if (d) { game.money = d.cash; paintMoney(true); }
     renderFx();
   }
 
@@ -1637,7 +1653,7 @@
     try {
       const d = await api('/api/gta', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'to-fx', amount: cny }) });
       game.money = d.cash;
-      moneyEl.textContent = money(game.money);
+      paintMoney();
       state.fxUsd = d.fxUsd; state.fxCost = d.fxCost; state.rate = d.rate;
       state.netWorth = game.money + state.fxUsd * state.rate;
       storyEvent('fx-buy', cny);
@@ -1656,7 +1672,7 @@
     try {
       const d = await api('/api/gta', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'from-fx', usd: usd }) });
       game.money = d.cash;
-      moneyEl.textContent = money(game.money);
+      paintMoney();
       state.fxUsd = d.fxUsd; state.fxCost = d.fxCost; state.rate = d.rate;
       state.netWorth = game.money + state.fxUsd * state.rate;
       toast(d.message);
@@ -1731,6 +1747,7 @@
     keys[e.key.toLowerCase()] = true;
     if (e.repeat) return;                      /* 长按不重复触发交互/地图 */
     const k = e.key.toLowerCase();
+    if (k === 'escape' || k === 'p') { togglePause(); return; }
     if (k === 'e') interact();
     else if (k === 'm' && game.running && !game.dlgOn) toggleMap();
   });
@@ -1777,6 +1794,8 @@
     for (const t of e.changedTouches) if (t.identifier === joy.id) {
       joy.active = false; joy.dx = joy.dy = 0; joy.id = -1;
       knob.style.transform = 'translate(0,0)';
+      stickEl.classList.remove('dragging');       /* 松手后带着动画滑回原位 */
+      stickEl.style.left = ''; stickEl.style.bottom = '';
     }
   }
   /* 触屏 UI：粗指针设备直接显示；带触摸屏的笔记本等第一次摸屏幕时再出现 */
@@ -1789,6 +1808,28 @@
     stickEl.addEventListener('touchmove', stickMove, { passive: false });
     stickEl.addEventListener('touchend', stickEnd);
     stickEl.addEventListener('touchcancel', stickEnd);
+
+    /* 手指落在左下角任何位置：摇杆跟过去（两边拇指都不用瞄） */
+    const zone = document.getElementById('stickZone');
+    zone.addEventListener('touchstart', function (e) {
+      const t = e.changedTouches[0];
+      if (joy.active || !t) return;
+      e.preventDefault();                        /* 不要触发滚动/缩放 */
+      const r = stickEl.getBoundingClientRect();
+      const onStick = t.clientX >= r.left && t.clientX <= r.right && t.clientY >= r.top && t.clientY <= r.bottom;
+      if (!onStick) {
+        const half = stickEl.offsetWidth / 2;
+        const cx = clamp(t.clientX, half + 10, W * 0.46);
+        const cy = clamp(t.clientY, half + 10, H - half - 10);
+        stickEl.style.left = (cx - half) + 'px';
+        stickEl.style.bottom = (H - cy - half) + 'px';
+      }
+      stickEl.classList.add('dragging');
+      stickStart(e);
+    }, { passive: false });
+    zone.addEventListener('touchmove', stickMove, { passive: false });
+    zone.addEventListener('touchend', stickEnd);
+    zone.addEventListener('touchcancel', stickEnd);
     document.getElementById('tEnter').addEventListener('touchstart', function (e) { e.preventDefault(); interact(); });
     document.getElementById('tFire').addEventListener('touchstart', function (e) { e.preventDefault(); mouse.down = true; audioInit(); });
     document.getElementById('tFire').addEventListener('touchend', function (e) { e.preventDefault(); mouse.down = false; });
@@ -1982,7 +2023,7 @@
   // ===== 钱 / 死亡 =====
   function addMoney(n) {
     game.money += n;
-    moneyEl.textContent = money(game.money);
+    paintMoney();
     state.netWorth = game.money + state.fxUsd * state.rate;
     if (n) sfxCash();
   }
@@ -2770,6 +2811,29 @@
     }
   }
 
+  /* ===== Esc / P 暂停 ===== */
+  const pauseEl = document.getElementById('pauseBox');
+  function setPaused(on) {
+    if (!game.running || game.over) return;
+    if (on) {
+      if (document.querySelector('#mapVeil.on')) return;     /* 地图自己占着暂停 */
+      if (document.getElementById('veil').classList.contains('on')) return;
+      pauseEl.classList.add('on');
+      game.paused = true;
+    } else {
+      pauseEl.classList.remove('on');
+      if (!document.querySelector('.veil.on, #mapVeil.on') && game.running && !game.over) game.paused = false;
+    }
+  }
+  function togglePause() {
+    if (document.querySelector('.veil.on')) return;          /* 开始面板 / 交易面板时不插手 */
+    if (document.querySelector('#mapVeil.on')) { toggleMap(false); return; }
+    if (game.dlgOn) return;                                  /* 对白进行中不打断 */
+    if (pauseEl.classList.contains('on')) setPaused(false);
+    else setPaused(true);
+  }
+  pauseEl.addEventListener('click', function () { setPaused(false); });
+
   function drawMini() {
     if (game.inside) {
       const R = game.room;
@@ -2805,13 +2869,35 @@
       if (c.kind === 'police' && !c.dead) { mctx.fillStyle = '#ff3b3b'; mctx.fillRect(c.x * s - 1.6, c.y * s - 1.6, 3.2, 3.2); }
     }
     for (const c of cops) { mctx.fillStyle = '#ff3b3b'; mctx.fillRect(c.x * s - 1.3, c.y * s - 1.3, 2.6, 2.6); }
+    /* 朝向锥：一眼看出车头/人朝哪 */
+    const px = player.x * s, py = player.y * s;
+    const fa = player.inCar ? player.inCar.ang : player.ang;
+    mctx.fillStyle = 'rgba(255,46,136,.32)';
+    mctx.beginPath();
+    mctx.moveTo(px, py);
+    mctx.arc(px, py, 13, fa - 0.42, fa + 0.42);
+    mctx.closePath(); mctx.fill();
     mctx.fillStyle = '#ff2e88';
-    mctx.beginPath(); mctx.arc(player.x * s, player.y * s, 3.2, 0, 6.2832); mctx.fill();
+    mctx.beginPath(); mctx.arc(px, py, 3.2, 0, 6.2832); mctx.fill();
     mctx.strokeStyle = 'rgba(255,255,255,.6)'; mctx.lineWidth = 1; mctx.stroke();
   }
 
   // ===== HUD =====
   const moneyEl = document.getElementById('money');
+
+  /* 金额滚动：直接跳数字太生硬，改成 0.4 秒内滚到目标值 */
+  let moneyShown = 0, moneyTween = false;
+  function paintMoney(instant) {
+    if (instant || RM) { moneyShown = game.money; moneyEl.textContent = money(moneyShown); return; }
+    moneyTween = true;
+  }
+  function tickMoney(dt) {
+    if (!moneyTween) return;
+    const gap = game.money - moneyShown;
+    if (Math.abs(gap) < 2) { moneyShown = game.money; moneyTween = false; }
+    else moneyShown += gap * Math.min(1, dt * 11);
+    moneyEl.textContent = money(Math.round(moneyShown));
+  }
   const starsEl = document.getElementById('stars');
   const STAR = '<svg class="star" viewBox="0 0 24 24"><path fill="#ffd84d" d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg>';
   starsEl.innerHTML = STAR.repeat(5);
@@ -2944,7 +3030,7 @@
     updateWeaponHud(); updateBars(); renderStars();
     document.getElementById('veil').classList.remove('on');
     if (fresh) { game.money = 0; game.chapter = 1; game.missions = []; }
-    moneyEl.textContent = money(game.money);
+    paintMoney();
     state.netWorth = game.money + state.fxUsd * state.rate;
     setObjective();
     if (fresh) startChapter(1);
@@ -2959,7 +3045,7 @@
     game.missions = d.missions || [];
     const done = game.missions.filter(function (m) { return /^ch\d+$/.test(m); }).length;
     game.chapter = clamp(Math.max(d.chapter || 1, done + 1), 1, STORY.length);
-    moneyEl.textContent = money(game.money);
+    paintMoney();
     state.netWorth = game.money + state.fxUsd * state.rate;
     updateBars(); setObjective();
     if (done >= STORY.length) {
@@ -2990,7 +3076,7 @@
       /* 玩家已经开打了（花钱/赚钱/推进）就别回滚进度，只补钱 */
       const untouched = game.money === 0 && game.missions.length === 0 && game.chapter === 1;
       if (d && untouched) applyProgress(d);
-      else if (d && typeof d.cash === 'number' && d.cash > game.money) { game.money = d.cash; moneyEl.textContent = money(game.money); updateBars(); }
+      else if (d && typeof d.cash === 'number' && d.cash > game.money) { game.money = d.cash; paintMoney(true); updateBars(); }
     }).catch(function () { done(); });
     /* 兜底：3 秒还没回来就当新档继续玩，回来再悄悄补 */
     setTimeout(function () { walletPending = false; }, 3000);
@@ -3044,6 +3130,7 @@
     const t0 = performance.now();
     while (acc >= STEP && steps < 5) { update(STEP); acc -= STEP; steps++; }
     if (steps === 5) acc = 0;
+    tickMoney(dt);
     const t1 = performance.now();
     if (!game.paused || game.inside) draw();
     const t2 = performance.now();
@@ -3091,8 +3178,12 @@
     perf: function () { return { staticMs: Math.round(perfStatic * 100) / 100, tiles: tileCache.size, tileScale: tileScale, buildings: buildings.length, props: props.length }; },
     prof: function () { return { updateMs: Math.round(prof.up * 100) / 100, drawMs: Math.round(prof.dr * 100) / 100, fps: Math.round(prof.fps) }; },
     resetTiles: function () { tileCache.clear(); },
+    grant: function (n) { addMoney(n); },
+    pause: function (on) { setPaused(on !== false); },
   };
 })();
 </script>
+<script>window.__mfNoPause = true; window.__mfNoRestart = true; window.__mfNoAutoSfx = true;</script>
+<script src="/games/kit.js"></script>
 </body>
 </html>

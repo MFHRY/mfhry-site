@@ -164,7 +164,6 @@
       });
       bodyMesh.position.y = legH + b[1] / 2;
       headMesh.position.y = legH + (mob.headY || b[1] / 2);
-      legH = legH;
     }
 
     if (mob.ears) {
@@ -234,19 +233,57 @@
   };
 
   MobMgr.prototype.spawnAround = function (playerPos, count) {
-    var keys = MOBS.filter(function (m) { return m.type !== 'hostile'; }).map(function (m) { return m.key; });
+    var SEA = root.MC_WORLD.SEA;
+    var landKeys = [], waterKeys = [];
+    MOBS.forEach(function (m) {
+      if (m.type === 'hostile' || m.static) return;      /* 自然刷怪只刷和平生物 */
+      (m.water ? waterKeys : landKeys).push(m.key);
+    });
     for (var i = 0; i < count; i++) {
       var a = Math.random() * Math.PI * 2, d = 8 + Math.random() * 22;
       var x = Math.floor(playerPos.x + Math.cos(a) * d), z = Math.floor(playerPos.z + Math.sin(a) * d);
       var h = this.world.heightAt(x, z);
-      if (h <= root.MC_WORLD.SEA + 1) continue;
-      var k = keys[(Math.random() * keys.length) | 0];
-      this.spawn(k, x + 0.5, h + 1, z + 0.5);
+      if (h < SEA) {
+        /* 水下：只刷鱼类等水生生物，且不是每次都刷 */
+        if (!waterKeys.length || Math.random() < 0.7) continue;
+        this.spawn(waterKeys[(Math.random() * waterKeys.length) | 0], x + 0.5, h + 1.5, z + 0.5);
+      } else if (h <= SEA + 1) {
+        continue;                                        /* 沙滩不刷，避免动物泡在水线 */
+      } else {
+        if (!landKeys.length) continue;
+        var top = h + 1, guard = 0;
+        /* 树/建筑占位时往上挪，别把动物塞进树干里 */
+        while (guard++ < 6 && this.world.get(x, top, z)) top++;
+        if (this.world.get(x, top, z) || this.world.get(x, top + 1, z)) continue;
+        if (!this.world.isSolid(x, top - 1, z)) continue;
+        this.spawn(landKeys[(Math.random() * landKeys.length) | 0], x + 0.5, top, z + 0.5);
+      }
     }
   };
 
+  /* 取某个位置脚下那一格方块的顶面高度；不是实体方块则返回 null */
+  function topOf(W, x, y, z) {
+    var iy = Math.floor(y);
+    var id = W.get(Math.floor(x), iy, Math.floor(z));
+    if (!id) return null;
+    var b = W.byId[id];
+    if (!b || !b.solid) return null;
+    return iy + (b.shape === 'slab' ? 0.5 : 1);
+  }
+
   MobMgr.prototype.update = function (dt, playerPos) {
     var W = this.world;
+    /* 走太远的生物回收掉，腾出名额让玩家身边继续刷 */
+    if (playerPos) {
+      for (var r = this.list.length - 1; r >= 0; r--) {
+        var mm = this.list[r], gp = mm.obj.position;
+        var ddx = gp.x - playerPos.x, ddz = gp.z - playerPos.z;
+        if (ddx * ddx + ddz * ddz > 72 * 72) {
+          this.despawn(mm);
+          this.list.splice(r, 1);
+        }
+      }
+    }
     for (var i = 0; i < this.list.length; i++) {
       var m = this.list[i], g = m.obj, d = m.def;
       m.timer -= dt;
@@ -276,16 +313,17 @@
       }
       // 重力
       if (!d.fly && !d.water) {
-        var below = W.isSolid(Math.floor(g.position.x), Math.floor(g.position.y - 0.12), Math.floor(g.position.z));
-        if (!below) {
+        var feet = topOf(W, g.position.x, g.position.y - 0.02, g.position.z);
+        if (feet === null) {
           m.vy -= 18 * dt;
-          g.position.y += m.vy * dt;
-          var hitY = W.isSolid(Math.floor(g.position.x), Math.floor(g.position.y), Math.floor(g.position.z));
-          if (hitY) {
-            g.position.y = Math.floor(g.position.y) + 1;
-            m.vy = 0;
-          }
-        } else { m.vy = 0; g.position.y = Math.floor(g.position.y) + (0.0); }
+          var ny = g.position.y + m.vy * dt;
+          var landTop = m.vy < 0 ? topOf(W, g.position.x, ny, g.position.z) : null;
+          if (landTop !== null) { g.position.y = landTop; m.vy = 0; }
+          else g.position.y = ny;
+        } else {
+          g.position.y = feet;          /* 精确站在方块表面 */
+          m.vy = 0;
+        }
       } else if (d.fly) {
         g.position.y = m.baseY + Math.sin(performance.now() / 700 + m.phase) * 1.2;
       }
@@ -308,8 +346,25 @@
     }
   };
 
+  /* 回收：把网格和贴图一起释放，否则长时间游玩会漏显存 */
+  MobMgr.prototype.despawn = function (m) {
+    var g = m.obj;
+    this.scene.remove(g);
+    if (g.traverse) {
+      g.traverse(function (o) {
+        if (o.geometry && o.geometry.dispose) o.geometry.dispose();
+        var mat = o.material;
+        var mats = Array.isArray(mat) ? mat : (mat ? [mat] : []);
+        mats.forEach(function (mm) {
+          if (mm.map && mm.map.dispose) mm.map.dispose();
+          if (mm.dispose) mm.dispose();
+        });
+      });
+    }
+  };
+
   MobMgr.prototype.clear = function () {
-    for (var i = 0; i < this.list.length; i++) this.scene.remove(this.list[i].obj);
+    for (var i = 0; i < this.list.length; i++) this.despawn(this.list[i]);
     this.list = [];
   };
 

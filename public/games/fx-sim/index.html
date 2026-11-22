@@ -1158,10 +1158,7 @@
     if (!force && (now - lastSentAt < 12000 || !moved)) return;
     lastSentScore = earned;
     lastSentAt = now;
-    if (typeof window.mfhryScore === 'function') {
-      window.mfhryScore('fx-sim', earned);
-      return;
-    }
+    try { window.mfKit && window.mfKit.record('fx-sim', earned); } catch (e) {}
     fetch('/api/score', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -1899,6 +1896,8 @@
 
 })();
 </script>
+<script>window.__mfNoPause = true; window.__mfNoAutoSfx = true;</script>
+<script src="/games/kit.js"></script>
 <script src="/errlog.js"></script>
 </body>
 </html>

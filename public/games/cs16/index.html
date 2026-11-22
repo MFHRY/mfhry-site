@@ -61,6 +61,7 @@
     </div>
   </div>
 </div>
+<script>window.__mfNoRestart = true;</script>
 <script src="/games/kit.js"></script>
 <script>
 'use strict';
@@ -749,8 +750,13 @@ function update(dt) {
           if (state.armor > 0) { state.armor = Math.max(0, state.armor - dmg * 0.5); state.hp += dmg * 0.5; }
           state.recoil = Math.min(1, state.recoil + 0.9);
           state.kick = Math.max(state.kick, 0.8);
-          if (window.__mfKit?.sfx) window.__mfKit.sfx.hit?.();
-          if (state.hp <= 0) { state.hp = 0; state.dead = true; }
+          try { window.mfKit && window.mfKit.sfx('hit'); } catch (e) {}
+          if (state.hp <= 0) {
+            state.hp = 0;
+            state.dead = true;
+            try { window.mfhryScore && window.mfhryScore('cs16', state.kills); } catch (e) {}
+            try { window.mfKit && window.mfKit.gameOver(); } catch (e) {}
+          }
         }
       }
     }

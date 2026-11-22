@@ -63,14 +63,14 @@
     <button id="overlayBtn">再玩一次</button>
   </div>
 </div>
-<script src="/games/kit.js"></script>
+<script src="/games/score.js"></script>
 <script>
 (function () {
   'use strict';
 
   // ---- 配置：9×9 棋盘，10 颗雷 ----
   const ROWS = 9, COLS = 9, MINES = 10;
-  const BEST_KEY = 'mfhry_minesweeper_besttime';
+  const OLD_BEST_KEY = 'mfhry_minesweeper_besttime';
 
   // ---- DOM ----
   const boardEl = document.getElementById('board');
@@ -83,18 +83,31 @@
   const overlayText = document.getElementById('overlayText');
   const overlayBtn = document.getElementById('overlayBtn');
 
-  // ---- kit 音效 ----
-  const kit = window.mfKit || null;
-  function sfx(n) { if (kit && typeof kit.sfx === 'function') { try { kit.sfx(n); } catch (e) {} } }
+  // ---- kit 音效（kit 在本脚本之后加载，调用时再取） ----
+  function sfx(n) {
+    try { if (window.mfKit && window.mfKit.sfx) window.mfKit.sfx(n); } catch (e) {}
+  }
 
   // ---- 状态 ----
   let cells = [];                                   // cells[r][c] = {mine,revealed,flagged,adjacent,hit}
   let started = false, ended = false, flags = 0;    // started：首点后布雷；ended：本局结束
-  let startTime = 0, elapsed = 0, timerId = null;
+  let baseMs = 0, runStart = 0, elapsed = 0, timerId = null, paused = false;
 
-  // ---- 最佳时间（本机，越短越好） ----
-  function getBestTime() { try { return +(localStorage.getItem(BEST_KEY) || 0); } catch (e) { return 0; } }
-  function setBestTime(v) { try { localStorage.setItem(BEST_KEY, String(v)); } catch (e) {} }
+  // ---- 最佳时间（统一 mfhry_best_minesweeper，回退旧 key，越短越好） ----
+  function getBestTime() {
+    try {
+      const raw = localStorage.getItem('mfhry_best_minesweeper');
+      if (raw !== null && raw !== '') return +raw || 0;
+      // 旧 key 与 kit 的迁移表不同名，这里一次性搬到统一 key
+      const old = +(localStorage.getItem(OLD_BEST_KEY) || 0) || 0;
+      if (old > 0) {
+        try { localStorage.setItem('mfhry_best_minesweeper', String(old)); } catch (e) {}
+        return old;
+      }
+      if (window.mfKit && window.mfKit.getBest) return window.mfKit.getBest('minesweeper') || 0;
+      return 0;
+    } catch (e) { return 0; }
+  }
   function refreshBest() {
     const b = getBestTime();
     bestLabel.textContent = b > 0 ? b + 's' : '—';
@@ -136,15 +149,29 @@
     }
   }
 
-  // ---- 计时 ----
+  // ---- 计时（累计毫秒，暂停可停表续走，不叠加 interval） ----
   function tick() {
-    elapsed = Math.floor((performance.now() - startTime) / 1000);
+    elapsed = Math.floor((baseMs + (runStart ? performance.now() - runStart : 0)) / 1000);
     timeLabel.textContent = elapsed;
   }
-  function startTimer() { stopTimer(); timerId = setInterval(tick, 250); }
+  function startTimer() {
+    if (timerId) return;           // 已在计时
+    runStart = performance.now();
+    timerId = setInterval(tick, 250);
+  }
   function stopTimer() {
+    if (runStart) { baseMs += performance.now() - runStart; runStart = 0; }
     if (timerId) { clearInterval(timerId); timerId = null; }
-    if (started) tick();
+    elapsed = Math.floor(baseMs / 1000);
+    timeLabel.textContent = elapsed;
+  }
+  function pauseTimer() {
+    paused = true;
+    if (started && !ended) stopTimer();
+  }
+  function resumeTimer() {
+    paused = false;
+    if (started && !ended) startTimer();
   }
 
   // ---- 洪泛展开：揭开 0 格及相连安全区 ----
@@ -172,9 +199,14 @@
     if (ended) return;
     const cell = cells[r][c];
     if (cell.revealed || cell.flagged) return;
-    if (!started) { started = true; startTime = performance.now(); placeMines(r, c); startTimer(); }
+    if (!started) {
+      started = true;
+      baseMs = 0; runStart = 0; elapsed = 0;
+      placeMines(r, c);
+      startTimer();
+    }
     if (cell.mine) { explode(r, c); return; }
-    sfx('click');
+    sfx('pop');
     floodReveal(r, c);
     render();
     checkWin();
@@ -186,7 +218,7 @@
     if (cell.revealed) return;
     cell.flagged = !cell.flagged;
     flags += cell.flagged ? 1 : -1;
-    sfx('click');
+    sfx('flip');
     render();
   }
 
@@ -199,6 +231,7 @@
     }
     cells[r][c].hit = true;
     sfx('boom');
+    try { if (window.mfKit) window.mfKit.gameOver(); } catch (e) {}
     render();
     showOverlay('💥 你输了', '踩到地雷 · 用时 ' + elapsed + 's', newGame);
   }
@@ -212,18 +245,20 @@
     }
     ended = true;
     stopTimer();
+    if (elapsed < 1) { elapsed = 1; timeLabel.textContent = 1; }
     for (let r = 0; r < ROWS; r++) {
       for (let c = 0; c < COLS; c++) if (cells[r][c].mine) cells[r][c].flagged = true;
     }
     flags = MINES;
-    const score = Math.max(100, 1000 - elapsed * 8);   // 越快分越高
-    sfx('win');
-    if (window.mfhryScore) { try { window.mfhryScore('minesweeper', score); } catch (e) {} }
-    const bt = getBestTime();
-    if (bt === 0 || elapsed < bt) setBestTime(elapsed);
+    const prev = getBestTime();
+    const isNew = !prev || elapsed < prev;
+    // 提交用时秒数：本站扫雷榜按越小越好
+    if (window.mfhryScore) { try { window.mfhryScore('minesweeper', elapsed); } catch (e) {} }
+    if (!isNew) sfx('win'); // 新纪录时 kit 包装会播 win，避免双重音效
+    try { if (window.mfKit) window.mfKit.setScore(elapsed); } catch (e) {}
     refreshBest();
     render();
-    showOverlay('🎉 你赢了！', '用时 ' + elapsed + 's · 得分 ' + score, newGame);
+    showOverlay('🎉 你赢了！', '用时 ' + elapsed + 's' + (isNew ? ' · 新纪录' : (prev ? ' · 最佳 ' + prev + 's' : '')), newGame);
   }
 
   // ---- 渲染 ----
@@ -331,11 +366,17 @@
     stopTimer();
     buildGrid();
     started = false; ended = false; flags = 0; elapsed = 0;
+    baseMs = 0; runStart = 0; paused = false;
     timeLabel.textContent = '0';
     hideOverlay();
+    refreshBest();
     render();
   }
   window.mfRestart = newGame;
+
+  // 暂停 / 切后台：停表续表
+  window.addEventListener('mf:pause', pauseTimer);
+  window.addEventListener('mf:resume', resumeTimer);
 
   // ---- 窗口变化重排 ----
   window.addEventListener('resize', render);
@@ -344,7 +385,10 @@
   // ---- 启动 ----
   refreshBest();
   newGame();
+  window.addEventListener('load', refreshBest); // kit 加载完再按统一 key 刷新一次
 })();
 </script>
+<script src="/games/kit.js"></script>
+<script src="/errlog.js"></script>
 </body>
 </html>

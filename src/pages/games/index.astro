@@ -58,6 +58,13 @@ const playable = games.filter((g) => g.status === 'play').length;
       gomoku: { keys: ['mfhry_best_gomoku', 'mfhry_gomoku_win'], label: '胜', unit: '场' },
       pong: { keys: ['mfhry_best_pong', 'mfhry_pong_win'], label: '胜', unit: '场' },
       huarong: { keys: ['mfhry_best_huarong'], label: '最佳' },
+      sudoku: { keys: ['mfhry_best_sudoku'], label: '最快', unit: '秒' },
+      linklink: { keys: ['mfhry_best_linklink'], label: '最高' },
+      cs16: { keys: ['mfhry_best_cs16'], label: '击杀' },
+      gta: { keys: ['mfhry_best_gta'], label: '最高', unit: '元' },
+      'gta-3d': { keys: ['mfhry_best_gta-3d'], label: '最高', unit: '元' },
+      'fx-sim': { keys: ['mfhry_best_fx-sim'], label: '最高', unit: '美元' },
+      'stock-sim': { keys: ['mfhry_best_stock-sim'], label: '最高', unit: '元' },
     };
 
     const read = (key: string) => {

@@ -74,7 +74,7 @@
     <button id="overlayBtn"></button>
   </div>
 </div>
-<script src="/games/kit.js"></script>
+<script src="/games/score.js"></script>
 <script>
 (function () {
   'use strict';
@@ -107,10 +107,10 @@
 
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
-  // ---- kit 音效 ----
-  const kit = window.mfKit || null;
+  // ---- kit 音效（kit 在页面末尾加载，运行时懒取）----
   function sfx(n) {
-    if (kit && typeof kit.sfx === 'function') { try { kit.sfx(n); } catch (e) {} }
+    var k = window.mfKit;
+    if (k && typeof k.sfx === 'function') { try { k.sfx(n); } catch (e) {} }
   }
 
   // ---- 状态 ----
@@ -122,10 +122,14 @@
   let playing = false, paused = false, over = false;
   let dropTimer = 0, lastFrame = 0;
   let raf = 0;
+  let flash = 0, comboText = '', comboLife = 0;
 
   function readBest() {
-    try { return (kit && typeof kit.getBest === 'function') ? (kit.getBest('tetris') || 0) : 0; }
-    catch (e) { return 0; }
+    try {
+      let b = +(localStorage.getItem('mfhry_best_tetris') || 0) || 0;
+      if (!b) b = +(localStorage.getItem('mfhry_tetris_best') || 0) || 0;
+      return b;
+    } catch (e) { return 0; }
   }
 
   // ---- 方块生成（7-bag，避免长时间不出某块）----
@@ -239,8 +243,11 @@
       lines += n;
       const nl = Math.floor(lines / 10) + 1;
       if (nl > level) level = nl;
-      reportScore(); // 消行得分：上报 best
-      sfx('pop');    // 分数数字变化时 kit 也会自动给出「叮」
+      flash = Math.min(1, 0.45 + n * 0.18);
+      if (n >= 2) { comboText = n + ' 行消除'; comboLife = 0.9; }
+      sfx(n >= 3 ? 'win' : (n === 2 ? 'score' : 'pop'));
+      try { if (n >= 3 && window.mfKit && window.mfKit.vibrate) window.mfKit.vibrate(18); } catch (e) {}
+      refreshBest();
     }
     spawn();
     updateStatus();
@@ -276,7 +283,8 @@
 
   function gameOver() {
     playing = false; over = true; paused = false;
-    reportScore(); // 结束上报最终得分（kit 检测到「游戏结束」文字时自动播放失败音效）
+    try { window.mfKit && window.mfKit.gameOver(); } catch (e) {}
+    submitScore(); // 结束才提交一次最终得分
     showOverlay('游戏结束',
       '得分 ' + score + ' · 行数 ' + lines + ' · 等级 ' + level,
       '再玩一次', restart);
@@ -289,17 +297,24 @@
     next = randomKey();
     playing = true; paused = false; over = false;
     dropTimer = 0; lastFrame = 0;
+    flash = 0; comboText = ''; comboLife = 0;
     hideOverlay();
     spawn();
     updateStatus();
+    refreshBest();
     draw();
+    if (!raf) raf = requestAnimationFrame(loop);
   }
 
   // ---- 得分 / 最佳 ----
-  function reportScore() {
-    if (window.mfhryScore) { try { window.mfhryScore('tetris', score); } catch (e) {} }
+  function refreshBest() {
     best = readBest();
     bestLabel.textContent = '最佳 ' + best;
+  }
+  function submitScore() {
+    if (typeof window.mfhryScore === 'function') { try { window.mfhryScore('tetris', score); } catch (e) {} }
+    try { window.mfKit && window.mfKit.setScore(score); } catch (e) {}
+    refreshBest();
   }
 
   function updateStatus() {
@@ -390,6 +405,20 @@
         }
       }
     }
+
+    // 消行闪光 / 连消提示
+    if (flash > 0) {
+      g.fillStyle = 'rgba(127,209,176,' + (flash * 0.16).toFixed(3) + ')';
+      g.fillRect(0, 0, w, h);
+    }
+    if (comboLife > 0) {
+      g.globalAlpha = Math.min(1, comboLife * 1.4);
+      g.textAlign = 'center';
+      g.fillStyle = '#eafff6';
+      g.font = 'bold 20px -apple-system,"PingFang SC",sans-serif';
+      g.fillText(comboText, w / 2, h * 0.28);
+      g.globalAlpha = 1;
+    }
   }
 
   function drawPreview() {
@@ -423,11 +452,14 @@
 
   // ---- 主循环 ----
   function loop(t) {
+    if (!playing || over) { raf = 0; return; }
     raf = requestAnimationFrame(loop);
-    if (!playing || paused || over) return;
+    if (paused) return;
     if (!lastFrame) lastFrame = t;
-    const dt = t - lastFrame;
+    const dt = Math.min(120, t - lastFrame); // 暂停恢复后不要一次掉很多格
     lastFrame = t;
+    if (flash > 0) flash = Math.max(0, flash - dt / 320);
+    if (comboLife > 0) comboLife = Math.max(0, comboLife - dt / 1000);
     dropTimer += dt;
     if (dropTimer >= dropInterval()) {
       dropTimer = 0;
@@ -435,26 +467,25 @@
     }
   }
 
-  // ---- 暂停 ----
-  function togglePause() {
-    if (!playing || over) return;
-    paused = !paused;
-    if (paused) {
-      showOverlay('已暂停', '按 P 或点击继续', '继续', togglePause);
-    } else {
-      hideOverlay();
-    }
+  // ---- 暂停：交给 kit（冻结 rAF），这里只同步状态、避免恢复后爆冲 ----
+  function setPaused(v) {
+    paused = !!v && playing && !over;
+    if (!paused) lastFrame = 0;
   }
+  window.addEventListener('mf:pause', function () { setPaused(true); });
+  window.addEventListener('mf:resume', function () { setPaused(false); });
+  // 游戏无需点击即开始；刚进页面就切后台时 kit 可能还没 engaged，主动补一次暂停
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden && playing && !over) {
+      try { if (window.mfKit) window.mfKit.pause(); } catch (e) {}
+    }
+  });
 
   // ---- 键盘 ----
   document.addEventListener('keydown', function (e) {
     const k = e.key;
     if (over) {
       if (k === 'Enter' || k === ' ') { e.preventDefault(); restart(); }
-      return;
-    }
-    if (paused) {
-      if (k === 'p' || k === 'P' || k === 'Enter') { e.preventDefault(); togglePause(); }
       return;
     }
     switch (k) {
@@ -464,7 +495,6 @@
       case 'ArrowUp': case 'w': case 'W': case 'x': case 'X': e.preventDefault(); tryRotate(1); break;
       case 'z': case 'Z': e.preventDefault(); tryRotate(-1); break;
       case ' ': e.preventDefault(); hardDrop(); break;
-      case 'p': case 'P': e.preventDefault(); togglePause(); break;
     }
   });
 
@@ -513,8 +543,9 @@
   best = readBest();
   bestLabel.textContent = '最佳 ' + best;
   restart();
-  raf = requestAnimationFrame(loop);
+  if (!raf) raf = requestAnimationFrame(loop);
 })();
 </script>
+<script src="/games/kit.js"></script>
 </body>
 </html>

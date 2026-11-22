@@ -55,9 +55,25 @@
   const IW = 24, IH = 16, GAPX = 14, GAPY = 14;
 
   let ship, bullets, bombs, invaders, dirX, gx, gy, score, lives, wave, running, raf = null;
-  let best = +(localStorage.getItem('mfhry_invaders_best') || 0);
-  let keys = {}, bombTimer = 0, lastTime = 0;
-  $best.textContent = best;
+  let best = 0, keys = {}, bombTimer = 0, lastTime = 0, msg = '', msgT = 0, lastSfx = 0;
+
+  function sfx(n, minGap) {
+    const k = window.mfKit;
+    if (!k || typeof k.sfx !== 'function') return;
+    const now = performance.now();
+    if (now - lastSfx < (minGap || 40)) return;
+    lastSfx = now;
+    try { k.sfx(n); } catch (e) {}
+  }
+  function readBest() {
+    try {
+      let b = +(localStorage.getItem('mfhry_best_invaders') || 0) || 0;
+      if (!b) b = +(localStorage.getItem('mfhry_invaders_best') || 0) || 0;
+      return b;
+    } catch (e) { return 0; }
+  }
+  function refreshBest() { best = readBest(); $best.textContent = best; }
+  refreshBest();
 
   function fit() {
     const w = cv.parentElement.clientWidth;
@@ -67,6 +83,7 @@
     cv.style.width = w + 'px';
     cv.style.height = (H * w / W) + 'px';
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (ship) draw();
   }
 
   function newWave() {
@@ -84,6 +101,7 @@
     newWave();
     if (full) { score = 0; lives = 3; wave = 1; $score.textContent = 0; $lives.textContent = 3; }
     bombTimer = 0;
+    msg = ''; msgT = 0; keys = {};
     running = true;
     ov.classList.remove('on');
     lastTime = 0;
@@ -96,14 +114,15 @@
   function alive() { return invaders.filter((i) => i.alive).length; }
 
   function gameOver() {
+    if (!running) return;
     running = false;
     if (window.mfhryScore) mfhryScore('invaders', score);
+    try {
+      if (window.mfKit) { window.mfKit.setScore(score); window.mfKit.gameOver(); }
+    } catch (e) {}
     cancelAnimationFrame(raf);
-    if (score > best) {
-      best = score;
-      localStorage.setItem('mfhry_invaders_best', best);
-      $best.textContent = best;
-    }
+    raf = null;
+    refreshBest();
     ovt.textContent = '游戏结束 · ' + score + ' 分';
     ovs.textContent = '到达第 ' + wave + ' 波';
     btn.textContent = '再来一局';
@@ -114,12 +133,16 @@
     wave++;
     newWave();
     bombs = [];
+    msg = '第 ' + wave + ' 波';
+    msgT = 1400;
+    sfx('score', 0);
   }
 
   function fire() {
     if (!running) return;
     if (bullets.length >= 2) return;
     bullets.push({ x: ship.x + ship.w / 2, y: ship.y, vy: -420 });
+    sfx('shoot', 0);
   }
 
   function dropBombs(dt) {
@@ -143,6 +166,7 @@
     if (!running) return;
     const dt = lastTime ? Math.min(0.05, (t - lastTime) / 1000) : 0.016;
     lastTime = t;
+    if (msgT > 0) msgT -= dt * 1000;
 
     // 移动飞船
     if (keys.left) ship.x -= 260 * dt;
@@ -184,6 +208,7 @@
           b.dead = true;
           score += 10;
           $score.textContent = score;
+          sfx('hit', 35);
           break;
         }
       }
@@ -196,6 +221,7 @@
         b.dead = true;
         lives--;
         $lives.textContent = Math.max(0, lives);
+        sfx('boom', 0);
         if (lives <= 0) { gameOver(); return; }
       }
     }
@@ -256,6 +282,15 @@
     // 地面线
     ctx.fillStyle = 'rgba(127,209,176,.35)';
     ctx.fillRect(0, H - 4, W, 2);
+
+    if (msgT > 0) {
+      ctx.globalAlpha = Math.min(1, msgT / 450);
+      ctx.fillStyle = '#7fd1b0';
+      ctx.font = 'bold 26px -apple-system,"PingFang SC",sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(msg, W / 2, H / 2 - 10);
+      ctx.globalAlpha = 1;
+    }
   }
 
   document.addEventListener('keydown', (e) => {
@@ -284,16 +319,22 @@
 
   btn.addEventListener('click', () => reset(true));
   window.addEventListener('resize', fit);
+  window.mfRestart = function () { reset(true); };
 
   fit();
   reset(true);
   running = false;
   cancelAnimationFrame(raf);
-  ship = { x: W / 2 - 14, y: H - 34, w: 28, h: 12 };
-  bullets = []; bombs = [];
-  newWave();
+  lastTime = 0;
   draw();
+  ovt.textContent = '太空侵略者';
+  ovs.textContent = '← → 移动 · 空格射击';
+  btn.textContent = '开始';
+  ov.classList.add('on');
 })();
+</script>
+<script>
+window.MF_TOUCH = { actions: [{ key: ' ', label: '开火', repeat: true }] };
 </script>
 <script src="/games/kit.js"></script>
 <script src="/errlog.js"></script>
