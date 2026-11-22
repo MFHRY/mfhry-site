@@ -66,7 +66,7 @@
   .pg-root[data-theme="dark"] .pg-ambient{ opacity:.9; }
 
   .pg-wrap{ position:relative; z-index:1; max-width:var(--pg-max); margin:0 auto;
-    padding:24px var(--pg-pad) 40px; }
+    padding:calc(24px + env(safe-area-inset-top,0px)) var(--pg-pad) 40px; }
 
   /* 顶部导航 */
   .pg-bar{ display:flex; align-items:center; gap:16px; flex-wrap:wrap;
@@ -255,7 +255,23 @@
   .pg-root[data-fs] ap-player,
   .pg-root[data-fs] ap-lyrics{ filter:none; }
   .pg-root[data-fs] .pg-ambient{ display:none; }
-  .pg-root[data-fs] .pg-bar{ display:none; }
+  /* 全屏也保留顶部导航（不要收起来） */
+  .pg-root[data-fs] .pg-bar{
+    flex-wrap:nowrap; gap:12px; margin-bottom:10px; padding-bottom:10px; padding-right:60px;
+    border-bottom-color:rgba(255,255,255,.10);
+  }
+  .pg-root[data-fs][data-mod="mv"] .pg-bar{ padding-right:140px; }
+  .pg-root[data-fs] .pg-bar h1{ font-size:18px; color:#f5f5f7; }
+  .pg-root[data-fs] .pg-nav{
+    margin-left:auto; flex-wrap:nowrap; overflow-x:auto; gap:2px;
+    scrollbar-width:none; -webkit-overflow-scrolling:touch;
+  }
+  .pg-root[data-fs] .pg-nav::-webkit-scrollbar{ display:none; }
+  .pg-root[data-fs] .pg-nav a{
+    color:rgba(255,255,255,.55); font-size:12px; min-height:36px; padding:6px 8px;
+    white-space:nowrap;
+  }
+  .pg-root[data-fs] .pg-nav a[aria-current="page"]{ color:#f5f5f7; }
   /* 字幕与卡片共用同一列宽并居中，视觉上左右对齐 */
   .pg-root[data-fs]{
     /* 字幕与卡片共用同一列宽：视觉上左右严格对齐，不会出现"字幕宽、卡片窄" */
@@ -266,7 +282,7 @@
   /* 上下排：上方大字幕，底部播放卡片 + 最底待播列表 */
   .pg-root[data-fs] .pg-wrap{
     max-width:none; height:100%; box-sizing:border-box;
-    padding:clamp(10px,1.6vh,20px) clamp(16px,4vw,56px)
+    padding:calc(clamp(10px,1.6vh,20px) + env(safe-area-inset-top,0px)) clamp(16px,4vw,56px)
             calc(clamp(8px,1.4vh,18px) + env(safe-area-inset-bottom,0px));
     display:flex; flex-direction:column; min-height:0;
   }
@@ -413,11 +429,15 @@
   @media (max-width:820px){
     .pg-root[data-fs] #col-player{ max-width:100%; }
     .pg-root[data-fs] .pg-wrap{ padding-left:14px; padding-right:14px; }
+    .pg-root[data-fs] .pg-bar{ padding-right:56px; gap:8px; }
+    .pg-root[data-fs][data-mod="mv"] .pg-bar{ padding-right:140px; }
+    .pg-root[data-fs] .pg-bar h1{ font-size:16px; }
+    .pg-root[data-fs] .pg-nav a{ font-size:11px; padding:6px; min-height:34px; }
   }
   /* 矮视口（手机横屏）：上下排会把歌词压成 0 高，改用左右两栏 */
   @media (max-height:560px) and (min-width:560px){
     .pg-root[data-fs] .pg-wrap{
-      padding:8px 12px calc(8px + env(safe-area-inset-bottom,0px));
+      padding:calc(8px + env(safe-area-inset-top,0px)) 12px calc(8px + env(safe-area-inset-bottom,0px));
     }
     .pg-root[data-fs] .pg-grid{ flex-direction:row; gap:14px; align-items:stretch; }
     .pg-root[data-fs] #col-modules{
@@ -436,14 +456,14 @@
 
   /* 窄屏字号降 1px [31] */
   @media (max-width:360px){
-    .pg-wrap{ padding:16px 16px 32px; }
+    .pg-wrap{ padding:calc(16px + env(safe-area-inset-top,0px)) 16px 32px; }
     .pg-chip{ font-size:12px; }
     .pg-bar h1{ font-size:20px; }
   }
   /* 横屏可用 [32] */
   @media (orientation:landscape) and (max-height:480px){
     .pg-sticky{ position:static; }
-    .pg-wrap{ padding-top:12px; }
+    .pg-wrap{ padding-top:calc(12px + env(safe-area-inset-top,0px)); }
   }
 
 /* 内嵌官方播放器（无直链的曲目，在本站页面里播，不跳转） */
