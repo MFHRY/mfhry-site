@@ -212,7 +212,7 @@
   {
     "slug": "cs16",
     "title": "CS 1.6",
-    "desc": "站内自绘的 dust 风 FPS：射线投射渲染、AK/AWP/Glock 三把枪带后坐力与换弹、机器人分波推进、小地图雷达。支持拖入你自己的 cstrike.wad 切换原版贴图。",
+    "desc": "浏览器里的 de_dust2 风 FPS：射线投射渲染、AK/AWP/Glock 三把枪带后坐力与换弹、机器人分波推进、小地图雷达。载入自己的 cs_dust.wad / de_dust2.bsp + palette.lmp 即用 CS 1.6 原版沙墙、木箱、铁门、岩石、水泥贴图（本地解析、存在浏览器里，下次自动生效）。",
     "tag": "FPS",
     "emoji": "🎯",
     "href": "/games/cs16/",
