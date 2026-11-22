@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="theme-color" id="themeColor" content="#0b0b10" />
 <title>音乐 · mfhry.store</title>
 <meta name="description" content="二次元曲库 · Apple 风格播放器" />
 <link rel="canonical" href="https://mfhry.store/music/" />
@@ -20,6 +21,8 @@
   html.dark,body.dark{ background:#0b0b10; }
   html[data-theme="light"],body[data-theme="light"],
   html.light,body.light{ background:#f5f5f7; }
+  /* 全屏听歌时连状态栏/回弹区一起压暗，避免顶部露出一条浅色 */
+  html.pg-fs-active, html.pg-fs-active body{ background:#0b0b0d; }
 
   .pg-root{
     --pg-max:1200px;                 /* [191] 页面最大宽 */
@@ -1575,5 +1578,25 @@
   <div class="nchead"><b id="nctitle">网易云</b><span>官方播放器</span><button class="ncx" id="ncclose" type="button" aria-label="关闭播放器">✕</button></div>
   <iframe id="ncframe" title="网易云官方播放器" loading="lazy" allow="autoplay; encrypted-media"></iframe>
 </div>
+<script>
+(function () {
+  var root = document.getElementById('root');
+  var meta = document.getElementById('themeColor');
+  var mq = window.matchMedia('(prefers-color-scheme: dark)');
+  function sync() {
+    var fs = root.hasAttribute('data-fs');
+    var theme = root.getAttribute('data-theme');
+    var dark = fs || theme === 'dark' || (!theme && mq.matches);
+    var bg = fs ? '#0b0b0d' : (dark ? '#0b0b10' : '#f5f5f7');
+    if (meta) meta.setAttribute('content', bg);
+    document.documentElement.classList.toggle('pg-fs-active', fs);
+    document.documentElement.style.backgroundColor = bg;
+    document.body.style.backgroundColor = bg;
+  }
+  new MutationObserver(sync).observe(root, { attributes: true, attributeFilter: ['data-fs', 'data-theme'] });
+  if (mq.addEventListener) mq.addEventListener('change', sync);
+  sync();
+})();
+</script>
 </body>
 </html>
