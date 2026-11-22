@@ -685,10 +685,11 @@ function loop(now) {
   last = now;
   if (!running) return;
 
-  physics(dt);
+  /* 打开面板时暂停玩家与生物，避免「边翻目录边乱跑」 */
+  if (!overlayOpen) physics(dt);
   pumpBuild(2);
   updateChunks(false);
-  mobs.update(dt, player.pos);
+  if (!overlayOpen) mobs.update(dt, player.pos);
 
   // 生物补充
   mobTimer -= dt;

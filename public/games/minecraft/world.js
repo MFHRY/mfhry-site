@@ -44,6 +44,8 @@
     this.chunks = {};
     this.edits = {};
     this.bases = {};   /* 原始地形缓存，存档时做 diff 用 */
+    this.bias = 0;
+    this.bias = this.calibrate();   /* 让约 70% 的地表高于海平面 */
   }
 
   World.prototype.chunkKey = function (cx, cz) { return cx + ',' + cz; };
@@ -55,12 +57,28 @@
     return c;
   };
 
-  World.prototype.heightAt = function (wx, wz) {
-    /* 三个尺度各自减去实测均值再放大：约 3 成海洋、3 成山地、其余平原丘陵 */
+  World.prototype.heightRaw = function (wx, wz) {
+    /* 三个尺度叠加：大陆度决定海陆，山丘给起伏，细节加碎浪 */
     var m = fbm(wx / 210, wz / 210, this.seed + 5, 3);        /* 大陆度 */
     var n = fbm(wx / 88, wz / 88, this.seed, 4);              /* 山丘 */
     var n2 = fbm(wx / 26, wz / 26, this.seed + 91, 3);        /* 细节 */
-    var h = 31 + (m - 0.526) * 105 + (n - 0.545) * 24 + (n2 - 0.495) * 7;
+    return (m - 0.5) * 105 + (n - 0.5) * 24 + (n2 - 0.5) * 7;
+  };
+
+  /* 陆地占比自动标定：采样一片区域，把 30% 分位对准海平面。
+     这样无论噪声分布怎么变，都不会出现「整片海洋」或「一滴水没有」 */
+  World.prototype.calibrate = function () {
+    var vals = [], N = 28, step = 41;
+    for (var i = 0; i < N; i++) for (var j = 0; j < N; j++) {
+      vals.push(this.heightRaw(i * step - 570, j * step - 570));
+    }
+    vals.sort(function (a, b) { return a - b; });
+    var p = vals[Math.floor(vals.length * 0.30)];   /* 30% 低于海平面 */
+    return SEA - p;
+  };
+
+  World.prototype.heightAt = function (wx, wz) {
+    var h = this.heightRaw(wx, wz) + this.bias;
     return Math.max(3, Math.min(CY - 14, Math.round(h)));
   };
 
@@ -183,6 +201,8 @@
     var x0 = wx + box[0], y0 = wy + box[1], z0 = wz + box[2];
     var x1 = wx + box[3], y1 = wy + box[4], z1 = wz + box[5];
     var verts = face.v, s = face.shade * (shadeMul || 1);
+    /* 索引基准必须在压入顶点「之前」取，否则整个网格的三角形都会错位一组顶点 */
+    var base = out.vertexCount();
     for (var i = 0; i < 4; i++) {
       var v = verts[i];
       var px = v[0] ? x1 : x0, py = v[1] ? y1 : y0, pz = v[2] ? z1 : z0;
@@ -196,7 +216,6 @@
       out.uv.push(uv.u0 + (uv.u1 - uv.u0) * uu, uv.v0 + (uv.v1 - uv.v0) * vv);
       out.col.push(s, s, s);
     }
-    var base = out.vertexCount();
     out.idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
   }
 
@@ -220,8 +239,8 @@
         out.col.push(shade, shade, shade);
       });
       out.idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
-      // 背面
-      var b2 = out.vertexCount();
+      // 背面（索引基准 = 正面基准 + 4，不能在压入顶点之后再取）
+      var b2 = base + 4;
       pts.slice().reverse().forEach(function (p) {
         out.pos.push(p[0], p[1], p[2]);
         out.nor.push(0, 1, 0);
@@ -245,13 +264,7 @@
     var data = chunk.data;
     var byId = this.byId;
     var self = this;
-
-    /* 贪婪化的关键：区块内部的邻居直接读数组，只有边界才走跨区块查询 */
-    function at(x, y, z) {
-      if (y < 0 || y >= CY) return 0;
-      if (x >= 0 && x < CX && z >= 0 && z < CZ) return data[(y * CZ + z) * CX + x];
-      return self.get(cx * CX + x, y, cz * CZ + z);
-    }
+    var baseX = cx * CX, baseZ = cz * CZ;
 
     /* 每列最高非空气方块，省掉整片底部的遍历 */
     var top = new Uint8Array(CX * CZ);
@@ -261,14 +274,18 @@
       }
     }
 
+    /* 邻居查询内联：块内部直接读 typed array，跨边界才走跨区块查询。
+       原来每格 6 次闭包调用，是整个网格化的主要开销 */
+    var nbBuf = new Uint8Array(6);
     for (var x = 0; x < CX; x++) for (var z = 0; z < CZ; z++) {
       var maxY = top[x * CZ + z];
+      var edge = (x === 0 || x === CX - 1 || z === 0 || z === CZ - 1);
       for (var y = 0; y <= maxY; y++) {
         var id = data[(y * CZ + z) * CX + x];
         if (!id) continue;
         var b = byId[id];
         if (!b) continue;
-        var wx = cx * CX + x, wz = cz * CZ + z;
+        var wx = baseX + x, wz = baseZ + z;
         var bucket = b.opaque ? op : tr;
 
         if (b.shape === 'cross') {
@@ -288,19 +305,25 @@
         else if (b.shape === 'stairs') boxes = [[0, 0, 0, 1, 0.5, 1], [0, 0.5, 0, 1, 1, 0.5]];
         else boxes = BOX_FULL;
 
+        /* 只要有一面可见就要画；先把 6 个邻居取出来 */
+        var yUp = y + 1, yDown = y - 1;
+        nbBuf[0] = (x + 1 < CX) ? data[(y * CZ + z) * CX + x + 1] : (edge ? self.get(wx + 1, y, wz) : 0);
+        nbBuf[1] = (x - 1 >= 0) ? data[(y * CZ + z) * CX + x - 1] : (edge ? self.get(wx - 1, y, wz) : 0);
+        nbBuf[2] = (yUp < CY) ? data[(yUp * CZ + z) * CX + x] : 0;
+        nbBuf[3] = (yDown >= 0) ? data[(yDown * CZ + z) * CX + x] : 0;
+        nbBuf[4] = (z + 1 < CZ) ? data[(y * CZ + z + 1) * CX + x] : (edge ? self.get(wx, y, wz + 1) : 0);
+        nbBuf[5] = (z - 1 >= 0) ? data[(y * CZ + z - 1) * CX + x] : (edge ? self.get(wx, y, wz - 1) : 0);
+
         for (var bi = 0; bi < boxes.length; bi++) {
           var box = boxes[bi];
           for (var fi = 0; fi < 6; fi++) {
-            var f = FACES[fi];
-            var nb = at(x + f.n[0], y + f.n[1], z + f.n[2]);
+            var nb = nbBuf[fi];
             if (nb) {
               var nbb = byId[nb];
               if (nbb && nbb.opaque) continue;
               if (nb === id && !b.opaque) continue;
-              /* 台阶薄的顶面：上面压了满方块就不画 */
-              if (b.shape === 'slab' && f.n[1] === 1 && nbb && nbb.shape === 'cube' && nbb.opaque) continue;
             }
-            pushBox(bucket, wx, y, wz, box, f, atlas, id);
+            pushBox(bucket, wx, y, wz, box, FACES[fi], atlas, id);
           }
         }
       }
