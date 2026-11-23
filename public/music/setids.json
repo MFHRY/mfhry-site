@@ -587,5 +587,209 @@
   "mb": 4.8,
   "cover": "/api/r2?key=music/track-318479-cover.jpg",
   "lyrics": "/music/donut-hole-lyrics.json"
+ },
+ "モザイクロール": {
+  "artist": "DECO*27",
+  "id": 2359442,
+  "title": "Mosaic Roll (Reloaded) feat. Hatsune Miku",
+  "r2": "/api/r2?key=music/track-2359442.mp3",
+  "bytes": 3874265,
+  "mb": 3.7,
+  "cover": "/api/r2?key=music/track-2359442-cover.jpg",
+  "lyrics": "/music/mosaic-roll-lyrics.json"
+ },
+ "エゴロック": {
+  "artist": "DECO*27",
+  "id": 2597916,
+  "title": "Ego Rock",
+  "r2": "/api/r2?key=music/track-2597916.mp3",
+  "bytes": 5756470,
+  "mb": 5.5,
+  "cover": "/api/r2?key=music/track-2597916-cover.jpg",
+  "lyrics": "/music/ego-rock-lyrics.json"
+ },
+ "乙女解剖": {
+  "artist": "DECO*27",
+  "id": 935153,
+  "title": "Otome Dissection",
+  "r2": "/api/r2?key=music/track-935153.mp3",
+  "bytes": 5507167,
+  "mb": 5.3,
+  "lyrics": "/music/otome-dissection-lyrics.json"
+ },
+ "ライアーダンス": {
+  "artist": "DECO*27",
+  "id": 897871,
+  "title": "Liar Dance",
+  "r2": "/api/r2?key=music/track-897871.mp3",
+  "bytes": 5216267,
+  "mb": 5,
+  "cover": "/api/r2?key=music/track-897871-cover.jpg",
+  "lyrics": "/music/liar-dance-lyrics.json"
+ },
+ "シンデレラ": {
+  "artist": "DECO*27",
+  "id": 1597616,
+  "title": "Cinderella feat. Hatsune Miku",
+  "r2": "/api/r2?key=music/track-1597616.mp3",
+  "bytes": 3724153,
+  "mb": 3.6,
+  "cover": "/api/r2?key=music/track-1597616-cover.jpg",
+  "lyrics": "/music/cinderella-lyrics.json"
+ },
+ "アンダーカバー": {
+  "artist": "DECO*27",
+  "id": 1727421,
+  "title": "Undercover feat. Hatsune Miku",
+  "r2": "/api/r2?key=music/track-1727421.mp3",
+  "bytes": 6218165,
+  "mb": 5.9,
+  "cover": "/api/r2?key=music/track-1727421-cover.jpg",
+  "lyrics": "/music/undercover-lyrics.json"
+ },
+ "リズム": {
+  "artist": "DECO*27",
+  "id": 1643242,
+  "title": "Rhythm feat. Hatsune Miku",
+  "r2": "/api/r2?key=music/track-1643242.mp3",
+  "bytes": 2842516,
+  "mb": 2.7,
+  "cover": "/api/r2?key=music/track-1643242-cover.jpg",
+  "lyrics": "/music/rhythm-lyrics.json"
+ },
+ "デタラメ": {
+  "artist": "DECO*27",
+  "id": 2414414,
+  "title": "DETARAME ROCK&ROLL THEORY",
+  "r2": "/api/r2?key=music/track-2414414.mp3",
+  "bytes": 3521976,
+  "mb": 3.4,
+  "cover": "/api/r2?key=music/track-2414414-cover.jpg",
+  "lyrics": "/music/detarame-lyrics.json"
+ },
+ "マグメル": {
+  "artist": "ナユタン星人",
+  "id": 2205336,
+  "title": "Magmel",
+  "r2": "/api/r2?key=music/track-2205336.mp3",
+  "bytes": 5064828,
+  "mb": 4.8,
+  "cover": "/api/r2?key=music/track-2205336-cover.jpg"
+ },
+ "アストロノーツ": {
+  "artist": "ナユタン星人",
+  "id": 2407936,
+  "title": "Astronauts",
+  "r2": "/api/r2?key=music/track-2407936.mp3",
+  "bytes": 6934359,
+  "mb": 6.6,
+  "cover": "/api/r2?key=music/track-2407936-cover.jpg"
+ },
+ "サーチライト": {
+  "artist": "ナユタン星人",
+  "id": 2500236,
+  "title": "Searchlight",
+  "r2": "/api/r2?key=music/track-2500236.ogg",
+  "bytes": 4600176,
+  "mb": 4.4,
+  "cover": "/api/r2?key=music/track-2500236-cover.jpg"
+ },
+ "ドリームレス・ドリームス": {
+  "artist": "ナユタン星人",
+  "id": 1303282,
+  "title": "Dreamless Dreams",
+  "r2": "/api/r2?key=music/track-1303282.mp3",
+  "bytes": 9407517,
+  "mb": 9,
+  "cover": "/api/r2?key=music/track-1303282-cover.jpg"
+ },
+ "エスペルエスペル": {
+  "artist": "ナユタン星人",
+  "id": 2177844,
+  "title": "Esper Esper",
+  "r2": "/api/r2?key=music/track-2177844.mp3",
+  "bytes": 7053198,
+  "mb": 6.7,
+  "cover": "/api/r2?key=music/track-2177844-cover.jpg"
+ },
+ "ダンスロボットダンス": {
+  "artist": "ナユタン星人",
+  "id": 2218761,
+  "title": "Dance Robot Dance",
+  "r2": "/api/r2?key=music/track-2218761.mp3",
+  "bytes": 3060016,
+  "mb": 2.9,
+  "cover": "/api/r2?key=music/track-2218761-cover.jpg",
+  "lyrics": "/music/dance-robot-dance-lyrics.json"
+ },
+ "ロケットサイダー": {
+  "artist": "ナユタン星人",
+  "id": 2056015,
+  "title": "Rocket Cider",
+  "r2": "/api/r2?key=music/track-2056015.mp3",
+  "bytes": 4521619,
+  "mb": 4.3,
+  "cover": "/api/r2?key=music/track-2056015-cover.jpg",
+  "lyrics": "/music/rocket-cider-lyrics.json"
+ },
+ "日系ゲーム · You": {
+  "artist": "极限竞速：地平线6",
+  "title": "You",
+  "r2": "/api/r2?key=music/local-fh6-you.m4a",
+  "bytes": 6800797,
+  "mb": 6.5,
+  "cover": ""
+ },
+ "Enchanting Stranger": {
+  "artist": "MilkTalk",
+  "title": "Enchanting Stranger",
+  "r2": "/api/r2?key=music/local-fh6-enchanting-stranger.m4a",
+  "bytes": 6730341,
+  "mb": 6.4,
+  "cover": ""
+ },
+ "刀尖起舞": {
+  "artist": "战争雷霆",
+  "title": "刀尖起舞",
+  "r2": "/api/r2?key=music/local-wt-daotian.m4a",
+  "bytes": 6261702,
+  "mb": 6,
+  "cover": ""
+ },
+ "Advance Australia": {
+  "artist": "战争雷霆",
+  "title": "Advance Australia",
+  "r2": "/api/r2?key=music/local-wt-advance-australia.m4a",
+  "bytes": 3294391,
+  "mb": 3.1,
+  "cover": ""
+ },
+ "ワールズエンド・ダンスホール（自 mix）": {
+  "artist": "wowaka",
+  "title": "ワールズエンド・ダンスホール",
+  "r2": "/api/r2?key=music/local-dancehall-selfmix.m4a",
+  "bytes": 3910128,
+  "mb": 3.7,
+  "cover": "",
+  "lyrics": "/music/dancehall-selfmix-lyrics.json"
+ },
+ "前前前世": {
+  "artist": "RADWIMPS",
+  "id": 1480045,
+  "title": "Zenzenzense",
+  "r2": "/api/r2?key=music/track-1480045.mp3",
+  "bytes": 6863862,
+  "mb": 6.5,
+  "cover": "/api/r2?key=music/track-1480045-cover.jpg"
+ },
+ "スパークル": {
+  "artist": "RADWIMPS",
+  "id": 2451010,
+  "title": "Sparkle [original ver.]",
+  "r2": "/api/r2?key=music/track-2451010.mp3",
+  "bytes": 9870523,
+  "mb": 9.4,
+  "cover": "/api/r2?key=music/track-2451010-cover.jpg",
+  "lyrics": "/music/sparkle-yourname-lyrics.json"
  }
 }
