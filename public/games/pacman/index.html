@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>吃豆人</title>
+<style>
+  :root{ --bg:#07090d; --accent:#ffd84d; --panel:#14181d; --text:#eef3f7; --muted:#8a9aa8; }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{background:radial-gradient(120% 90% at 50% 0%,#101830 0%,var(--bg) 62%);color:var(--text);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,"PingFang PC","PingFang SC","Microsoft YaHei",sans-serif;
+    min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:12px 12px 10px;overflow:hidden;user-select:none}
+  h1{color:var(--accent);font-size:19px;letter-spacing:5px;text-indent:5px;font-weight:700;margin:2px 0 4px}
+  .hint{font-size:11.5px;color:var(--muted);margin-bottom:8px;text-align:center;line-height:1.5;max-width:92vw}
+  .hudbar{display:flex;gap:7px;font-size:12.5px;margin-bottom:8px;flex-wrap:wrap;justify-content:center}
+  .hudbar .pill{background:var(--panel);border:1px solid #232c34;padding:4px 11px;border-radius:8px;white-space:nowrap}
+  .hudbar .pill b{color:var(--accent);font-variant-numeric:tabular-nums}
+  .hudbar .pill.lives b{color:#ffe66d}
+  #stageWrap{flex:1;width:100%;display:flex;justify-content:center;align-items:center;min-height:0}
+  #stage{position:relative;line-height:0}
+  canvas{display:block;border-radius:12px;background:#05070a;touch-action:none;
+    box-shadow:0 12px 40px rgba(0,0,0,.6),inset 0 0 0 1px rgba(120,170,255,.14)}
+  .overlay{position:absolute;inset:0;background:rgba(3,6,12,.8);display:flex;align-items:center;justify-content:center;
+    z-index:10;backdrop-filter:blur(3px);border-radius:12px}
+  .overlay.hidden{display:none}
+  .overlay-box{background:#12171c;border:1px solid #26303a;border-radius:16px;padding:24px 28px;text-align:center;max-width:88%;line-height:1.6}
+  .overlay-box h2{color:var(--accent);font-size:19px;margin-bottom:8px}
+  .overlay-box p{color:var(--muted);font-size:13.5px;margin-bottom:16px}
+  .overlay-box button{background:var(--accent);color:#231a03;font-size:15px;font-weight:800;border:none;border-radius:10px;padding:10px 24px;cursor:pointer}
+  .overlay-box button:active{transform:scale(.96)}
+  @media (max-height:640px){ .hint{display:none} h1{font-size:16px;letter-spacing:3px} }
+</style>
+</head>
+<body>
+<h1>吃豆人</h1>
+<p class="hint">方向键 / WASD 移动 · 吃光豆子过关 · 能量豆让幽灵变蓝，反过来吃它们 · R 重开</p>
+<div class="hudbar">
+  <span class="pill">得分 <b id="pts">0</b></span>
+  <span class="pill">最佳 <b id="best">0</b></span>
+  <span class="pill">第 <b id="lv">1</b> 关</span>
+  <span class="pill lives">命 <b id="lives">3</b></span>
+</div>
+<div id="stageWrap">
+  <div id="stage">
+    <canvas id="cv"></canvas>
+    <div id="overlay" class="overlay">
+      <div class="overlay-box">
+        <h2 id="ovTitle">吃豆人</h2>
+        <p id="ovText">吃光全部豆子过关 · 四只幽灵各有脾气</p>
+        <button id="ovBtn">开始</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="/games/score.js"></script>
+<script>
+(function () {
+  'use strict';
+  var cv = document.getElementById('cv');
+  var ctx = cv.getContext('2d');
+  var stage = document.getElementById('stage');
+  var overlay = document.getElementById('overlay');
+  var ovTitle = document.getElementById('ovTitle');
+  var ovText = document.getElementById('ovText');
+  var ovBtn = document.getElementById('ovBtn');
+  var ptsEl = document.getElementById('pts');
+  var bestEl = document.getElementById('best');
+  var lvEl = document.getElementById('lv');
+  var livesEl = document.getElementById('lives');
+
+  var N = 21;                     // 21×21 格
+  var T = 22;                     // 逻辑像素 / 格
+  var FIELD = N * T;              // 462
+
+  // 手写的对称迷宫：. 豆子 o 能量豆 # 墙
+  var RAW = [
+    '#####################',
+    '#.........#.........#',
+    '#.###.###.#.###.###.#',
+    '#o###.###.#.###.###o#',
+    '#...................#',
+    '#.###.#.#####.#.###.#',
+    '#.....#...#...#.....#',
+    '#####.###.#.###.#####',
+    '#####.#.......#.#####',
+    '#####.#.#####.#.#####',
+    '#.........#.........#',
+    '#####.#.#####.#.#####',
+    '#####.#.......#.#####',
+    '#####.###.#.###.#####',
+    '#.........#.........#',
+    '#.###.###.#.###.###.#',
+    '#o..#...........#..o#',
+    '###.#.#.#####.#.#.###',
+    '#.....#...#...#.....#',
+    '#####################',
+    '#####################'
+  ];
+  var START = { x: 9, y: 18 };
+
+  var grid, dots, power, totalDots;
+  var player, ghosts, state = 'idle';
+  var score = 0, lives = 3, level = 1;
+  var keys = {}, wantDir = null;
+  var lastT = 0, raf = 0, frightT = 0, eatChain = 0;
+  var best = 0;
+  var VIEW = 1;
+
+  try { best = +(localStorage.getItem('mfhry_best_pacman') || 0) || 0; } catch (e) { best = 0; }
+  bestEl.textContent = best;
+
+  function sfx(n) {
+    var k = window.mfKit;
+    if (k && typeof k.sfx === 'function') { try { k.sfx(n); } catch (e) {} }
+  }
+  function vibrate(p) {
+    var k = window.mfKit;
+    if (k && typeof k.vibrate === 'function') { try { k.vibrate(p); } catch (e) {} }
+  }
+
+  var DIR = {
+    left: { x: -1, y: 0 }, right: { x: 1, y: 0 }, up: { x: 0, y: -1 }, down: { x: 0, y: 1 }
+  };
+  var OPP = { left: 'right', right: 'left', up: 'down', down: 'up' };
+
+  function isWall(x, y) {
+    if (y < 0 || y >= N) return true;
+    if (x < 0 || x >= N) return true;
+    return grid[y][x] === '#';
+  }
+
+  function buildLevel() {
+    grid = [];
+    dots = [];
+    power = [];
+    for (var y = 0; y < N; y++) {
+      grid[y] = [];
+      dots[y] = [];
+      power[y] = [];
+      for (var x = 0; x < N; x++) {
+        var c = RAW[y] ? (RAW[y][x] || '#') : '#';
+        grid[y][x] = c === '#' ? '#' : '.';
+        dots[y][x] = c === '.';
+        power[y][x] = c === 'o';
+      }
+    }
+    // 从出生点洪水填充，把够不到的格子改成墙（保证不会有吃不到的死豆）
+    var seen = {}, stack = [[START.x, START.y]];
+    while (stack.length) {
+      var cur = stack.pop();
+      var k = cur[0] + ',' + cur[1];
+      if (seen[k] || isWall(cur[0], cur[1])) continue;
+      seen[k] = 1;
+      stack.push([cur[0] + 1, cur[1]], [cur[0] - 1, cur[1]], [cur[0], cur[1] + 1], [cur[0], cur[1] - 1]);
+    }
+    totalDots = 0;
+    for (var yy = 0; yy < N; yy++) for (var xx = 0; xx < N; xx++) {
+      var reachable = seen[xx + ',' + yy];
+      if (!reachable) {
+        grid[yy][xx] = '#';
+        dots[yy][xx] = false;
+        power[yy][xx] = false;
+        continue;
+      }
+      if (dots[yy][xx] || power[yy][xx]) totalDots++;
+    }
+    // 出生点不能有豆
+    dots[START.y][START.x] = false;
+    power[START.y][START.x] = false;
+  }
+
+  function makeGhost(name, x, y, color) {
+    return {
+      name: name, x: x * T + T / 2, y: y * T + T / 2, color: color,
+      dir: 'left', home: { x: x, y: y }, speed: 5.0, eaten: false, respawnT: 0, alive: true
+    };
+  }
+
+  function resetActors() {
+    player = {
+      x: START.x * T + T / 2, y: START.y * T + T / 2,
+      dir: 'left', next: null, speed: 6.2, mouth: 0, dead: false, deadT: 0
+    };
+    ghosts = [
+      makeGhost('blinky', 9, 8, '#ff5c6e'),
+      makeGhost('pinky', 11, 8, '#ffa8d8'),
+      makeGhost('inky', 9, 12, '#5cc8ff'),
+      makeGhost('clyde', 11, 12, '#ffb86b')
+    ];
+    frightT = 0;
+    eatChain = 0;
+  }
+
+  function startGame() {
+    score = 0; lives = 3; level = 1;
+    buildLevel();
+    resetActors();
+    state = 'playing';
+    overlay.classList.add('hidden');
+    lastT = performance.now();
+    updateHud();
+  }
+
+  function nextLevel() {
+    level++;
+    buildLevel();
+    resetActors();
+    state = 'playing';
+    lastT = performance.now();
+    updateHud();
+    sfx('win');
+  }
+
+  function updateHud() {
+    ptsEl.textContent = score;
+    lvEl.textContent = level;
+    livesEl.textContent = lives;
+  }
+
+  function atCenter(o) {
+    var cx = Math.round((o.x - T / 2) / T) * T + T / 2;
+    var cy = Math.round((o.y - T / 2) / T) * T + T / 2;
+    return { cx: cx, cy: cy, ok: Math.abs(cx - o.x) < 4 && Math.abs(cy - o.y) < 4 };
+  }
+
+  function cellOf(o) {
+    return {
+      x: Math.round((o.x - T / 2) / T),
+      y: Math.round((o.y - T / 2) / T)
+    };
+  }
+
+  function canMoveFrom(o, dir) {
+    var c = atCenter(o);
+    var gx = Math.round((c.cx - T / 2) / T), gy = Math.round((c.cy - T / 2) / T);
+    return !isWall(gx + DIR[dir].x, gy + DIR[dir].y);
+  }
+
+  function stepPlayer(dt) {
+    if (player.dead) {
+      player.deadT -= dt;
+      if (player.deadT <= 0) {
+        lives--;
+        updateHud();
+        if (lives <= 0) { gameOver('三条命都吃完了'); return; }
+        player.x = START.x * T + T / 2;
+        player.y = START.y * T + T / 2;
+        player.dir = 'left'; player.next = null; player.dead = false;
+        ghosts.forEach(function (g) { g.x = g.home.x * T + T / 2; g.y = g.home.y * T + T / 2; g.dir = 'up'; g.alive = true; g.eaten = false; });
+        frightT = 0;
+      }
+      return;
+    }
+    var c = atCenter(player);
+    var horiz = player.dir === 'left' || player.dir === 'right';
+    if (c.ok) {
+      // 只把「垂直方向」的坐标吸到格中心，前进方向不动，否则每帧都会被拽回去
+      if (horiz) player.y = c.cy; else player.x = c.cx;
+      if (player.next && canMoveFrom(player, player.next)) {
+        player.dir = player.next;
+        player.next = null;
+        player.x = c.cx; player.y = c.cy;
+        horiz = player.dir === 'left' || player.dir === 'right';
+        if (horiz) player.y = c.cy; else player.x = c.cx;
+      }
+      if (!canMoveFrom(player, player.dir)) {
+        // 前面是墙：停在格中心
+        player.x = c.cx; player.y = c.cy;
+        player.mouth += dt * 6;
+        return;
+      }
+    }
+    var sp = player.speed * dt * 60 * 0.55;
+    player.x += DIR[player.dir].x * sp;
+    player.y += DIR[player.dir].y * sp;
+    player.x = Math.max(T / 2, Math.min(FIELD - T / 2, player.x));
+    player.y = Math.max(T / 2, Math.min(FIELD - T / 2, player.y));
+    player.mouth += dt * 12;
+    eatAt(player);
+  }
+
+  function eatAt(o) {
+    var gx = Math.round((o.x - T / 2) / T), gy = Math.round((o.y - T / 2) / T);
+    if (gx < 0 || gy < 0 || gx >= N || gy >= N) return;
+    if (dots[gy][gx]) {
+      dots[gy][gx] = false; totalDots--; score += 10;
+      sfx('eat');
+      if (totalDots <= 0) nextLevel();
+      updateHud();
+    } else if (power[gy][gx]) {
+      power[gy][gx] = false; totalDots--; score += 50;
+      frightT = 7.5; eatChain = 0;
+      sfx('power'); vibrate(20);
+      if (totalDots <= 0) nextLevel();
+      updateHud();
+    }
+  }
+
+  // 幽灵：每到一个格中心选一次方向
+  function ghostPick(g) {
+    var gx = Math.round((g.x - T / 2) / T), gy = Math.round((g.y - T / 2) / T);
+    var opts = [];
+    for (var d in DIR) {
+      if (d === OPP[g.dir] && Math.random() > 0.12) continue;
+      if (!isWall(gx + DIR[d].x, gy + DIR[d].y)) opts.push(d);
+    }
+    if (!opts.length) { g.dir = OPP[g.dir]; return; }
+
+    if (g.eaten) {
+      // 回家：朝出生点走
+      var tx = g.home.x, ty = g.home.y;
+      opts.sort(function (a, b) {
+        var da = Math.abs(gx + DIR[a].x - tx) + Math.abs(gy + DIR[a].y - ty);
+        var db = Math.abs(gx + DIR[b].x - tx) + Math.abs(gy + DIR[b].y - ty);
+        return da - db;
+      });
+      g.dir = opts[0];
+      return;
+    }
+
+    if (frightT > 0) {
+      g.dir = opts[(Math.random() * opts.length) | 0];
+      return;
+    }
+
+    var px = Math.round((player.x - T / 2) / T), py = Math.round((player.y - T / 2) / T);
+    var tx2 = px, ty2 = py;
+    if (g.name === 'pinky') {             // 走玩家前面 3 格
+      tx2 = px + DIR[player.dir].x * 3;
+      ty2 = py + DIR[player.dir].y * 3;
+    } else if (g.name === 'inky') {       // 玩家与 blinky 的连线再翻倍
+      var b = ghosts[0];
+      var bx = Math.round((b.x - T / 2) / T), by = Math.round((b.y - T / 2) / T);
+      tx2 = px * 2 - bx;
+      ty2 = py * 2 - by;
+    } else if (g.name === 'clyde') {      // 距离远就追，近了就散
+      var d2 = Math.abs(gx - px) + Math.abs(gy - py);
+      if (d2 < 5) { tx2 = 0; ty2 = N - 1; }
+    }
+
+    opts.sort(function (a, b) {
+      var da = Math.abs(gx + DIR[a].x - tx2) + Math.abs(gy + DIR[a].y - ty2);
+      var db = Math.abs(gx + DIR[b].x - tx2) + Math.abs(gy + DIR[b].y - ty2);
+      return da - db;
+    });
+    g.dir = opts[0];
+  }
+
+  function stepGhost(g, dt) {
+    if (!g.alive) return;
+    var speed = g.eaten ? 12 : (frightT > 0 ? 3.0 : g.speed);
+    var c = atCenter(g);
+    var horiz = g.dir === 'left' || g.dir === 'right';
+    if (c.ok) {
+      if (horiz) g.y = c.cy; else g.x = c.cx;
+      if (g.eaten && Math.abs(g.x - (g.home.x * T + T / 2)) < 5 && Math.abs(g.y - (g.home.y * T + T / 2)) < 5) {
+        g.eaten = false;
+        g.dir = 'up';
+      }
+      ghostPick(g);
+      if (!canMoveFrom(g, g.dir)) { g.x = c.cx; g.y = c.cy; return; }
+    }
+    var sp = speed * dt * 60 * 0.55;
+    g.x += DIR[g.dir].x * sp;
+    g.y += DIR[g.dir].y * sp;
+    g.x = Math.max(T / 2, Math.min(FIELD - T / 2, g.x));
+    g.y = Math.max(T / 2, Math.min(FIELD - T / 2, g.y));
+  }
+
+  function checkCatch() {
+    for (var i = 0; i < ghosts.length; i++) {
+      var g = ghosts[i];
+      if (!g.alive) continue;
+      var d = Math.hypot(g.x - player.x, g.y - player.y);
+      if (d < T * 0.62) {
+        if (frightT > 0 && !g.eaten) {
+          g.eaten = true;
+          eatChain++;
+          var pts = 200 * Math.pow(2, Math.min(3, eatChain - 1));
+          score += pts;
+          sfx('eatGhost'); vibrate(25);
+          updateHud();
+        } else if (!g.eaten && frightT <= 0) {
+          player.dead = true;
+          player.deadT = 1.4;
+          sfx('die'); vibrate([50, 40, 50]);
+          break;
+        }
+      }
+    }
+  }
+
+  function gameOver(reason) {
+    if (state === 'over') return;
+    state = 'over';
+    sfx('lose');
+    if (score > best) {
+      best = score;
+      try { localStorage.setItem('mfhry_best_pacman', String(best)); } catch (e) {}
+      bestEl.textContent = best;
+      if (window.mfKit && window.mfKit.record) { try { window.mfKit.record('pacman', best); } catch (e) {} }
+      if (window.mfhryScore) { try { window.mfhryScore('pacman', best); } catch (e) {} }
+    }
+    showOverlay('被抓住了', reason + ' · 得分 ' + score + ' · 打到第 ' + level + ' 关', '再来一局');
+  }
+
+  function update(dt) {
+    if (state !== 'playing') return;
+    if (frightT > 0) frightT -= dt;
+    stepPlayer(dt);
+    if (state !== 'playing') return;
+    for (var i = 0; i < ghosts.length; i++) stepGhost(ghosts[i], dt);
+    checkCatch();
+  }
+
+  // ---------- 绘制 ----------
+  function draw() {
+    ctx.setTransform(VIEW, 0, 0, VIEW, 0, 0);
+    ctx.clearRect(0, 0, FIELD, FIELD);
+    ctx.fillStyle = '#05070a';
+    ctx.fillRect(0, 0, FIELD, FIELD);
+
+    // 墙：发光描边
+    ctx.lineWidth = 2.2;
+    ctx.strokeStyle = 'rgba(90,150,255,.85)';
+    ctx.shadowColor = 'rgba(70,130,255,.9)';
+    ctx.shadowBlur = 7;
+    for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) {
+      if (grid[y][x] !== '#') continue;
+      ctx.strokeRect(x * T + 2.5, y * T + 2.5, T - 5, T - 5);
+    }
+    ctx.shadowBlur = 0;
+
+    // 豆子
+    ctx.fillStyle = '#ffe9b0';
+    for (var yy = 0; yy < N; yy++) for (var xx = 0; xx < N; xx++) {
+      var cx = xx * T + T / 2, cy = yy * T + T / 2;
+      if (dots[yy][xx]) {
+        ctx.beginPath(); ctx.arc(cx, cy, 2, 0, 6.2832); ctx.fill();
+      } else if (power[yy][xx]) {
+        var pulse = 0.6 + 0.4 * Math.sin(performance.now() / 200);
+        ctx.globalAlpha = pulse;
+        ctx.beginPath(); ctx.arc(cx, cy, 5.2, 0, 6.2832); ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    // 幽灵
+    for (var g = 0; g < ghosts.length; g++) drawGhost(ghosts[g]);
+
+    // 玩家
+    if (player && !(player.dead && Math.floor(player.deadT * 8) % 2 === 0)) drawPlayer();
+
+    if (frightT > 0) {
+      ctx.fillStyle = 'rgba(60,120,255,' + (0.05 + 0.04 * Math.sin(performance.now() / 160)) + ')';
+      ctx.fillRect(0, 0, FIELD, FIELD);
+    }
+  }
+
+  function drawPlayer() {
+    var ang = player.dir === 'right' ? 0 : player.dir === 'left' ? Math.PI : player.dir === 'up' ? -Math.PI / 2 : Math.PI / 2;
+    var open = 0.06 + Math.abs(Math.sin(player.mouth)) * 0.30;
+    ctx.save();
+    ctx.translate(player.x, player.y);
+    ctx.rotate(ang);
+    ctx.fillStyle = '#ffd84d';
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, T * 0.46, open * Math.PI, (2 - open) * Math.PI);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#2a1f03';
+    ctx.beginPath(); ctx.arc(T * 0.10, -T * 0.20, 1.8, 0, 6.2832); ctx.fill();
+    ctx.restore();
+  }
+
+  function drawGhost(g) {
+    if (!g.alive && !g.eaten) return;
+    var cx = g.x, cy = g.y, r = T * 0.44;
+    var fright = frightT > 0 && !g.eaten;
+    var blink = fright && frightT < 2.2 && Math.floor(frightT * 8) % 2 === 0;
+    var body = g.eaten ? 'rgba(180,200,230,.35)' : (fright ? (blink ? '#f2f6ff' : '#4356ff') : g.color);
+    ctx.save();
+    ctx.translate(cx, cy + Math.sin(performance.now() / 300 + g.home.x) * 1.2);
+    ctx.fillStyle = body;
+    ctx.beginPath();
+    ctx.arc(0, -r * 0.12, r, Math.PI, 0);
+    ctx.lineTo(r, r * 0.72);
+    // 裙摆
+    var n = 4, w = (r * 2) / n;
+    for (var i = 0; i < n; i++) {
+      var x0 = r - i * w;
+      ctx.lineTo(x0 - w / 2, r * 0.72 - (i % 2 === 0 ? r * 0.30 : 0));
+      ctx.lineTo(x0 - w, r * 0.72);
+    }
+    ctx.closePath();
+    ctx.fill();
+    // 眼睛
+    if (!g.eaten) {
+      var ex = r * 0.34, ey = -r * 0.16;
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.ellipse(-ex, ey, r * 0.28, r * 0.34, 0, 0, 6.2832); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(ex, ey, r * 0.28, r * 0.34, 0, 0, 6.2832); ctx.fill();
+      var dx = DIR[g.dir].x * r * 0.12, dy = DIR[g.dir].y * r * 0.12;
+      ctx.fillStyle = fright ? '#2134c9' : '#141a2a';
+      ctx.beginPath(); ctx.arc(-ex + dx, ey + dy, r * 0.15, 0, 6.2832); ctx.fill();
+      ctx.beginPath(); ctx.arc(ex + dx, ey + dy, r * 0.15, 0, 6.2832); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function fit() {
+    var maxW = Math.min(window.innerWidth - 32, 560);
+    var maxH = window.innerHeight - 168;
+    var side = Math.max(240, Math.min(maxW, maxH));
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cv.width = Math.round(side * dpr);
+    cv.height = Math.round(side * dpr);
+    cv.style.width = side + 'px';
+    cv.style.height = side + 'px';
+    stage.style.width = side + 'px';
+    stage.style.height = side + 'px';
+    VIEW = (side / FIELD) * dpr;
+    ctx.setTransform(VIEW, 0, 0, VIEW, 0, 0);
+  }
+
+  function loop(t) {
+    raf = requestAnimationFrame(loop);
+    var dt = Math.min(0.05, (t - lastT) / 1000 || 0.016);
+    lastT = t;
+    update(dt);
+    draw();
+  }
+
+  // ---------- 输入 ----------
+  var KEYMAP = {
+    arrowleft: 'left', a: 'left', arrowright: 'right', d: 'right',
+    arrowup: 'up', w: 'up', arrowdown: 'down', s: 'down'
+  };
+  window.addEventListener('keydown', function (e) {
+    var k = e.key.toLowerCase();
+    if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].indexOf(k) >= 0) e.preventDefault();
+    keys[k] = true;
+    if (KEYMAP[k]) wantDir = KEYMAP[k];
+    if (KEYMAP[k] && player) player.next = KEYMAP[k];
+    if (k === 'r' && state !== 'idle') startGame();
+  });
+  window.addEventListener('keyup', function (e) { keys[e.key.toLowerCase()] = false; });
+  window.addEventListener('blur', function () { keys = {}; });
+
+  // 触屏：方向键由 kit 提供；另外自己支持滑动
+  window.MF_TOUCH = { dpad: ['ArrowLeft', 'ArrowUp', 'ArrowDown', 'ArrowRight'] };
+  var sw = null;
+  cv.addEventListener('touchstart', function (e) {
+    var t = e.changedTouches[0];
+    sw = { x: t.clientX, y: t.clientY };
+  }, { passive: true });
+  cv.addEventListener('touchmove', function (e) {
+    if (!sw) return;
+    var t = e.changedTouches[0];
+    var dx = t.clientX - sw.x, dy = t.clientY - sw.y;
+    if (Math.hypot(dx, dy) < 18) return;
+    var dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+    if (player) player.next = dir;
+    sw = { x: t.clientX, y: t.clientY };
+    e.preventDefault();
+  }, { passive: false });
+  cv.addEventListener('touchend', function () { sw = null; });
+
+  function showOverlay(title, text, btn) {
+    ovTitle.textContent = title;
+    ovText.textContent = text;
+    ovBtn.textContent = btn;
+    overlay.classList.remove('hidden');
+  }
+  ovBtn.addEventListener('click', function () { startGame(); });
+
+  window.addEventListener('mf:pause', function () {
+    if (state === 'playing') state = 'paused';
+    if (raf) { cancelAnimationFrame(raf); raf = 0; }
+  });
+  window.addEventListener('mf:resume', function () {
+    if (state === 'paused') { state = 'playing'; lastT = performance.now(); if (!raf) raf = requestAnimationFrame(loop); }
+  });
+  window.mfRestart = function () { startGame(); };
+  window.addEventListener('resize', fit);
+
+  window.__pac = {
+    get state() { return state; },
+    get score() { return score; },
+    get level() { return level; },
+    get lives() { return lives; },
+    start: startGame,
+    dotsLeft: function () { return totalDots; },
+    grid: function () { return grid; },
+    actors: function () {
+      return {
+        player: { x: Math.round(player.x), y: Math.round(player.y), dir: player.dir },
+        ghosts: ghosts.map(function (g) { return { name: g.name, x: Math.round(g.x), y: Math.round(g.y), dir: g.dir, eaten: g.eaten }; })
+      };
+    },
+    key: function (d) { if (player) player.next = d; }
+  };
+
+  function boot() {
+    buildLevel();
+    resetActors();
+    fit();
+    draw();
+    raf = requestAnimationFrame(loop);
+    showOverlay('吃豆人', '吃光全部豆子过关 · 能量豆让幽灵变蓝，反过来吃它们', '开始');
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>
+<script src="/games/kit.js"></script>
+</body>
+</html>

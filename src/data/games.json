@@ -164,6 +164,42 @@
     "status": "play"
   },
   {
+    "slug": "tank",
+    "title": "坦克大战",
+    "desc": "守住底部的基地，一波一波打退敌方坦克。砖墙能轰开、钢墙要升级才能炸，路上有加命、护盾和清屏炸弹。",
+    "tag": "街机",
+    "emoji": "🛡️",
+    "href": "/games/tank/",
+    "status": "play"
+  },
+  {
+    "slug": "pacman",
+    "title": "吃豆人",
+    "desc": "21×21 迷宫，吃光豆子过关；能量豆让四只幽灵变蓝，反过来吃它们。四只幽灵分别是直追、抄前路、包夹和绕边。",
+    "tag": "街机",
+    "emoji": "👻",
+    "href": "/games/pacman/",
+    "status": "play"
+  },
+  {
+    "slug": "slingshot",
+    "title": "弹射小鸟",
+    "desc": "拉弓瞄准、松手弹射，抛物线实时预览。木箱好碎、石箱结实，打光所有绿猪过关。",
+    "tag": "休闲",
+    "emoji": "🐦",
+    "href": "/games/slingshot/",
+    "status": "play"
+  },
+  {
+    "slug": "solitaire",
+    "title": "纸牌接龙",
+    "desc": "经典 Klondike：点牌选中、再点落位，双击直接飞进基础堆，支持撤销和计时，把 52 张全部收完。",
+    "tag": "益智",
+    "emoji": "🃏",
+    "href": "/games/solitaire/",
+    "status": "play"
+  },
+  {
     "slug": "is7",
     "title": "合成 IS-7",
     "desc": "合并玩法：小坦克两两相撞合成更大的，一路合到 IS-7 重坦。需要联网加载。",
