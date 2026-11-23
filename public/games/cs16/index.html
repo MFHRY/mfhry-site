@@ -56,9 +56,9 @@
         <button class="btn ghost" id="full">全屏</button>
       </div>
       <div class="drop" id="drop">
-        把 CS 1.6 的 <b>cs_dust.wad</b> / <b>cstrike.wad</b> / <b>de_dust2.bsp</b> 和 <b>palette.lmp</b> 一起拖进来（或点这里选文件）。
-        第一次载入后会存在浏览器里，下次进页面自动生效，不用再拖；全程本地解析，不上传。
-        <div class="file" id="dropinfo">未加载：使用内置的 dust 风格自绘贴图</div>
+        已内置 <b>de_dust2 原版贴图</b>（沙墙 / 木箱 / 铁门 / 岩石 / 水泥，取自 CS 1.6 本体，不裁剪不缩略）。
+        想要更多材质可把 <b>cs_dust.wad</b> 或 <b>de_dust2.bsp</b> + <b>palette.lmp</b> 拖进来（或点这里选文件），本地解析、存在浏览器里。
+        <div class="file" id="dropinfo">未加载额外贴图包：使用内置的 5 张原版贴图</div>
       </div>
       <div class="texstat" id="texstat"></div>
       <button class="btn ghost" id="cleartex" hidden>清除已存的原版贴图</button>
@@ -275,6 +275,40 @@ function parseWad(buf, palette) {
     } catch (e) { /* 跳过坏 lump */ }
   }
   return out;
+}
+
+// -------- 内置原版贴图：从 de_dust2 里取出的五种墙面（palette.lmp 展开成真彩）--------
+const BAKED_TEX = {
+  1: 'tex/wall.png',    // csSandWall2  128x240  沙墙
+  2: 'tex/crate.png',   // SandCrtLrgSd 128x128  木箱
+  3: 'tex/door.png',    // SandWllDoor  192x160  铁门
+  4: 'tex/rock.png',    // -0SandRock   128x256  岩石
+  5: 'tex/crete.png',   // SandCCrete   256x192  水泥
+};
+
+function loadBakedTextures() {
+  const slots = Object.keys(BAKED_TEX);
+  let done = 0;
+  try {
+    if (typeof Image === 'undefined') return Promise.resolve(0);
+  } catch (e) { return Promise.resolve(0); }
+  return Promise.all(slots.map((slot) => new Promise((res) => {
+    const img = new Image();
+    img.onload = () => {
+      if (!usingWad) { textures[slot] = { canvas: img, name: '内置原版' }; done++; }
+      res(true);
+    };
+    img.onerror = () => res(false);
+    img.src = BAKED_TEX[slot];
+  }))).then((oks) => {
+    const hit = oks.filter(Boolean).length;
+    if (hit && !usingWad) {
+      texSource = 'de_dust2 原版贴图（内置）';
+      const el = document.getElementById('texstat');
+      if (el) el.textContent = '正在使用 de_dust2 原版贴图：沙墙 / 木箱 / 铁门 / 岩石 / 水泥（想换更多材质可拖入 cs_dust.wad 或 de_dust2.bsp）';
+    }
+    return hit;
+  });
 }
 
 // -------- BSP30 内嵌贴图解析（de_dust2 的沙墙/岩石/门都内嵌在 .bsp 里）--------
@@ -1020,6 +1054,7 @@ function fit() {
 }
 addEventListener('resize', fit);
 fit();
+loadBakedTextures();
 requestAnimationFrame(loop);
 </script>
 </body>
