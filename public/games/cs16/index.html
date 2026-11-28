@@ -284,6 +284,7 @@ const BAKED_TEX = {
   3: 'tex/door.png',    // SandWllDoor  192x160  铁门
   4: 'tex/rock.png',    // -0SandRock   128x256  岩石
   5: 'tex/crete.png',   // SandCCrete   256x192  水泥
+  6: 'tex/floor.png',   // SandRoad     256x256  地面
 };
 
 function loadBakedTextures() {
@@ -409,6 +410,16 @@ function applyTextureMaps(maps) {
     }
   }
   usingWad = chosen.length > 0;
+  // 地面：优先 SandRoad，其次任意 road/sand/floor 贴图
+  const floorKey = [...merged.keys()].find((k) => /^sandroad$/i.test(k))
+    || [...merged.keys()].find((k) => /road|ground|floor|sand$/i.test(k));
+  if (floorKey) {
+    textures[6] = { canvas: merged.get(floorKey), name: floorKey };
+    chosen.push({ slot: 6, label: '地面', name: floorKey });
+  }
+  // 贴图换了，采样缓存要重建
+  texPixCache.clear();
+  floorImg = null;
   return { chosen, total: merged.size };
 }
 
@@ -570,14 +581,84 @@ function castColumn(camX, ang) {
   return null;
 }
 
+// -------- 地面贴图（floor casting；用 SandRoad 原图，不缩放不裁剪）--------
+const texPixCache = new Map();
+let floorImg = null;
+
+function texPixels(slot) {
+  if (texPixCache.has(slot)) return texPixCache.get(slot);
+  const t = textures[slot];
+  if (!t) return null;
+  const src = t.canvas;
+  const w = src.width || src.naturalWidth || 0;
+  const h = src.height || src.naturalHeight || 0;
+  if (!w || !h) return null;
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const cx = c.getContext('2d');
+  let rec = null;
+  try {
+    cx.drawImage(src, 0, 0);
+    rec = { w, h, px: cx.getImageData(0, 0, w, h).data };
+  } catch (e) { rec = null; }
+  texPixCache.set(slot, rec);
+  return rec;
+}
+
+function drawFloor(horizon) {
+  const tex = texPixels(6) || texPixels(5);
+  if (!tex) return false;
+  if (!floorImg) {
+    const c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    floorImg = c.getContext('2d').createImageData(W, H);
+  }
+  const out = floorImg.data;
+  const dirX = Math.cos(state.a), dirY = Math.sin(state.a);
+  const half = Math.tan(FOV / 2);
+  const planeX = -dirY * half, planeY = dirX * half;
+  const px = tex.px, tw = tex.w, th = tex.h;
+  const y0 = Math.max(0, horizon + 1);
+  for (let y = y0; y < H; y++) {
+    const rowDist = (H * 0.5) / (y - horizon);
+    // 地平线以下：行距 = 0.5*H / (y-horizon)
+    const stepX = rowDist * 2 * planeX / W;
+    const stepY = rowDist * 2 * planeY / W;
+    let fx = state.x + rowDist * (dirX - planeX);
+    let fy = state.y + rowDist * (dirY - planeY);
+    // 远处压暗（雾）
+    const fog = Math.max(0.28, 1 - rowDist * 0.045);
+    let o = (y * W) * 4;
+    for (let x = 0; x < W; x++) {
+      let tx = (fx * tw) | 0;
+      let ty = (fy * th) | 0;
+      tx = ((tx % tw) + tw) % tw;
+      ty = ((ty % th) + th) % th;
+      const s = (ty * tw + tx) * 4;
+      out[o] = px[s] * fog;
+      out[o + 1] = px[s + 1] * fog;
+      out[o + 2] = px[s + 2] * fog;
+      out[o + 3] = 255;
+      o += 4;
+      fx += stepX; fy += stepY;
+    }
+  }
+  ctx.putImageData(floorImg, 0, 0, 0, y0, W, H - y0);
+  return true;
+}
+
 function render() {
-  // 天空 & 地面（dust：暖色调）
+  // 天空（dust2 的沙尘蓝天）+ 地面原版贴图
   const sky = ctx.createLinearGradient(0, 0, 0, H * 0.55);
-  sky.addColorStop(0, '#7d8ea0'); sky.addColorStop(1, '#c8b995');
+  sky.addColorStop(0, '#8fa3bb'); sky.addColorStop(0.7, '#bfb79a'); sky.addColorStop(1, '#cfc2a2');
   ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H * 0.55);
-  const grd = ctx.createLinearGradient(0, H * 0.55, 0, H);
-  grd.addColorStop(0, '#8a7551'); grd.addColorStop(1, '#4a3c28');
-  ctx.fillStyle = grd; ctx.fillRect(0, H * 0.55, W, H * 0.45);
+  const horizon = Math.round(H / 2 + state.kick * 4);
+  const floorDrawn = drawFloor(horizon);
+  if (!floorDrawn) {
+    const grd = ctx.createLinearGradient(0, H * 0.55, 0, H);
+    grd.addColorStop(0, '#8a7551'); grd.addColorStop(1, '#4a3c28');
+    ctx.fillStyle = grd; ctx.fillRect(0, H * 0.55, W, H * 0.45);
+  }
 
   const FOV_V = FOV;
   for (let col = 0; col < W; col++) {
