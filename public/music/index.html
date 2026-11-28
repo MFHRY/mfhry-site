@@ -1585,37 +1585,46 @@
   var htmlEl = document.documentElement;
   var bodyEl = document.body;
   var mq = window.matchMedia('(prefers-color-scheme: dark)');
-  var edgeCache = Object.create(null);   /* cover url -> {top,bottom} 取色结果 */
+  var edgeCache = Object.create(null);   /* cover url -> {color,data} 模糊封面缓存 */
   var edge = null, coverUrl = '', timer = 0;
   var canvas, ctx;
 
   function clamp(v) { return v < 0 ? 0 : v > 255 ? 255 : Math.round(v); }
 
-  /* 全屏背景 = 封面模糊(62% 亮度) + 上部 .30 / 下部 .72 黑色叠加 + 色调层。
-     这里按同样的衰减系数把封面上下两端的平均色压暗，供画布与主题色使用 */
-  function edgeFromImage(url, cb) {
+  /* 全屏背景 = 封面模糊(62% 亮度) + 暗角。
+     固定定位层在部分移动端 WebView 里铺不到状态栏/手势栏区域，
+     但 <html> 画布能铺满整个 WebView 表面，因此这里把封面
+     压成 96px 的模糊小图（dataURL）铺到 html 上兜底。 */
+  function backdrop(url, cb) {
     if (edgeCache[url] !== undefined) return cb(edgeCache[url]);
     var img = new Image();
     img.onload = function () {
       try {
+        var n = 96;
         canvas = canvas || document.createElement('canvas');
-        canvas.width = 24; canvas.height = 24;
+        canvas.width = n; canvas.height = n;
         ctx = ctx || canvas.getContext('2d', { willReadFrequently: true });
-        ctx.clearRect(0, 0, 24, 24);
-        ctx.drawImage(img, 0, 0, 24, 24);
-        var top = ctx.getImageData(0, 0, 24, 7).data;
-        var bot = ctx.getImageData(0, 17, 24, 7).data;
-        var a = [0, 0, 0], b = [0, 0, 0], n = 0;
-        for (var i = 0; i < top.length; i += 4) {
-          a[0] += top[i]; a[1] += top[i + 1]; a[2] += top[i + 2];
-          b[0] += bot[i]; b[1] += bot[i + 1]; b[2] += bot[i + 2];
-          n++;
+        ctx.clearRect(0, 0, n, n);
+        ctx.filter = 'blur(10px) saturate(155%) brightness(0.55)';
+        ctx.drawImage(img, 0, 0, n, n);
+        ctx.filter = 'none';
+        var px = ctx.getImageData(0, 0, n, n).data;
+        /* 取四角 16x16 的平均色，作为状态栏主题色 */
+        var r = 0, g = 0, b = 0, c = 0;
+        var corners = [[0, 0], [n - 16, 0], [0, n - 16], [n - 16, n - 16]];
+        for (var k = 0; k < corners.length; k++) {
+          for (var y = corners[k][1]; y < corners[k][1] + 16; y++) {
+            for (var x = corners[k][0]; x < corners[k][0] + 16; x++) {
+              var o = (y * n + x) * 4;
+              r += px[o]; g += px[o + 1]; b += px[o + 2]; c++;
+            }
+          }
         }
-        var res = {
-          top: 'rgb(' + clamp(a[0] / n * 0.24 + 6) + ',' + clamp(a[1] / n * 0.24 + 6) + ',' + clamp(a[2] / n * 0.24 + 6) + ')',
-          bottom: 'rgb(' + clamp(b[0] / n * 0.10 + 4) + ',' + clamp(b[1] / n * 0.10 + 4) + ',' + clamp(b[2] / n * 0.10 + 4) + ')'
+        edgeCache[url] = {
+          color: 'rgb(' + clamp(r / c) + ',' + clamp(g / c) + ',' + clamp(b / c) + ')',
+          data: canvas.toDataURL('image/jpeg', 0.82)
         };
-        edgeCache[url] = res; cb(res);
+        cb(edgeCache[url]);
       } catch (e) { edgeCache[url] = null; cb(null); }
     };
     img.onerror = function () { edgeCache[url] = null; cb(null); };
@@ -1626,19 +1635,23 @@
   function edgeFromTint() {
     var s = root.style.getPropertyValue('--pg-tint') || getComputedStyle(root).getPropertyValue('--pg-tint');
     var m = /(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)/.exec(s || '');
-    if (!m) return { top: '#0b0b0d', bottom: '#0b0b0d' };
+    if (!m) return { color: '#0b0b0d', data: '' };
     var r = +m[1], g = +m[2], b = +m[3];
     return {
-      top: 'rgb(' + clamp(r * 0.24 + 6) + ',' + clamp(g * 0.24 + 6) + ',' + clamp(b * 0.24 + 6) + ')',
-      bottom: 'rgb(' + clamp(r * 0.10 + 4) + ',' + clamp(g * 0.10 + 4) + ',' + clamp(b * 0.10 + 4) + ')'
+      color: 'rgb(' + clamp(r * 0.18 + 6) + ',' + clamp(g * 0.18 + 6) + ',' + clamp(b * 0.18 + 6) + ')',
+      data: ''
     };
   }
 
   function paintFs(c) {
-    if (meta) meta.setAttribute('content', c.top);   /* 状态栏/宿主工具栏跟着封面走 */
-    htmlEl.style.backgroundColor = c.top;
-    bodyEl.style.backgroundColor = c.top;
-    htmlEl.style.backgroundImage = 'linear-gradient(' + c.top + ',' + c.bottom + ')';
+    if (meta) meta.setAttribute('content', c.color);   /* 状态栏/宿主工具栏跟着封面走 */
+    htmlEl.style.backgroundColor = c.color;
+    bodyEl.style.backgroundColor = c.color;
+    htmlEl.style.backgroundImage = c.data
+      ? 'linear-gradient(rgba(0,0,0,.12),rgba(0,0,0,.38)),url("' + c.data + '")'
+      : 'none';
+    htmlEl.style.backgroundSize = c.data ? 'cover,cover' : '';
+    htmlEl.style.backgroundPosition = c.data ? 'center,center' : '';
     htmlEl.style.backgroundAttachment = 'fixed';
     bodyEl.style.backgroundImage = 'none';
   }
@@ -1648,6 +1661,8 @@
     htmlEl.style.backgroundColor = bg;
     bodyEl.style.backgroundColor = bg;
     htmlEl.style.backgroundImage = 'none';
+    htmlEl.style.backgroundSize = '';
+    htmlEl.style.backgroundPosition = '';
     htmlEl.style.backgroundAttachment = '';
   }
 
@@ -1664,8 +1679,8 @@
       coverUrl = url;
       edge = null;
       if (!url) { edge = edgeFromTint(); paintFs(edge); return; }
-      paintFs(edgeFromTint());   /* 先用主色兜底，封面取色到位后替换 */
-      edgeFromImage(url, function (c) {
+      paintFs(edgeFromTint());   /* 先用主色兜底，模糊封面就绪后替换 */
+      backdrop(url, function (c) {
         if (!root.hasAttribute('data-fs') || coverUrl !== url) return;
         edge = c || edgeFromTint();
         paintFs(edge);
