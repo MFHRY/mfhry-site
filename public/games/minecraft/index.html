@@ -166,9 +166,56 @@ const toast = (t) => { const el = $('#toast'); el.textContent = t; el.classList.
 
 /* ---------------------------------------------------------------- 资源 */
 const BLOCKS = window.MC_BLOCKS;
-const ATLAS = window.MC_TEX.build(BLOCKS);
-const WORLD = new window.MC_WORLD.World(BLOCKS, 20261121);
 const { CX, CY, CZ, SEA } = window.MC_WORLD;
+
+/* ---------------------------------------------------------------- 原版资源
+ * assets/atlas.png   —— 从 .minecraft 的 client jar 里提取的方块贴图图集
+ * assets/models.json —— 原版 blockstate/model 解析出来的面片几何
+ * 加载失败就退回程序化贴图，至少还能玩
+ */
+let MODELS = null;
+let ATLAS = null;
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('加载失败: ' + src));
+    img.src = src;
+  });
+}
+
+async function loadVanillaAssets() {
+  try {
+    const [img, res] = await Promise.all([
+      loadImage('assets/atlas.png'),
+      fetch('assets/models.json').then(r => (r.ok ? r.json() : null))
+    ]);
+    if (!res || !res.blocks) throw new Error('models.json 无效');
+    MODELS = res.blocks;
+    ATLAS = window.MC_TEX.buildExtended(BLOCKS, img, (key) => !!MODELS[key]);
+
+    /* 原版 UV 是按 atlas.png 自身尺寸归一化的；合成后画布变高了，v 要按比例压缩 */
+    const k = ATLAS.baseH / ATLAS.height;
+    let n = 0;
+    for (const key in MODELS) {
+      const m = MODELS[key];
+      for (const q of m.q) {
+        q[13] *= k; q[15] *= k; q[17] *= k; q[19] *= k;
+      }
+      if (m.i) { m.i[1] *= k; m.i[3] *= k; }
+      n++;
+    }
+    return n;
+  } catch (e) {
+    console.warn('原版资源加载失败，使用程序化贴图：', e);
+    MODELS = null;
+    ATLAS = window.MC_TEX.buildExtended(BLOCKS, null, () => false);
+    return 0;
+  }
+}
+
+const WORLD = new window.MC_WORLD.World(BLOCKS, 20261121);
 
 /* 方块图标缓存：转成 dataURL 复用。原来目录每敲一个字就重画 700 多张 canvas，很卡 */
 const ICON_CACHE = new Map();
@@ -176,7 +223,18 @@ function iconURL(b, size) {
   const key = b.id + '@' + size;
   let url = ICON_CACHE.get(key);
   if (url === undefined) {
-    try { url = window.MC_TEX.icon(b, size).toDataURL(); } catch (e) { url = ''; }
+    try {
+      const m = MODELS && MODELS[b.key];
+      if (m && m.i && m.i[2] > 0) {
+        /* 有原版模型：直接用图集里那块真实贴图 */
+        const px = m.i[0] * ATLAS.width, py = m.i[1] * ATLAS.height;
+        const pw = m.i[2] * ATLAS.width, ph = m.i[3] * ATLAS.height;
+        url = window.MC_TEX.cropIcon(ATLAS.canvas, px, py, pw, ph, size).toDataURL();
+      } else {
+        const uv = ATLAS.uv(b.id, 'top');
+        url = window.MC_TEX.cropIcon(ATLAS.canvas, uv.px, uv.py, uv.pw, uv.ph, size).toDataURL();
+      }
+    } catch (e) { url = ''; }
     ICON_CACHE.set(key, url);
   }
   return url;
@@ -216,14 +274,24 @@ const sun = new THREE.DirectionalLight(0xfff3d8, 1.15);
 sun.position.set(60, 120, 40);
 scene.add(sun);
 
-const atlasTex = new THREE.CanvasTexture(ATLAS.canvas);
-atlasTex.magFilter = THREE.NearestFilter;
-atlasTex.minFilter = THREE.NearestFilter;
-atlasTex.generateMipmaps = false;
-atlasTex.colorSpace = THREE.SRGBColorSpace;
+let atlasTex = null;
+let matOpaque = null;
+let matTrans = null;
 
-const matOpaque = new THREE.MeshLambertMaterial({ map: atlasTex, vertexColors: true });
-const matTrans = new THREE.MeshLambertMaterial({ map: atlasTex, vertexColors: true, transparent: true, alphaTest: 0.35, side: THREE.DoubleSide, depthWrite: true });
+function makeMaterials() {
+  atlasTex = new THREE.CanvasTexture(ATLAS.canvas);
+  atlasTex.magFilter = THREE.NearestFilter;
+  atlasTex.minFilter = THREE.NearestFilter;
+  atlasTex.generateMipmaps = false;
+  atlasTex.flipY = false;              /* UV 按「左上角原点」烘焙，这里不能再翻 */
+  atlasTex.colorSpace = THREE.SRGBColorSpace;
+
+  matOpaque = new THREE.MeshLambertMaterial({ map: atlasTex, vertexColors: true });
+  matTrans = new THREE.MeshLambertMaterial({
+    map: atlasTex, vertexColors: true, transparent: true,
+    alphaTest: 0.35, side: THREE.DoubleSide, depthWrite: true
+  });
+}
 
 /* ---------------------------------------------------------------- 区块流式加载 */
 const RENDER_DIST = 5;
@@ -749,7 +817,7 @@ function startWorld(withSave) {
   toast('左键挖方块 · 右键放方块 · E 打开目录');
 }
 
-$('#btnPlay').addEventListener('click', () => startWorld(true));
+$('#btnPlay').addEventListener('click', () => { if (assetsReady) startWorld(true); });
 $('#btnNew').addEventListener('click', () => {
   if (!confirm('重新生成会清掉当前世界的改动，确定吗？')) return;
   try { localStorage.removeItem(SAVE_KEY); } catch (e) { }
@@ -758,10 +826,23 @@ $('#btnNew').addEventListener('click', () => {
 
 let saved = false;
 try { saved = !!localStorage.getItem(SAVE_KEY); } catch (e) { }
-$('#startMeta').textContent = '方块 ' + BLOCKS.length + ' 种 · 生物 ' + window.MC_MOBS.MOBS.length +
-  ' 种' + (saved ? ' · 检测到本地存档' : '');
+let assetsReady = false;
 
-requestAnimationFrame(loop);
+(async function boot() {
+  $('#btnPlay').textContent = '正在加载贴图…';
+  $('#btnPlay').disabled = true;
+  const n = await loadVanillaAssets();
+  WORLD.setModels(MODELS);
+  makeMaterials();
+  assetsReady = true;
+  $('#btnPlay').textContent = '进入世界';
+  $('#btnPlay').disabled = false;
+  $('#startMeta').textContent =
+    '方块 ' + BLOCKS.length + ' 种（原版模型 ' + n + ' 种）· 生物 ' + window.MC_MOBS.MOBS.length + ' 种' +
+    (saved ? ' · 检测到本地存档' : '');
+  if (!n) $('#startMeta').textContent += ' · 原版贴图加载失败，已用程序化贴图';
+  requestAnimationFrame(loop);
+})();
 </script>
 <script>window.__mfNoPause = true; window.__mfNoRestart = true; window.__mfNoAutoSfx = true;</script>
 <script src="/games/kit.js"></script>

@@ -25,7 +25,8 @@
       col: col,
       col2: opt.col2 || null,
       shape: opt.shape || 'cube',
-      opaque: opt.opaque === undefined ? true : opt.opaque,
+      /* 交叉面片（花草）必须走透明材质，否则贴图里的镂空会被画成实心 */
+      opaque: opt.opaque === undefined ? (opt.shape === 'cross' ? false : true) : opt.opaque,
       solid: opt.solid === undefined ? true : opt.solid,
       group: opt.group || 'building',
       light: opt.light || 0,
@@ -186,15 +187,20 @@
   ];
   MINBLOCKS.forEach(function (m) { add(m[0], m[1], 'metal', m[2], { group: 'building' }); });
 
-  /* 铜氧化 */
-  [['Copper Block', '铜块', '#e07a52'], ['Exposed Copper', '斑驳的铜块', '#b08a6a'],
-   ['Weathered Copper', '风化的铜块', '#7aa88a'], ['Oxidized Copper', '氧化的铜块', '#5aa088']]
+  /* 铜氧化 —— 每个变体都显式给出原版 id，避免拼接出错 */
+  [['copper', 'Copper', '铜', '#e07a52'],
+   ['exposed_copper', 'Exposed Copper', '斑驳的铜', '#b08a6a'],
+   ['weathered_copper', 'Weathered Copper', '风化的铜', '#7aa88a'],
+   ['oxidized_copper', 'Oxidized Copper', '氧化的铜', '#5aa088']]
     .forEach(function (c) {
-      add(c[0], c[1], 'copper', c[2], { group: 'building' });
-      add('Cut ' + c[0], '切制' + c[1], 'polished', c[2], { group: 'building' });
-      add('Waxed ' + c[0], '涂蜡' + c[1], 'copper', c[2], { group: 'building' });
-      add('Waxed Cut ' + c[0], '涂蜡切制' + c[1], 'polished', c[2], { group: 'building' });
-      add('Waxed ' + c[1] + ' Grate', '涂蜡' + c[1] + '格栅', 'pane', c[2], { shape: 'pane', opaque: false, group: 'building' });
+      var id = c[0], en = c[1], zh = c[2], col = c[3];
+      var blockKey = id === 'copper' ? 'copper_block' : id;
+      add(en + ' Block', zh + '块', 'copper', col, { key: blockKey, group: 'building' });
+      add('Cut ' + en, '切制' + zh + '块', 'polished', col, { key: 'cut_' + id, group: 'building' });
+      add(en + ' Grate', zh + '格栅', 'pane', col, { key: id + '_grate', shape: 'pane', opaque: false, group: 'building' });
+      add('Waxed ' + en + ' Block', '涂蜡' + zh + '块', 'copper', col, { key: 'waxed_' + blockKey, group: 'building' });
+      add('Waxed Cut ' + en, '涂蜡切制' + zh + '块', 'polished', col, { key: 'waxed_cut_' + id, group: 'building' });
+      add('Waxed ' + en + ' Grate', '涂蜡' + zh + '格栅', 'pane', col, { key: 'waxed_' + id + '_grate', shape: 'pane', opaque: false, group: 'building' });
     });
 
   /* ================================================================ 建筑石 */
@@ -381,7 +387,6 @@
 
   /* ---- 1.21 铜 / 树脂新内容 ---- */
   add('Chiseled Copper', '雕纹铜块', 'chiseled', '#e07a52', { group: 'building' });
-  add('Copper Grate', '铜格栅', 'pane', '#e07a52', { shape: 'pane', opaque: false, group: 'building' });
   add('Copper Door', '铜门', 'copper', '#e07a52', { shape: 'pane', opaque: false, group: 'building' });
   add('Copper Trapdoor', '铜活板门', 'copper', '#e07a52', { shape: 'slab', group: 'building' });
   add('Copper Bulb', '铜灯', 'froglight', '#e07a52', { group: 'functional', light: 3 });

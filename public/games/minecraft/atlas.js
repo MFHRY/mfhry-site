@@ -431,18 +431,19 @@
   };
 
   /* ------------------------------------------------------------ 构建图集 */
+  function facesOf(b) {
+    var p = b.pat;
+    if (p === 'grass_side') return ['side', 'top', 'bottom'];
+    if (p === 'log_side') return ['side', 'top', 'bottom'];
+    if (p === 'workbench' || p === 'furnace' || p === 'chest' || p === 'bookshelf' || p === 'piston' ||
+        p === 'observer' || p === 'tnt' || p === 'sandstone') return ['side', 'top', 'bottom'];
+    return ['side'];
+  }
+
   function build(blocks) {
     var cols = 24;
     var tiles = [];
     var index = {};
-    var facesOf = function (b) {
-      var p = b.pat;
-      if (p === 'grass_side') return ['side', 'top', 'bottom'];
-      if (p === 'log_side') return ['side', 'top', 'bottom'];
-      if (p === 'workbench' || p === 'furnace' || p === 'chest' || p === 'bookshelf' || p === 'piston' ||
-          p === 'observer' || p === 'tnt' || p === 'sandstone') return ['side', 'top', 'bottom'];
-      return ['side'];
-    };
     blocks.forEach(function (b) {
       facesOf(b).forEach(function (f) {
         var key = b.id + ':' + f;
@@ -488,6 +489,71 @@
     };
   }
 
+  /* ------------------------------------------------------------------
+   * 合并图集：上半部分铺原版 atlas.png，下半部分补「没有原版模型」的方块。
+   * 这样整局游戏只用一张贴图、一种材质。
+   * ---------------------------------------------------------------- */
+  function buildExtended(blocks, baseImage, hasModel) {
+    var cols = 24;
+    var need = [], index = {};
+    blocks.forEach(function (b) {
+      if (hasModel && hasModel(b.key)) return;
+      facesOf(b).forEach(function (f) {
+        var key = b.id + ':' + f;
+        if (!index[key]) { index[key] = need.length; need.push({ b: b, face: f }); }
+      });
+    });
+    var rows = Math.ceil(need.length / cols);
+    var baseW = baseImage ? baseImage.width : 0;
+    var baseH = baseImage ? baseImage.height : 0;
+    var W = Math.max(baseW, cols * TILE);
+    var H = baseH + rows * TILE;
+    var cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    var ctx = cv.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    if (baseImage) ctx.drawImage(baseImage, 0, 0);
+
+    need.forEach(function (t, i) {
+      var cx = (i % cols) * TILE, cy = baseH + ((i / cols) | 0) * TILE;
+      var rng = mulberry32(t.b.id * 7919 + t.face.charCodeAt(0) * 31);
+      var fn = PAT[t.b.pat] || PAT[ALIAS[t.b.pat]] || PAT.stone;
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.beginPath(); ctx.rect(0, 0, TILE, TILE); ctx.clip();
+      try { fn(ctx, rng, t.b, hex2rgb(t.b.col), t.face, t.b.id); }
+      catch (e) { ctx.fillStyle = t.b.col; ctx.fillRect(0, 0, TILE, TILE); }
+      ctx.restore();
+    });
+
+    return {
+      canvas: cv, cols: cols, tile: TILE, count: need.length,
+      baseW: baseW, baseH: baseH, width: W, height: H,
+      uv: function (blockId, face) {
+        var i = index[blockId + ':' + face];
+        if (i === undefined) i = index[blockId + ':side'];
+        if (i === undefined) return { u0: 0, v0: 0, u1: 0, v1: 0, px: 0, py: 0, pw: 0, ph: 0 };
+        var x = (i % cols) * TILE, y = baseH + ((i / cols) | 0) * TILE;
+        return {
+          px: x, py: y, pw: TILE, ph: TILE,
+          u0: x / W, v0: y / H,
+          u1: (x + TILE) / W, v1: (y + TILE) / H
+        };
+      }
+    };
+  }
+
+  /* 从任意画布裁一块出来当图标 */
+  function cropIcon(src, px, py, pw, ph, size) {
+    var cv = document.createElement('canvas');
+    cv.width = size; cv.height = size;
+    var ctx = cv.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    if (!pw || !ph) return cv;
+    ctx.drawImage(src, px, py, pw, ph, 0, 0, size, size);
+    return cv;
+  }
+
   /* 给 UI 画方块图标（等距小方块） */
   function icon(block, size) {
     size = size || 32;
@@ -517,5 +583,5 @@
     return cv;
   }
 
-  root.MC_TEX = { build: build, icon: icon, shade: shade, hex2rgb: hex2rgb, rgb2css: rgb2css, PAT: PAT };
+  root.MC_TEX = { build: build, buildExtended: buildExtended, cropIcon: cropIcon, icon: icon, shade: shade, hex2rgb: hex2rgb, rgb2css: rgb2css, PAT: PAT };
 })(window);

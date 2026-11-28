@@ -44,9 +44,12 @@
     this.chunks = {};
     this.edits = {};
     this.bases = {};   /* 原始地形缓存，存档时做 diff 用 */
+    this.models = null; /* 原版模型面片：{ key: { q: [...], i: [...] } } */
     this.bias = 0;
     this.bias = this.calibrate();   /* 让约 70% 的地表高于海平面 */
   }
+
+  World.prototype.setModels = function (models) { this.models = models; };
 
   World.prototype.chunkKey = function (cx, cz) { return cx + ',' + cz; };
 
@@ -253,6 +256,43 @@
 
   var BOX_FULL = [[0, 0, 0, 1, 1, 1]];
 
+  /* ------- 原版模型面片（构建脚本已烘焙好坐标 / UV / 法线 / 染色）-------
+     q = [位置 4×3][UV 4×2][法线 3][染色 3] = 26 个数字 */
+  function pushModelQuad(out, wx, wy, wz, q, shade) {
+    var base = out.vertexCount();
+    var r = q[23] * shade, g = q[24] * shade, b = q[25] * shade;
+    for (var i = 0; i < 4; i++) {
+      out.pos.push(wx + q[i * 3], wy + q[i * 3 + 1], wz + q[i * 3 + 2]);
+      out.nor.push(q[20], q[21], q[22]);
+      out.uv.push(q[12 + i * 2], q[13 + i * 2]);
+      out.col.push(r, g, b);
+    }
+    out.idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
+  }
+
+  function shadeFor(nx, ny, nz) {
+    if (ny > 0.5) return 1.0;
+    if (ny < -0.5) return 0.55;
+    if (Math.abs(nx) > 0.5) return 0.82;
+    return 0.72;
+  }
+
+  /* 是否正好铺满方块的一整个表面——只有这种面才按邻居做剔除，
+     否则台阶、栅栏、植物的局部面会被误删 */
+  function isFullFace(q) {
+    var eps = 1e-3;
+    var axis = Math.abs(q[20]) > 0.5 ? 0 : (Math.abs(q[21]) > 0.5 ? 1 : 2);
+    var plane = (axis === 0 ? q[20] : axis === 1 ? q[21] : q[22]) > 0 ? 1 : 0;
+    for (var i = 0; i < 4; i++) {
+      if (Math.abs(q[i * 3 + axis] - plane) > eps) return false;
+    }
+    var dx1 = q[3] - q[0], dy1 = q[4] - q[1], dz1 = q[5] - q[2];
+    var dx2 = q[9] - q[0], dy2 = q[10] - q[1], dz2 = q[11] - q[2];
+    var l1 = Math.sqrt(dx1 * dx1 + dy1 * dy1 + dz1 * dz1);
+    var l2 = Math.sqrt(dx2 * dx2 + dy2 * dy2 + dz2 * dz2);
+    return Math.abs(l1 * l2 - 1) < 0.03;
+  }
+
   function Bucket() {
     this.pos = []; this.nor = []; this.uv = []; this.col = []; this.idx = [];
   }
@@ -264,6 +304,7 @@
     var data = chunk.data;
     var byId = this.byId;
     var self = this;
+    var models = this.models;
     var baseX = cx * CX, baseZ = cz * CZ;
 
     /* 每列最高非空气方块，省掉整片底部的遍历 */
@@ -288,6 +329,36 @@
         var wx = baseX + x, wz = baseZ + z;
         var bucket = b.opaque ? op : tr;
 
+        /* 只要有一面可见就要画；先把 6 个邻居取出来 */
+        var yUp = y + 1, yDown = y - 1;
+        nbBuf[0] = (x + 1 < CX) ? data[(y * CZ + z) * CX + x + 1] : (edge ? self.get(wx + 1, y, wz) : 0);
+        nbBuf[1] = (x - 1 >= 0) ? data[(y * CZ + z) * CX + x - 1] : (edge ? self.get(wx - 1, y, wz) : 0);
+        nbBuf[2] = (yUp < CY) ? data[(yUp * CZ + z) * CX + x] : 0;
+        nbBuf[3] = (yDown >= 0) ? data[(yDown * CZ + z) * CX + x] : 0;
+        nbBuf[4] = (z + 1 < CZ) ? data[(y * CZ + z + 1) * CX + x] : (edge ? self.get(wx, y, wz + 1) : 0);
+        nbBuf[5] = (z - 1 >= 0) ? data[(y * CZ + z - 1) * CX + x] : (edge ? self.get(wx, y, wz - 1) : 0);
+
+        /* 有原版模型就用原版几何（楼梯、栅栏、火把、植物…全都对得上） */
+        var mdl = models && models[b.key];
+        if (mdl) {
+          var nq = mdl.q;
+          for (var qi = 0; qi < nq.length; qi++) {
+            var q = nq[qi];
+            var qx = q[20], qy = q[21], qz = q[22];
+            var ni;
+            if (qx > 0.5) ni = 0; else if (qx < -0.5) ni = 1;
+            else if (qy > 0.5) ni = 2; else if (qy < -0.5) ni = 3;
+            else if (qz > 0.5) ni = 4; else ni = 5;
+            var nid = nbBuf[ni];
+            if (nid) {
+              var nbm = byId[nid];
+              if (nbm && nbm.opaque && isFullFace(q)) continue;
+            }
+            pushModelQuad(bucket, wx, y, wz, q, shadeFor(qx, qy, qz));
+          }
+          continue;
+        }
+
         if (b.shape === 'cross') {
           pushCross(bucket, wx, y, wz, atlas, id, 0.95);
           continue;
@@ -304,15 +375,6 @@
         if (b.shape === 'slab') boxes = [[0, 0, 0, 1, 0.5, 1]];
         else if (b.shape === 'stairs') boxes = [[0, 0, 0, 1, 0.5, 1], [0, 0.5, 0, 1, 1, 0.5]];
         else boxes = BOX_FULL;
-
-        /* 只要有一面可见就要画；先把 6 个邻居取出来 */
-        var yUp = y + 1, yDown = y - 1;
-        nbBuf[0] = (x + 1 < CX) ? data[(y * CZ + z) * CX + x + 1] : (edge ? self.get(wx + 1, y, wz) : 0);
-        nbBuf[1] = (x - 1 >= 0) ? data[(y * CZ + z) * CX + x - 1] : (edge ? self.get(wx - 1, y, wz) : 0);
-        nbBuf[2] = (yUp < CY) ? data[(yUp * CZ + z) * CX + x] : 0;
-        nbBuf[3] = (yDown >= 0) ? data[(yDown * CZ + z) * CX + x] : 0;
-        nbBuf[4] = (z + 1 < CZ) ? data[(y * CZ + z + 1) * CX + x] : (edge ? self.get(wx, y, wz + 1) : 0);
-        nbBuf[5] = (z - 1 >= 0) ? data[(y * CZ + z - 1) * CX + x] : (edge ? self.get(wx, y, wz - 1) : 0);
 
         for (var bi = 0; bi < boxes.length; bi++) {
           var box = boxes[bi];
