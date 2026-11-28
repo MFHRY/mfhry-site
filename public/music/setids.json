@@ -615,7 +615,8 @@
   "r2": "/api/r2?key=music/track-935153.mp3",
   "bytes": 5507167,
   "mb": 5.3,
-  "lyrics": "/music/otome-dissection-lyrics.json"
+  "lyrics": "/music/otome-dissection-lyrics.json",
+  "cover": "/api/r2?key=music/track-935153-cover.jpg"
  },
  "ライアーダンス": {
   "artist": "DECO*27",
