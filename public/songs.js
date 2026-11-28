@@ -54,6 +54,12 @@ window.MFHRY_SONGS = [
       { label: 'シアンブルー (feat. 初音ミク)', artist: 'ポリスピカデリー', zh: '青空蓝', q: 'cyan blue police piccadilly', r2: '/api/r2?key=music/cyanblue.mp3', lyrics: '/music/cyan-blue-lyrics.json', cover: '/api/r2?key=music/cover-cyanblue.jpg&v=2' },
       { label: '本命', zh: '本命', q: 'honmei deco27', r2: '/api/r2?key=music/honmei.mp3', lyrics: '/music/honmei-lyrics.json', cover: '/api/r2?key=music/cover-honmei.jpg&v=2', artist: 'DECO*27', nc: 2649372847 },
       { label: 'SINOS DE NATAL 1+2', artist: 'MGD / MXZHPHXNK', zh: '我们绝不承认任何结局', q: 'sinos de natal', r2: '/api/r2?key=music/sinosnatal.mp3', cover: '/api/r2?key=music/cover-sinosnatal.jpg', lyrics: '/music/sinos-de-natal-lyrics.json' },
+      { divider: '' },
+      { label: '日系ゲーム · You', zh: '极限竞速：地平线6 开场曲', q: 'forza horizon you', artist: '极限竞速：地平线6' },
+      { label: 'Enchanting Stranger', zh: '着迷的陌生人', q: 'enchanting stranger milktalk', artist: 'MilkTalk' },
+      { label: '刀尖起舞', zh: '战争雷霆十二周年主题曲', q: 'war thunder knife dance', artist: '战争雷霆' },
+      { label: 'Advance Australia', zh: '冲吧澳大利亚', q: 'advance australia war thunder', artist: '战争雷霆' },
+      { label: 'ワールズエンド・ダンスホール（自 mix）', zh: '世末舞厅（自 mix）', q: "world's end dancehall selfmix", artist: 'wowaka' },
     ],
   },
   {
@@ -221,16 +227,6 @@ window.MFHRY_SONGS = [
         r2: '/api/r2?key=music/iris-out.mp3', cover: '/api/r2?key=music/cover-iris-out.jpg',
         lyrics: '/music/iris-out-lyrics.json', nc: 2745026895 },
       { label: 'スパークル', zh: '火花（你的名字）', q: 'sparkle radwimps your name', artist: 'RADWIMPS' },
-    ],
-  },
-  {
-    title: '本地 · 试听',
-    items: [
-      { label: '日系ゲーム · You', zh: '极限竞速：地平线6 开场曲', q: 'forza horizon you', artist: '极限竞速：地平线6' },
-      { label: 'Enchanting Stranger', zh: '着迷的陌生人', q: 'enchanting stranger milktalk', artist: 'MilkTalk' },
-      { label: '刀尖起舞', zh: '战争雷霆十二周年主题曲', q: 'war thunder knife dance', artist: '战争雷霆' },
-      { label: 'Advance Australia', zh: '冲吧澳大利亚', q: 'advance australia war thunder', artist: '战争雷霆' },
-      { label: 'ワールズエンド・ダンスホール（自 mix）', zh: '世末舞厅（自 mix）', q: "world's end dancehall selfmix", artist: 'wowaka' },
     ],
   }
 ];
